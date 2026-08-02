@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Livewire\Settings;
 
+use App\Enums\BackupStatus;
 use App\Jobs\RetentionCleanup;
 use App\Livewire\Traits\WithJobTracking;
+use App\Models\Backup;
+use App\Services\Backup\BackupRetentionSettings;
 use App\Services\RetentionPolicyService;
 use Illuminate\Support\Carbon;
 use Livewire\Attributes\Computed;
@@ -19,7 +22,13 @@ class DataRetentionSettings extends Component
 
     public array $days = [];
 
-    public function mount(RetentionPolicyService $policy): void
+    /** Whether old BACKUPS (the archives, not the log tables) are actually deleted. */
+    public bool $backupDeletesEnabled = false;
+
+    /** How many restore points each site keeps. */
+    public int $backupKeepPerSite = BackupRetentionSettings::DEFAULT_KEEP;
+
+    public function mount(RetentionPolicyService $policy, BackupRetentionSettings $backups): void
     {
         $this->enabled = $policy->isEnabled();
 
@@ -27,7 +36,62 @@ class DataRetentionSettings extends Component
             $this->days[$key] = $policy->getDays($key);
         }
 
+        $this->backupDeletesEnabled = $backups->deletesEnabled();
+        $this->backupKeepPerSite = $backups->keepPerSite();
+
         $this->initJobTracking();
+    }
+
+    /**
+     * How much the current backup policy is holding, so the number above is not abstract.
+     *
+     * @return array{sites: int, backups: int, over_limit: int}
+     */
+    #[Computed]
+    public function backupStats(): array
+    {
+        $perSite = Backup::query()
+            ->where('status', BackupStatus::Completed)
+            ->selectRaw('site_id, count(*) as total')
+            ->groupBy('site_id')
+            ->pluck('total', 'site_id');
+
+        return [
+            'sites' => $perSite->count(),
+            'backups' => (int) $perSite->sum(),
+            'over_limit' => (int) $perSite->sum(fn (int $n): int => max(0, $n - $this->backupKeepPerSite)),
+        ];
+    }
+
+    /**
+     * Side effect of the backup switch, mirroring updatedEnabled(): x-ui.toggle renders a button,
+     * so the control is a $toggle round trip rather than wire:model.
+     */
+    public function updatedBackupDeletesEnabled(BackupRetentionSettings $backups): void
+    {
+        $backups->setDeletesEnabled($this->backupDeletesEnabled);
+        unset($this->backupStats);
+
+        $this->dispatch('notify', type: 'success', message: $this->backupDeletesEnabled
+            ? __('Old backups will now be deleted automatically.')
+            : __('Backup deletion paused — retention will only report what it would remove.'));
+    }
+
+    public function saveBackupRetention(BackupRetentionSettings $backups): void
+    {
+        $this->validate([
+            'backupKeepPerSite' => 'required|integer|min:'.BackupRetentionSettings::MIN_KEEP.'|max:'.BackupRetentionSettings::MAX_KEEP,
+        ]);
+
+        $changed = $backups->setKeepPerSite($this->backupKeepPerSite);
+        $this->backupKeepPerSite = $backups->keepPerSite();
+        unset($this->backupStats);
+
+        $this->dispatch('notify', type: 'success', message: trans_choice(
+            '{0}Backup retention saved.|[1,*]Backup retention saved and applied to :count site schedule(s).',
+            $changed,
+            ['count' => $changed],
+        ));
     }
 
     protected function jobTrackingKeys(): array

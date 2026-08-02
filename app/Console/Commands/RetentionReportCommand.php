@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
 /**
  * What retention WOULD delete, as a table you can read.
  *
- * Retention has a dry-run flag (config('backups.retention_dry_run'), default
+ * Whether retention actually deletes is a setting on the data retention screen (default
  * true) whose whole purpose is to produce evidence before anyone turns deletion
  * on. It writes that evidence through Log::info — and production runs at
  * LOG_LEVEL=warning, so it has been writing to nowhere. Months of "safe
@@ -64,7 +64,7 @@ class RetentionReportCommand extends Command
         if ($this->option('json')) {
             $this->line((string) json_encode([
                 'generated_at' => now()->toIso8601String(),
-                'retention_dry_run' => (bool) config('backups.retention_dry_run', true),
+                'retention_dry_run' => ! app(\App\Services\Backup\BackupRetentionSettings::class)->deletesEnabled(),
                 'totals' => ['backups' => $totalDeleted, 'bytes' => $totalBytes],
                 'sites' => $rows,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
@@ -92,7 +92,7 @@ class RetentionReportCommand extends Command
             'Would delete %d backups, freeing %s. Retention is currently %s.',
             $totalDeleted,
             $this->humanBytes($totalBytes),
-            config('backups.retention_dry_run', true) ? 'DRY-RUN (deletes nothing)' : 'LIVE',
+            app(\App\Services\Backup\BackupRetentionSettings::class)->deletesEnabled() ? 'LIVE' : 'DRY-RUN (deletes nothing)',
         ));
 
         $guarded = array_filter($rows, fn (array $r) => $r['guard_fired']);

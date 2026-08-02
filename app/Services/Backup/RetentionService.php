@@ -30,7 +30,8 @@ class RetentionService
      * delete a chain unless its NEWEST member is itself out of the window.
      *
      * Deletes run in log-only (dry-run) mode by default — see
-     * config('backups.retention_dry_run') and P0-03's safe rollout.
+     * App\Services\Backup\BackupRetentionSettings — the data retention screen — and P0-03's safe
+     * rollout.
      */
     public function apply(Site $site, StorageDestination $destination): void
     {
@@ -39,7 +40,7 @@ class RetentionService
             return;
         }
 
-        $dryRun = (bool) config('backups.retention_dry_run', true);
+        $dryRun = ! app(BackupRetentionSettings::class)->deletesEnabled();
 
         // Load ALL completed, unlocked backups. Crucially we do NOT pre-filter
         // by date for days-mode: a fresh incremental must be visible so its

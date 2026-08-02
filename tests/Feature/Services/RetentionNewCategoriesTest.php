@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\RetentionPolicyService;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
@@ -19,7 +18,7 @@ use Tests\TestCase;
 /**
  * P2-43: previously-unpruned growing tables (dns_changes, php_error_logs,
  * in_app_notifications) must be registered for retention.
- * They are gated behind config('backups.retention_dry_run'): while it is on the
+ * They are gated behind the data retention screen's delete switch: while it is off the
  * job LOGS the count it would prune without deleting; once flipped off it prunes.
  */
 class RetentionNewCategoriesTest extends TestCase
@@ -66,7 +65,7 @@ class RetentionNewCategoriesTest extends TestCase
 
     public function test_dry_run_logs_count_without_deleting(): void
     {
-        Config::set('backups.retention_dry_run', true);
+        app(\App\Services\Backup\BackupRetentionSettings::class)->setDeletesEnabled(false);
 
         $user = User::factory()->create();
 
@@ -97,9 +96,9 @@ class RetentionNewCategoriesTest extends TestCase
         $this->assertSame(0, $result['categories']['in_app_notifications']['deleted']);
     }
 
-    public function test_prunes_old_rows_once_dry_run_flag_is_off(): void
+    public function test_prunes_old_rows_once_deletion_is_enabled(): void
     {
-        Config::set('backups.retention_dry_run', false);
+        app(\App\Services\Backup\BackupRetentionSettings::class)->setDeletesEnabled(true);
 
         $site = Site::factory()->create();
 

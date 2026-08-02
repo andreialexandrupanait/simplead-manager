@@ -6,20 +6,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Retention dry-run (log-only) mode
+    | Retention dry-run — emergency force-off
     |--------------------------------------------------------------------------
     |
-    | When true, RetentionService computes exactly which backup chains it would
-    | delete and logs them, but performs NO storage or database deletion. This
-    | is the safe-rollout guard for the P0-03 chain-aware retention fix: run
-    | log-only for a week, confirm from the logs that only genuinely-expired
-    | restore points are selected, then flip to false to enable real deletes.
+    | Whether old backups are actually deleted is now a SETTING, on the data
+    | retention screen, read through App\Services\Backup\BackupRetentionSettings.
+    | It lived here as an env var for a long time and that is exactly why it was
+    | never switched on: turning it on meant editing the deployment, so retention
+    | ran every night, decided what to remove, logged it, and removed nothing —
+    | while a terabyte accumulated behind a switch nobody could reach from the
+    | screen where the policy is configured.
     |
-    | Defaults to TRUE (log-only) so a fresh deploy can never destroy a client
-    | restore point before the new selection logic has been observed.
+    | What remains here is a one-way catch. Set it to true and deletions stop, no
+    | matter what the screen says; it can never make the system delete MORE than
+    | the screen says. Defaults to false so the setting is what governs.
     |
     */
-    'retention_dry_run' => env('BACKUP_RETENTION_DRY_RUN', true),
+    'retention_dry_run' => env('BACKUP_RETENTION_DRY_RUN', false),
 
     /*
     |--------------------------------------------------------------------------

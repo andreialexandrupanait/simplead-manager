@@ -73,7 +73,7 @@ class RetentionReportCommandTest extends TestCase
     {
         // Even with deletion armed, the report must not delete. It answers a
         // question; it does not enact a policy.
-        config(['backups.retention_dry_run' => false]);
+        app(\App\Services\Backup\BackupRetentionSettings::class)->setDeletesEnabled(true);
 
         $site = $this->siteWithPolicy('count', 1);
         $this->backup($site, '10 days');

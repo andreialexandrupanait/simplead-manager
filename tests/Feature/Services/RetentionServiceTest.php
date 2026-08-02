@@ -27,10 +27,11 @@ class RetentionServiceTest extends TestCase
         parent::setUp();
         $this->service = new RetentionService;
 
-        // These assertions verify real deletion behaviour, so disable the
-        // safe-rollout log-only guard (default TRUE). A dedicated test below
-        // covers the dry-run path itself.
-        config(['backups.retention_dry_run' => false]);
+        // These assertions verify real deletion behaviour, so turn deletion on. It is a setting
+        // now (the data retention screen) rather than an env flag, and it is off by default —
+        // a system that starts deleting because it was deployed is worse than one that reports
+        // first. A dedicated test below covers the reporting-only path itself.
+        app(\App\Services\Backup\BackupRetentionSettings::class)->setDeletesEnabled(true);
 
         $this->destination = StorageDestination::factory()->local()->create([
             'config' => ['path' => sys_get_temp_dir().'/test-retention-'.uniqid()],
@@ -319,9 +320,9 @@ class RetentionServiceTest extends TestCase
 
     public function test_dry_run_deletes_nothing(): void
     {
-        // Safe-rollout guard: with the log-only flag on, an over-count chain that
-        // WOULD be deleted is left fully intact.
-        config(['backups.retention_dry_run' => true]);
+        // Reporting-only: with deletion off, an over-count chain that WOULD be deleted is left
+        // fully intact.
+        app(\App\Services\Backup\BackupRetentionSettings::class)->setDeletesEnabled(false);
         $this->createBackupConfig('count', 1);
 
         $old = $this->createBackup(['type' => 'full', 'created_at' => now()->subDays(10)]);

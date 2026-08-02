@@ -75,7 +75,7 @@ class RetentionCleanup implements ShouldQueue
             // dry-run flag — while it is on they LOG the count they *would* prune
             // without deleting, so the owner can verify volumes before flipping it.
             $dryRun = ($config['dry_run'] ?? false)
-                && (bool) config('backups.retention_dry_run', true);
+                && ! app(\App\Services\Backup\BackupRetentionSettings::class)->deletesEnabled();
             $categoryWouldDelete = 0;
 
             $progress = (int) round(($index / $totalCategories) * 100);

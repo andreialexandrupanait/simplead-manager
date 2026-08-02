@@ -112,6 +112,79 @@
         />
     </x-settings.section>
 
+    {{-- Site backups. A separate section from the tables above because the stakes are not the same:
+         a pruned log row is an inconvenience, a deleted restore point is gone. Whether deletion is
+         real used to be an environment variable, which is precisely why it was never switched on —
+         turning it on meant editing the deployment, so retention ran nightly, decided what to
+         remove and removed nothing, while a terabyte accumulated. --}}
+    <x-settings.section
+        id="backup-retention"
+        :title="__('Site Backups')"
+        :subtitle="__('How many restore points each site keeps, and whether older ones are actually deleted.')"
+    >
+        <div class="flex items-center justify-between gap-4 rounded-lg border border-gray-100 p-3">
+            <div class="min-w-0">
+                <p class="text-sm font-medium text-gray-900">{{ __('Delete old backups') }}</p>
+                <p class="text-xs text-gray-500">
+                    {{ __('When off, retention still runs and reports what it would remove — but deletes nothing.') }}
+                </p>
+            </div>
+            <x-ui.toggle
+                :enabled="$backupDeletesEnabled"
+                wire:click="$toggle('backupDeletesEnabled')"
+                aria-label="{{ __('Delete old backups') }}"
+            />
+        </div>
+
+        <form wire:submit="saveBackupRetention" class="mt-4">
+            <div class="rounded-lg border border-gray-100 p-3">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-gray-900">{{ __('Restore points kept per site') }}</p>
+                        <p class="text-xs text-gray-500">
+                            {{ __('Counted in restore points, not days, so the number you set is the number you get regardless of how often backups ran.') }}
+                        </p>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <x-ui.input
+                            type="number"
+                            id="backup-keep-per-site"
+                            wire:model="backupKeepPerSite"
+                            min="{{ \App\Services\Backup\BackupRetentionSettings::MIN_KEEP }}"
+                            max="{{ \App\Services\Backup\BackupRetentionSettings::MAX_KEEP }}"
+                            class="w-20 text-center"
+                            aria-label="{{ __('Restore points kept per site') }}"
+                        />
+                        <span class="text-sm text-gray-500">{{ __('backups') }}</span>
+                    </div>
+                </div>
+
+                <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    <span class="text-xs text-gray-500">
+                        {{ __('Sites with backups') }}:
+                        <span class="text-gray-700">{{ number_format($this->backupStats['sites']) }}</span>
+                    </span>
+                    <span class="text-xs text-gray-500">
+                        {{ __('Restore points stored') }}:
+                        <span class="text-gray-700">{{ number_format($this->backupStats['backups']) }}</span>
+                    </span>
+                    @if($this->backupStats['over_limit'] > 0)
+                        <span class="text-xs text-gray-500">
+                            {{ __('Above the limit') }}:
+                            <span class="text-gray-700">{{ number_format($this->backupStats['over_limit']) }}</span>
+                        </span>
+                    @endif
+                </div>
+            </div>
+
+            <x-ui.save-bar
+                target="saveBackupRetention"
+                :message="__('Applies to every site, and takes effect at the next backup.')"
+                :label="__('Save')"
+            />
+        </form>
+    </x-settings.section>
+
     @if($this->lastRunResult)
         <x-settings.section
             :title="__('Last Cleanup Run')"
