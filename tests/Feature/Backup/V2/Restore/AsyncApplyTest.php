@@ -314,6 +314,20 @@ final class FakeRestoreClient implements RestoreClient
         private readonly ?\Throwable $rollbackThrows = null,
     ) {}
 
+    /** A host with room to spare: these tests are about the apply, not the preflight. */
+    public function capabilities(): array
+    {
+        return [
+            'disk' => [
+                'temp_dir' => '/tmp',
+                'free_bytes' => 500 * 1024 * 1024 * 1024,
+                'site_dir' => '/var/www/html',
+                'site_free_bytes' => 500 * 1024 * 1024 * 1024,
+                'same_filesystem' => false,
+            ],
+        ];
+    }
+
     public function restorePrepare(string $token, array $opts): array
     {
         return ['ok' => true];

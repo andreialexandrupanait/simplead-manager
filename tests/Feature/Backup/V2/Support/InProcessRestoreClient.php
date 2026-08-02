@@ -52,6 +52,32 @@ final class InProcessRestoreClient implements RestoreClient
         return $this->engines[$token];
     }
 
+    /**
+     * The real filesystems this client works on, so the runner's disk preflight is answered with
+     * the truth rather than a stub — the live tree and the work root are both under the temp dir
+     * here, which is the shared-filesystem case.
+     */
+    public function capabilities(): array
+    {
+        return [
+            'disk' => [
+                'temp_dir' => $this->workRoot,
+                'free_bytes' => $this->freeBytes($this->workRoot),
+                'site_dir' => $this->liveRoot,
+                'site_free_bytes' => $this->freeBytes($this->liveRoot),
+                'same_filesystem' => true,
+            ],
+        ];
+    }
+
+    private function freeBytes(string $path): ?int
+    {
+        $dir = is_dir($path) ? $path : dirname($path);
+        $free = @disk_free_space($dir);
+
+        return ($free === false || $free === null) ? null : (int) $free;
+    }
+
     public function restorePrepare(string $token, array $opts): array
     {
         return $this->engine($token)->prepare($opts);

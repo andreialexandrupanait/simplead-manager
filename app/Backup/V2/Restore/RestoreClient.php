@@ -17,6 +17,15 @@ namespace App\Backup\V2\Restore;
 interface RestoreClient
 {
     /**
+     * GET capabilities — what this host can do and, the part a restore cares about, how much room
+     * it has. Asked before anything is transferred, so a host that cannot fit the restore is turned
+     * away rather than filled up.
+     *
+     * @return array<string, mixed>
+     */
+    public function capabilities(): array;
+
+    /**
      * POST restore/prepare — open a restore session (token) with staging areas.
      *
      * @param  array<string, mixed>  $opts  mode|scope|mirror_roots|keep_paths|db_tables|tombstones

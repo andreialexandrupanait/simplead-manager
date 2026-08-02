@@ -86,10 +86,23 @@ final class SAM_Backup_Temp {
      * accidental deletion of anything else).
      */
     public static function remove_dir(string $path): void {
-        $root = self::root();
+        self::remove_dir_under($path, self::root());
+    }
+
+    /**
+     * The same removal, for a directory we own that does not live under the temp root — restore
+     * staging and trash sit inside ABSPATH, because a swap has to be a rename on one filesystem.
+     *
+     * The caller names the root it is willing to delete beneath, and it must be a strict ancestor:
+     * passing the root itself deletes nothing. Without this the hourly sweep silently did nothing
+     * about `sam-restore-*` — remove_dir() refused every path outside /tmp, which is where those
+     * directories are by definition.
+     */
+    public static function remove_dir_under(string $path, string $allowed_root): void {
+        $root = rtrim($allowed_root, '/');
         $real = realpath($path);
-        if ($real === false || strpos($real, $root) !== 0) {
-            return; // refuse to touch anything outside our temp root
+        if ($real === false || $root === '' || $real === $root || strpos($real, $root . '/') !== 0) {
+            return; // refuse to touch anything outside the root we were given
         }
         $items = @scandir($real);
         if ($items === false) {
@@ -101,7 +114,7 @@ final class SAM_Backup_Temp {
             }
             $child = $real . '/' . $item;
             if (is_dir($child) && !is_link($child)) {
-                self::remove_dir($child);
+                self::remove_dir_under($child, $root);
             } else {
                 @unlink($child);
             }

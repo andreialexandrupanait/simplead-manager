@@ -12,6 +12,7 @@ use App\Backup\V2\Crypto\ObjectCipher;
 use App\Backup\V2\Enums\BackupErrorCode;
 use App\Backup\V2\Enums\RestoreMode;
 use App\Backup\V2\Enums\RestoreSessionState as S;
+use App\Backup\V2\Exceptions\PreflightFailed;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Models\RestoreSession;
 use App\Backup\V2\Plugin\PluginClientException;
@@ -142,6 +143,11 @@ final class RestoreRunner
             $this->postRestoreValidation($plan);
         } catch (BrokenChainException $e) {
             $this->fail(BackupErrorCode::BrokenChain, $e->getMessage());
+        } catch (PreflightFailed $e) {
+            // Not a fault: nothing broke and nothing was touched, the host simply cannot take this
+            // restore. It carries its own code so the alert names the precondition — "1 GB free,
+            // needs 19 GB" — rather than reporting an apply failure for an apply that never ran.
+            $this->fail($e->errorCode, $e->getMessage());
         } catch (RestoreRolledBack $e) {
             // Already handled (site returned to pre-apply); session is Failed.
             $this->logger->warning('restore rolled back', ['reason' => $e->getMessage()]);
@@ -197,8 +203,14 @@ final class RestoreRunner
             $this->assertComplete($member);
         }
 
+        // Room on the client's server, before a single byte is pushed. A restore that runs the host
+        // out of space does it half way through the swap, with the site in maintenance and the
+        // rollback itself needing somewhere to put the files it moves back.
+        $disk = $this->assertHostHasRoom($plan);
+
         $this->mergeCheckpoint([
             'token' => $this->token(),
+            'disk_preflight' => $disk,
             'plan' => [
                 'file_chunks' => count($plan->fileChunks),
                 'db_chunks' => count($plan->dbChunks),
@@ -209,6 +221,25 @@ final class RestoreRunner
                 'include_files' => $plan->includeFiles,
             ],
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function assertHostHasRoom(RestorePlan $plan): array
+    {
+        try {
+            $capabilities = $this->client->capabilities();
+        } catch (Throwable $e) {
+            // Being unable to ask is not the same as being told there is no room. The restore has
+            // its own failure modes for a host that cannot be reached, and they report better than
+            // a preflight refusing on a question it never got to put.
+            $this->logger->warning('could not ask the host about disk space', ['error' => $e->getMessage()]);
+
+            return ['checked' => false, 'reason' => 'the host could not be asked: '.$e->getMessage()];
+        }
+
+        return (new RestoreDiskPreflight)->assertRoomFor($plan, $capabilities);
     }
 
     private function preRestore(): void

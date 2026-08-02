@@ -252,7 +252,262 @@ class RestoreEngineTest extends TestCase
         $this->assertSame($preApply, $this->snapshot(self::DIR), 'rollback must restore pre-apply state');
     }
 
+    // ── Test 5: finishing a restore gives the host its disk back ──
+
+    /**
+     * The chunks the manager pushes are a full copy of the restore point, and nothing ever deleted
+     * them: commit() cleaned the two directories inside the site and stopped there, while cleanup()
+     * — which removes the session directory — had no callers at all. Every restore therefore cost
+     * the client's server the size of its own site, permanently. Measured on the first real one:
+     * 500 MB of free disk that never came back.
+     */
+    public function test_commit_gives_back_the_disk_the_staged_chunks_were_holding(): void
+    {
+        $backup = [self::DIR.'/a.txt' => 'ORIGINAL-A'];
+        $this->writeLive($backup);
+        $chunk = $this->makeChunkZip('files0', $backup);
+
+        $engine = $this->engine('leak');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => array_keys($backup),
+        ]);
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+        $this->assertFileExists($this->workDir.'/leak/chunks/files/chunk_0.zip');
+
+        $engine->apply();
+        $engine->commit();
+
+        $this->assertDirDoesNotExist($this->workDir.'/leak/chunks');
+    }
+
+    /**
+     * A restore that had to be undone is the same story: the chunks are no longer of any use to
+     * anyone, and a rollback often happens on a host that was short of room to begin with.
+     */
+    public function test_rollback_also_gives_back_the_disk(): void
+    {
+        $backup = [self::DIR.'/a.txt' => 'ORIGINAL-A'];
+        $this->writeLive($backup);
+        $chunk = $this->makeChunkZip('files0', $backup);
+
+        $engine = $this->engine('leak-rb');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => array_keys($backup),
+        ]);
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+        $engine->apply();
+        $engine->rollback();
+
+        $this->assertDirDoesNotExist($this->workDir.'/leak-rb/chunks');
+    }
+
+    /**
+     * ...but not the state files. The manager reads `restore/status` AFTER the fact — a redelivered
+     * job asking "did this already finish?" gets its answer from status.json, and a wholesale
+     * cleanup() would have it answered `unknown`, i.e. indistinguishable from a restore that never
+     * ran. That is the reconciliation path this engine's own async apply depends on.
+     */
+    public function test_the_status_survives_the_tidying_up(): void
+    {
+        $backup = [self::DIR.'/a.txt' => 'ORIGINAL-A'];
+        $this->writeLive($backup);
+        $chunk = $this->makeChunkZip('files0', $backup);
+
+        $engine = $this->engine('status-lives');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => array_keys($backup),
+        ]);
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+        $engine->apply();
+        $engine->commit();
+
+        $this->assertSame('committed', $engine->status()['state'] ?? null);
+
+        // And a second engine over the same directory — which is what the status endpoint builds
+        // on the next request — reads the same thing.
+        $this->assertSame('committed', $this->engine('status-lives')->status()['state'] ?? null);
+    }
+
+    // ── Test 6: the restore no longer needs a second copy of the site ──
+
+    /**
+     * The engine used to extract every chunk into one staging tree before swapping anything, so at
+     * the peak the client's server held three copies of the site: the pushed chunks, the extracted
+     * tree, and the trash. Only the trash is load-bearing — it *is* the rollback. Staging is now
+     * one chunk at a time, and each chunk is dropped once its files are live.
+     */
+    public function test_staging_never_holds_more_than_one_chunk_at_a_time(): void
+    {
+        $chunks = [];
+        $keep = [];
+        for ($c = 0; $c < 4; $c++) {
+            $files = [];
+            for ($f = 0; $f < 3; $f++) {
+                $rel = self::DIR."/c{$c}-f{$f}.bin";
+                $files[$rel] = str_repeat("chunk{$c}", 4096); // ~28 KB each
+                $keep[] = $rel;
+            }
+            $chunks[] = $this->makeChunkZip("files{$c}", $files);
+        }
+
+        $engine = $this->engine('peak');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => $keep,
+        ]);
+        foreach ($chunks as $seq => $path) {
+            $engine->stage_files_chunk($seq, $path, hash_file('sha256', $path));
+        }
+
+        $stagingRoot = $this->abspath.'/'.SAM_Backup_Restore_Engine::STAGE_PREFIX.'peak';
+        $peakStaged = 0;
+        $lastSeenChunks = PHP_INT_MAX;
+        $engine->set_fault(function () use ($stagingRoot, &$peakStaged, &$lastSeenChunks): void {
+            $peakStaged = max($peakStaged, $this->dirSize($stagingRoot));
+            $lastSeenChunks = $this->dirSize($this->workDir.'/peak/chunks/files');
+        });
+
+        $engine->apply();
+
+        // Compared against the size on disk once extracted, which is what the host actually has
+        // to find room for — the zips themselves compress to almost nothing here.
+        $perFile = 3 * 4096 * strlen('chunk0');
+        $oneChunk = 3 * $perFile;
+        $whole = count($chunks) * $oneChunk;
+
+        $this->assertLessThan(
+            $whole,
+            $peakStaged,
+            'staging must never grow to the size of the whole restore point',
+        );
+        $this->assertLessThanOrEqual(
+            $oneChunk,
+            $peakStaged,
+            'staging should hold one chunk, not the site',
+        );
+        // And the chunks shrink as they are consumed: by the last swap, most of them are gone.
+        $this->assertLessThan(
+            $this->dirSizeOf($chunks),
+            $lastSeenChunks,
+            'a consumed chunk should be gone, not held until the restore ends',
+        );
+        $this->assertSame(0, $this->dirSize($this->workDir.'/peak/chunks/files'));
+    }
+
+    public function test_each_chunk_is_dropped_once_its_files_are_live(): void
+    {
+        $backup = [self::DIR.'/a.txt' => 'ORIGINAL-A'];
+        $this->writeLive($backup);
+        $chunk = $this->makeChunkZip('files0', $backup);
+
+        $engine = $this->engine('drop');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => array_keys($backup),
+        ]);
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+        $engine->apply();
+
+        $this->assertFileDoesNotExist($this->workDir.'/drop/chunks/files/chunk_0.zip');
+        $this->assertLive(self::DIR.'/a.txt', 'ORIGINAL-A');
+    }
+
+    // ── Test 7: a path carried by two chunks ──
+
+    /**
+     * Later chunk wins, and — the part that per-chunk swapping could easily get wrong — the trash
+     * must still hold the file that was live before the restore, not the intermediate version an
+     * earlier chunk put there. Otherwise a rollback quietly returns the site to a state it was
+     * never in.
+     */
+    public function test_a_path_in_two_chunks_takes_the_later_one_and_rollback_still_finds_the_original(): void
+    {
+        $rel = self::DIR.'/shared.txt';
+        $this->writeLiveFile($rel, 'WHAT-WAS-LIVE');
+
+        $first = $this->makeChunkZip('files0', [$rel => 'FROM-CHUNK-0']);
+        $second = $this->makeChunkZip('files1', [$rel => 'FROM-CHUNK-1']);
+
+        $engine = $this->engine('dupe');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_SAFE_MERGE,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => [$rel],
+        ]);
+        $engine->stage_files_chunk(0, $first, hash_file('sha256', $first));
+        $engine->stage_files_chunk(1, $second, hash_file('sha256', $second));
+        $engine->apply();
+
+        $this->assertLive($rel, 'FROM-CHUNK-1');
+
+        $engine->rollback();
+        $this->assertLive($rel, 'WHAT-WAS-LIVE');
+    }
+
+    // ── Test 8: MIRROR deletions come from the manifest, not from what arrived ──
+
+    /**
+     * The delete set used to be "everything live that is not in staging", which reads a chunk that
+     * failed to carry a file as proof the backup does not contain it — and deletes the live copy.
+     * The manifest says what the backup contains; that is what MIRROR must compare against.
+     */
+    public function test_mirror_does_not_delete_a_live_file_the_manifest_promises(): void
+    {
+        $this->writeLiveFile(self::DIR.'/a.txt', 'LIVE-A');
+        $this->writeLiveFile(self::DIR.'/promised.txt', 'LIVE-PROMISED');
+        $this->writeLiveFile(self::DIR.'/extra.txt', 'NOT-IN-BACKUP');
+
+        // The chunk carries a.txt but — a torn upload, a builder that skipped it — not promised.txt.
+        $chunk = $this->makeChunkZip('files0', [self::DIR.'/a.txt' => 'BACKUP-A']);
+
+        $engine = $this->engine('mirror-promise');
+        $engine->prepare([
+            'mode' => SAM_Backup_Restore_Engine::MODE_MIRROR,
+            'mirror_roots' => [self::DIR],
+            'keep_paths' => [self::DIR.'/a.txt', self::DIR.'/promised.txt'],
+        ]);
+        $engine->stage_files_chunk(0, $chunk, hash_file('sha256', $chunk));
+        $engine->apply();
+
+        $this->assertLive(self::DIR.'/a.txt', 'BACKUP-A');
+        $this->assertLive(self::DIR.'/promised.txt', 'LIVE-PROMISED');
+        // ...while a file the manifest genuinely does not name is still removed, as MIRROR means.
+        $this->assertFileDoesNotExist($this->abspath.'/'.self::DIR.'/extra.txt');
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
+
+    /** @param  array<int,string>  $paths */
+    private function dirSizeOf(array $paths): int
+    {
+        return array_sum(array_map(static fn (string $p): int => (int) @filesize($p), $paths));
+    }
+
+    private function dirSize(string $dir): int
+    {
+        if (! is_dir($dir)) {
+            return 0;
+        }
+        $total = 0;
+        $it = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+        );
+        foreach ($it as $file) {
+            if ($file instanceof \SplFileInfo && $file->isFile()) {
+                $total += $file->getSize();
+            }
+        }
+
+        return $total;
+    }
 
     private function engine(string $token): SAM_Backup_Restore_Engine
     {

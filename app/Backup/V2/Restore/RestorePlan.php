@@ -31,12 +31,14 @@ use App\Backup\V2\Models\BackupSession;
 final class RestorePlan
 {
     /**
-     * @param  list<array{seq:int,key:string,source_session_id:int,chunk_index:int}>  $fileChunks
+     * @param  list<array{seq:int,key:string,source_session_id:int,chunk_index:int,bytes:int}>  $fileChunks
      * @param  list<string>  $keepPaths
      * @param  list<array{seq:int,key:string,chunk_index:int}>  $dbChunks
      * @param  list<string>  $tombstones
      * @param  list<string>  $dbTables
      * @param  list<string>  $mirrorRoots
+     * @param  int  $fileBytes  logical size of the files this restore puts back, from the manifest
+     * @param  int  $largestChunkBytes  the biggest single chunk, i.e. the working space one apply step needs
      */
     public function __construct(
         public readonly array $fileChunks,
@@ -47,6 +49,8 @@ final class RestorePlan
         public readonly array $mirrorRoots,
         public readonly bool $includeDatabase,
         public readonly bool $includeFiles,
+        public readonly int $fileBytes = 0,
+        public readonly int $largestChunkBytes = 0,
     ) {}
 
     /**
@@ -73,12 +77,15 @@ final class RestorePlan
         // ── files: the restore point's final state, filtered by scope paths ──
         $keepPaths = [];
         $fileChunks = [];
+        $fileBytes = 0;
+        $largestChunkBytes = 0;
         if ($includeFiles) {
             // One manifest for format/2; the chain replay only for older backups. Either way the
             // state that comes back already has latest-wins applied, so no path appears twice.
             $state = $resolver->stateFor($target, $reader);
 
             $keyOrder = []; // key => ['order'=>sourceSessionId,'chunk_index'=>..,'sid'=>..]
+            $bytesByKey = [];
             foreach ($state as $path => $entry) {
                 if (! self::pathInScope((string) $path, $pathFilters)) {
                     continue;
@@ -88,6 +95,9 @@ final class RestorePlan
                 if ($key === '') {
                     continue;
                 }
+                // Per chunk, not just in total: the apply now works one chunk at a time, so what
+                // decides whether the site has room is the biggest single chunk, not the sum.
+                $bytesByKey[$key] = ($bytesByKey[$key] ?? 0) + (int) $entry['s'];
                 $sid = (int) $entry['source_session_id'];
                 $keyOrder[$key] = [
                     // Ordering by the backup that produced the chunk, oldest first. It used to be the
@@ -112,8 +122,11 @@ final class RestorePlan
                     'key' => (string) $key,
                     'source_session_id' => (int) $meta['sid'],
                     'chunk_index' => (int) $meta['chunk_index'],
+                    'bytes' => (int) ($bytesByKey[(string) $key] ?? 0),
                 ];
             }
+            $fileBytes = array_sum($bytesByKey);
+            $largestChunkBytes = $bytesByKey === [] ? 0 : max($bytesByKey);
         }
 
         // ── tombstones (scope-filtered), for the MIRROR belt ──
@@ -165,6 +178,8 @@ final class RestorePlan
             mirrorRoots: $mirrorRoots,
             includeDatabase: $includeDatabase,
             includeFiles: $includeFiles,
+            fileBytes: (int) $fileBytes,
+            largestChunkBytes: (int) $largestChunkBytes,
         );
     }
 

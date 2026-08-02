@@ -87,6 +87,14 @@ final class SAM_Backup_Capabilities_Endpoint extends SAM_Backup_REST_Controller 
             'disk' => array(
                 'temp_dir'      => SAM_Backup_Temp::root(),
                 'free_bytes'    => SAM_Backup_Temp::free_bytes(),
+                // A restore needs room in two places and this reported only one of them. The chunks
+                // land in the temp directory, but the trash — the rollback — and the file being
+                // swapped in are inside the site, which can be a different filesystem with a
+                // different quota. A preflight that checked only the temp side would happily start
+                // a restore that runs the webroot out of space half way through the swap.
+                'site_dir'          => rtrim(ABSPATH, '/'),
+                'site_free_bytes'   => $this->free_bytes(ABSPATH),
+                'same_filesystem'   => $this->same_filesystem(SAM_Backup_Temp::ensure(), ABSPATH),
                 // Reported because naming the directory proved nothing. A temp
                 // root owned by another user — which is what a root-run wp-cli
                 // command leaves behind — makes every dump and every staged
@@ -183,6 +191,33 @@ final class SAM_Backup_Capabilities_Endpoint extends SAM_Backup_REST_Controller 
             elseif ($tail !== '') { $socket = $tail; }
         }
         return array($host, $port, $socket);
+    }
+
+    /**
+     * Free space on the filesystem holding $path, or null when the host will not say.
+     */
+    private function free_bytes(string $path): ?int {
+        $free = @disk_free_space($path);
+
+        return ($free === false || $free === null) ? null : (int) $free;
+    }
+
+    /**
+     * Do these two paths sit on the same filesystem?
+     *
+     * It decides whether a restore's two demands — chunks in temp, trash inside the site — compete
+     * for one pool of free space or two, and the answer changes the arithmetic by a factor of two.
+     * Reported as null rather than guessed when stat() will not say, so the manager can be
+     * conservative instead of confidently wrong.
+     */
+    private function same_filesystem(string $a, string $b): ?bool {
+        $sa = @stat($a);
+        $sb = @stat($b);
+        if (!is_array($sa) || !is_array($sb) || !isset($sa['dev'], $sb['dev'])) {
+            return null;
+        }
+
+        return $sa['dev'] === $sb['dev'];
     }
 
     private function function_available(string $fn): bool {

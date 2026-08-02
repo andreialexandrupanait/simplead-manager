@@ -291,6 +291,9 @@ final class SAM_Backup_Restore_Engine {
 
         $this->set_status('committed', array());
 
+        // Written AFTER the status, so a failure while tidying cannot un-commit a finished restore.
+        $this->discard_staged_chunks();
+
         return array('ok' => true, 'committed' => true);
     }
 
@@ -338,6 +341,7 @@ final class SAM_Backup_Restore_Engine {
         }
 
         $this->set_status('rolled_back', array());
+        $this->discard_staged_chunks();
 
         return array('ok' => true, 'rolled_back' => true);
     }
@@ -352,6 +356,24 @@ final class SAM_Backup_Restore_Engine {
 
     public function cleanup(): void {
         $this->recursive_delete($this->work_dir);
+    }
+
+    /**
+     * Drop the staged chunks, keeping the small state files.
+     *
+     * The chunks are the whole size of the restore point and nothing ever deleted them: commit()
+     * cleaned the two directories inside the site and stopped, while cleanup() — which removes the
+     * lot — had no callers. Every restore therefore left a full copy of the site in the host's temp
+     * directory, permanently. Measured on the first client-site restore: 500 MB of free disk that
+     * never came back.
+     *
+     * Deliberately NOT cleanup(): status.json lives here, and the manager reads it after the fact to
+     * find out what happened — a redelivered job asking "did it finish?" must not be answered
+     * `unknown` because we tidied up. The state files are a few kilobytes; the hourly sweep takes
+     * the whole directory once nobody could still be asking.
+     */
+    public function discard_staged_chunks(): void {
+        $this->recursive_delete($this->work_dir . '/chunks');
     }
 
     /**
@@ -763,6 +785,14 @@ final class SAM_Backup_Restore_Engine {
         $tombstones  = (array) $plan['tombstones'];
         $mirror_roots = (array) $plan['mirror_roots'];
 
+        $tombstone_set = array();
+        foreach ($tombstones as $tomb) {
+            $tomb = ltrim((string) $tomb, '/');
+            if ($this->is_safe_relative($tomb)) { // reject traversal / NUL from a poisoned manifest
+                $tombstone_set[$tomb] = true;
+            }
+        }
+
         $staging_dir = $this->abspath . '/' . self::STAGE_PREFIX . $this->token;
         $trash_dir   = $this->abspath . '/' . self::TRASH_PREFIX . $this->token;
         $this->recursive_delete($staging_dir);
@@ -770,35 +800,41 @@ final class SAM_Backup_Restore_Engine {
         $this->mkdir($staging_dir);
         $this->mkdir($trash_dir);
 
-        // 1) Extract every staged chunk zip in ascending seq (chain order → latest wins).
-        foreach ($this->staged_files('files') as $zip_path) {
-            $this->extract_zip_into($zip_path, $staging_dir);
-        }
-
-        // 2) Prune staging to the EXACT final state: drop anything not in keep_paths, and
-        //    drop tombstoned paths. A chunk that also carried a since-deleted/overwritten
-        //    file can therefore never resurrect it.
-        $staged = $this->relative_files($staging_dir);
-        foreach ($staged as $rel) {
-            $keep_it = empty($keep) ? true : isset($keep[$rel]);
-            if (!$keep_it || in_array($rel, self::PROTECTED_FILES, true)) {
-                @unlink($staging_dir . '/' . $rel);
+        // 1) Index the staged chunks instead of extracting them.
+        //
+        //    This used to extract every chunk into one staging tree and then prune it, which meant
+        //    a whole second copy of the site on the client's server — on top of the chunks and the
+        //    trash, a peak of roughly three times the site. Reading each zip's central directory
+        //    buys the two things that mattered about the full tree — latest-wins across the chain,
+        //    and knowing the entire set before the first live file moves — for a few kilobytes.
+        $chunks    = $this->staged_files('files');
+        $owner     = array();  // rel path => index of the chunk carrying its FINAL version
+        foreach ($chunks as $i => $zip_path) {
+            foreach ($this->zip_entries($zip_path) as $rel) {
+                // Verbatim, not normalised: the same string has to serve as a zip entry name to
+                // extract, a path relative to the webroot to swap, and a key into keep_paths.
+                if (!$this->is_restorable_path($rel, $keep, $tombstone_set)) {
+                    continue;
+                }
+                $owner[$rel] = $i; // a later chunk in the chain wins
             }
         }
-        foreach ($tombstones as $tomb) {
-            $tomb = ltrim((string) $tomb, '/');
-            if (!$this->is_safe_relative($tomb)) {
-                continue; // reject traversal / NUL from a poisoned manifest
-            }
-            @unlink($staging_dir . '/' . $tomb);
-        }
-        $staged = $this->relative_files($staging_dir); // recompute after pruning
-        $staged_set = array_flip($staged);
 
-        // 3) MIRROR: live files under a mirror_root that are absent from the backup get
-        //    deleted (moved to trash) so the tree EXACTLY reproduces the backup. SAFE_MERGE
-        //    never deletes. Tombstones are applied in both modes only via the pruning above
-        //    (they are simply absent from staging); MIRROR additionally removes live extras.
+        $per_chunk = array();
+        foreach ($owner as $rel => $i) {
+            $per_chunk[$i][] = (string) $rel;
+        }
+
+        // 2) MIRROR: live files under a mirror_root that are absent from the backup get deleted
+        //    (moved to trash) so the tree EXACTLY reproduces the backup. SAFE_MERGE never deletes.
+        //
+        //    The set to keep comes from `keep_paths` — the manifest — and not from what happens to
+        //    land in staging, which is how it was computed before. The difference shows up on the
+        //    day it hurts: a chunk that fails to carry a file the manifest promises would have had
+        //    MIRROR delete the live copy, because "absent from staging" was read as "absent from
+        //    the backup". Only when the plan names no paths at all do we fall back to what the
+        //    chunks actually carried.
+        $final_set = empty($keep) ? $owner : $keep;
         $delete_units = array();
         if ($mode === self::MODE_MIRROR) {
             foreach ($mirror_roots as $root) {
@@ -813,37 +849,61 @@ final class SAM_Backup_Restore_Engine {
                     if (in_array($rel, self::PROTECTED_FILES, true)) {
                         continue;
                     }
-                    if (!isset($staged_set[$rel])) {
+                    if (!isset($final_set[$rel]) || isset($tombstone_set[$rel])) {
                         $delete_units[] = $rel;
                     }
                 }
             }
             // Explicit tombstones under no mirror_root are still honoured in MIRROR.
-            foreach ($tombstones as $tomb) {
-                $tomb = ltrim((string) $tomb, '/');
-                if ($this->is_safe_relative($tomb) && !isset($staged_set[$tomb]) && is_file($this->abspath . '/' . $tomb)) {
+            foreach (array_keys($tombstone_set) as $tomb) {
+                if (!isset($final_set[$tomb]) && is_file($this->abspath . '/' . $tomb)) {
                     $delete_units[] = $tomb;
                 }
             }
             $delete_units = array_values(array_unique($delete_units));
         }
 
-        if (empty($staged) && empty($delete_units)) {
+        if (empty($owner) && empty($delete_units)) {
             $this->recursive_delete($staging_dir);
             $this->recursive_delete($trash_dir);
             throw new RuntimeException('file restore: nothing to apply (no staged files, no mirror deletions).');
         }
 
-        // 4) Journaled per-path swap with rollback. Swap-in first, then mirror deletions.
-        $journal = array();
+        // 3) Chunk by chunk: extract only the paths this chunk owns, swap them in through the
+        //    journal, then drop both the working copy and the chunk itself. Disk in use at any
+        //    moment is one chunk, not one site.
+        //
+        //    What this gives up: a failure at chunk 15 of 19 means fourteen chunks' worth of files
+        //    were already swapped and have to come back through the journal, where before nothing
+        //    would have moved at all. Acceptable, because corruption is already excluded by the
+        //    sha256 check at staging time, and the likeliest cause of a mid-apply failure — a full
+        //    disk — is what the manager's preflight now refuses up front.
+        $unit_dir     = $staging_dir . '/.sam-unit';
+        $journal      = array();
         $journal_file = $trash_dir . '/journal.json';
-        $failure = null;
-        $step_no = 0;
+        $failure      = null;
+        $step_no      = 0;
 
         try {
-            foreach ($staged as $rel) {
-                $this->swap_in_unit($rel, $staging_dir, $trash_dir, $journal, $journal_file);
-                $this->fault('files_swap', ++$step_no);
+            foreach ($chunks as $i => $zip_path) {
+                if (empty($per_chunk[$i])) {
+                    @unlink($zip_path);
+                    continue;
+                }
+
+                $this->recursive_delete($unit_dir);
+                $this->mkdir($unit_dir);
+
+                foreach ($this->extract_zip_into($zip_path, $unit_dir, $per_chunk[$i]) as $rel) {
+                    $this->swap_in_unit($rel, $unit_dir, $trash_dir, $journal, $journal_file);
+                    $this->fault('files_swap', ++$step_no);
+                }
+
+                $this->recursive_delete($unit_dir);
+                // The chunk's content is live now and whatever it displaced is in the trash, which
+                // is what a rollback reads. Keeping the zip would only hold disk the site may need
+                // for the chunks still to come.
+                @unlink($zip_path);
             }
             foreach ($delete_units as $rel) {
                 $this->delete_unit($rel, $trash_dir, $journal, $journal_file);
@@ -962,7 +1022,10 @@ final class SAM_Backup_Restore_Engine {
 
     // ── zip extraction (path-traversal safe) ─────────────────────────────────
 
-    private function extract_zip_into(string $zip_file, string $dest): void {
+    /**
+     * Open a staged chunk, tolerating the benign trailing bytes a streamed zip can carry.
+     */
+    private function open_zip(string $zip_file): ZipArchive {
         if (!class_exists('ZipArchive')) {
             throw new RuntimeException('ZipArchive extension not available.');
         }
@@ -973,16 +1036,65 @@ final class SAM_Backup_Restore_Engine {
                 throw new RuntimeException("cannot open staged zip {$zip_file}");
             }
         }
+
+        return $zip;
+    }
+
+    /**
+     * The file entries a chunk carries, without extracting anything — the central directory only.
+     *
+     * @return array<int,string>
+     */
+    private function zip_entries(string $zip_file): array {
+        $zip = $this->open_zip($zip_file);
+        $names = array();
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if ($name === false || $name === '' || substr($name, -1) === '/') {
+                continue;
+            }
+            $names[] = $name;
+        }
+        $zip->close();
+
+        return $names;
+    }
+
+    /**
+     * Is this entry part of the restore point's final state?
+     *
+     * @param array<string,mixed> $keep       flipped keep_paths; empty means "whatever is staged"
+     * @param array<string,bool>  $tombstones flipped, already validated
+     */
+    private function is_restorable_path(string $rel, array $keep, array $tombstones): bool {
+        if (!$this->is_safe_relative($rel)) {
+            return false;
+        }
+        if (in_array($rel, self::PROTECTED_FILES, true)) {
+            return false; // live DB credentials and the maintenance flag are never swapped
+        }
+        if (isset($tombstones[$rel])) {
+            return false; // deleted later in the chain: a chunk must not resurrect it
+        }
+
+        return empty($keep) || isset($keep[$rel]);
+    }
+
+    /**
+     * Extract the named entries (and only those) into $dest.
+     *
+     * @param  array<int,string> $only entry names to extract
+     * @return array<int,string> the entries actually written, in extraction order
+     */
+    private function extract_zip_into(string $zip_file, string $dest, array $only): array {
+        $zip = $this->open_zip($zip_file);
         $real_dest = realpath($dest);
         if ($real_dest === false) {
             $zip->close();
             throw new RuntimeException("staging dir missing: {$dest}");
         }
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $name = $zip->getNameIndex($i);
-            if ($name === false || substr($name, -1) === '/') {
-                continue;
-            }
+        $written = array();
+        foreach ($only as $name) {
             if (strpos($name, '..') !== false || strpos($name, "\0") !== false) {
                 continue; // reject traversal / null byte
             }
@@ -1013,8 +1125,11 @@ final class SAM_Backup_Restore_Engine {
             }
             fclose($out);
             fclose($stream);
+            $written[] = $name;
         }
         $zip->close();
+
+        return $written;
     }
 
     // ── maintenance / filesystem helpers ─────────────────────────────────────

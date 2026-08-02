@@ -113,8 +113,21 @@ final class SAM_Backup_Plugin {
         $root = rtrim(ABSPATH, '/');
         $removed = 0;
 
-        foreach (array('sam-restore-trash-*', 'sam-restore-staging-*') as $pattern) {
-            foreach ((array) glob($root . '/' . $pattern, GLOB_ONLYDIR) as $dir) {
+        // Each pattern carries the root we are willing to delete beneath: restore staging and trash
+        // live inside the site (a swap must be a rename on one filesystem), the pushed chunks live
+        // in our own temp directory. The chunk directories were missing from the first version of
+        // this sweep and they are the expensive ones — a full copy of the restore point each.
+        // commit() and rollback() drop them now, but a restore that reached neither still leaves one.
+        $patterns = array(
+            array($root . '/sam-restore-trash-*', $root),
+            array($root . '/sam-restore-staging-*', $root),
+            array(SAM_Backup_Temp::root() . '/sessions/restore_*', SAM_Backup_Temp::root()),
+        );
+
+        foreach ($patterns as $pattern) {
+            list($glob, $allowed_root) = $pattern;
+
+            foreach ((array) glob($glob, GLOB_ONLYDIR) as $dir) {
                 if (!is_string($dir) || $dir === '') {
                     continue;
                 }
@@ -123,7 +136,7 @@ final class SAM_Backup_Plugin {
                     continue;
                 }
 
-                SAM_Backup_Temp::remove_dir($dir);
+                SAM_Backup_Temp::remove_dir_under($dir, $allowed_root);
                 $removed++;
             }
         }
