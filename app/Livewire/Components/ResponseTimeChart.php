@@ -68,14 +68,22 @@ class ResponseTimeChart extends Component
      */
     private function bucketedChartData(): array
     {
-        $unit = $this->range === '7d' ? 'hour' : 'day';
+        // 7d buckets are 3h, not 1h: many sites run an hourly cron whose spike
+        // lands in EVERY hourly bucket, turning the p95 series into an unreadable
+        // comb. 56 three-hour points keep the shape without the flicker.
+        $rawBucket = $this->range === '7d'
+            ? 'to_timestamp(floor(extract(epoch from checked_at) / 10800) * 10800)'
+            : "date_trunc('day', checked_at)";
+        $aggBucket = $this->range === '7d'
+            ? 'to_timestamp(floor(extract(epoch from bucket_hour) / 10800) * 10800)'
+            : "date_trunc('day', bucket_hour)";
         $since = $this->since();
 
         $raw = $this->monitor->checks()
             ->where('checked_at', '>=', $since)
             ->whereNotNull('response_time')
             ->selectRaw(
-                "date_trunc('{$unit}', checked_at) AS bucket,
+                "{$rawBucket} AS bucket,
                  ROUND(AVG(response_time)) AS avg_rt,
                  ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY response_time)) AS p95_rt"
             )
@@ -88,7 +96,7 @@ class ResponseTimeChart extends Component
             ->where('bucket_hour', '>=', $since)
             ->whereNotNull('avg_response_time')
             ->selectRaw(
-                "date_trunc('{$unit}', bucket_hour) AS bucket,
+                "{$aggBucket} AS bucket,
                  ROUND(SUM(avg_response_time::numeric * checks_total) / NULLIF(SUM(checks_total), 0)) AS avg_rt,
                  MAX(p95_response_time) AS p95_rt"
             )
