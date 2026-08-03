@@ -1180,7 +1180,11 @@ final class BackupRunner
         $config = BackupConfig::where('site_id', $this->session->site_id)->first();
         $start = (int) ($config?->db_time_budget_seconds ?: $this->profile->dbTimeBudget);
 
-        $ladder = DbDumpBudget::ladder($start);
+        // An explicit per-site budget may exceed the default ceiling. That ceiling exists for
+        // Cloudflare's 100-second cutoff; whoever set a longer budget on this site has already
+        // established the host is not behind such a proxy — clamping it back to 90 made the
+        // documented lever ("raise this site's db_time_budget_seconds") silently do nothing.
+        $ladder = DbDumpBudget::ladder($start, max($start, DbDumpBudget::ceiling()));
         $dump = [];
 
         foreach ($ladder as $i => $budget) {

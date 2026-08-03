@@ -85,6 +85,19 @@ class DbDumpBudgetTest extends TestCase
         $this->assertSame([60], $client->budgetsTried, 'no rediscovery at the site\'s expense');
     }
 
+    public function test_a_per_site_budget_above_the_default_ceiling_is_honoured(): void
+    {
+        // The default ceiling exists for Cloudflare's 100-second cutoff. A per-site budget above
+        // it is an explicit statement that this host is not behind such a proxy — clamping it back
+        // to the ceiling made the documented lever silently do nothing.
+        [$session, $client] = $this->sessionWithDumpsFinishingAt(240);
+        BackupConfig::where('site_id', $session->site_id)->update(['db_time_budget_seconds' => 240]);
+
+        $this->runner($session, $client)->run();
+
+        $this->assertSame([240], $client->budgetsTried, 'the explicit budget, not the ceiling');
+    }
+
     public function test_a_database_that_will_not_finish_says_so_in_numbers(): void
     {
         // Never finishes, at any budget. The message has to name what happened — the old one said
