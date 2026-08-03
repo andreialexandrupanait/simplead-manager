@@ -27,9 +27,10 @@
                 label: ds.label,
                 data: ds.data,
                 borderColor: ds.color || '#7B68EE',
-                backgroundColor: (ds.color || '#7B68EE') + '1A',
-                borderWidth: 2,
-                fill: ds.pointRadius !== undefined ? false : true,
+                backgroundColor: (ds.color || '#7B68EE') + (ds.fill === '-1' ? '26' : '1A'),
+                borderWidth: ds.borderWidth !== undefined ? ds.borderWidth : 2,
+                // ds.fill: '-1' fills to the PREVIOUS dataset (a band, e.g. avg→p95)
+                fill: ds.fill !== undefined ? ds.fill : (ds.pointRadius !== undefined ? false : true),
                 tension: 0.3,
                 pointRadius: ds.pointRadius !== undefined ? ds.pointRadius : 3,
                 pointHoverRadius: ds.pointRadius !== undefined ? ds.pointRadius : 5,
@@ -76,6 +77,13 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    // Without intersect:false a chart with pointRadius 0 (all the
+                    // aggregated ones) never shows a tooltip — there is no visible
+                    // point to hit. Index mode shows every series at the hovered x.
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
                     plugins: {
                         legend: {
                             display: this.datasets.length > 1,

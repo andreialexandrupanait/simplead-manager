@@ -5,6 +5,7 @@
 ])
 
 <div
+    {{ $attributes }}
     x-data="{
         chart: null,
         data: @js($data),

@@ -29,9 +29,19 @@ class SiteSearchConsole extends Component
 
     public array $availableProperties = [];
 
+    /**
+     * Mirrors FetchSearchConsoleData::uniqueId()/JobTracker key — including the
+     * range suffix P1-49 added there. This used to watch the un-suffixed key, so
+     * the poll never saw the job finish and a range switch left the page with a
+     * spinner and stale data forever.
+     */
     protected function jobTrackingKeys(): array
     {
-        return ['fetch' => 'search-console-'.$this->site->id];
+        $rangeKey = $this->dateRange === 'custom'
+            ? 'custom-'.($this->customStart ?? '').'-'.($this->customEnd ?? '')
+            : $this->dateRange;
+
+        return ['fetch' => 'search-console-'.$this->site->id.'-'.$rangeKey];
     }
 
     public function mount(Site $site): void

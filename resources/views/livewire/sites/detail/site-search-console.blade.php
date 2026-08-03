@@ -201,7 +201,7 @@
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['clicks']) }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
-                                <x-charts.sparkline :data="collect($performanceOverTime)->pluck('clicks')->toArray()" color="#7B68EE" />
+                                <x-charts.sparkline wire:key="spark-clicks-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($performanceOverTime)->pluck('clicks')->toArray()" color="#7B68EE" />
                             @endif
                         </x-ui.card>
                     </div>
@@ -213,7 +213,7 @@
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['impressions']) }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
-                                <x-charts.sparkline :data="collect($performanceOverTime)->pluck('impressions')->toArray()" color="#06b6d4" />
+                                <x-charts.sparkline wire:key="spark-impressions-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($performanceOverTime)->pluck('impressions')->toArray()" color="#06b6d4" />
                             @endif
                         </x-ui.card>
                     </div>
@@ -225,7 +225,7 @@
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['ctr'] }}%</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
-                                <x-charts.sparkline :data="collect($performanceOverTime)->pluck('ctr')->toArray()" color="#10b981" />
+                                <x-charts.sparkline wire:key="spark-ctr-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($performanceOverTime)->pluck('ctr')->toArray()" color="#10b981" />
                             @endif
                         </x-ui.card>
                     </div>
@@ -237,7 +237,7 @@
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ $overview['position'] }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
-                                <x-charts.sparkline :data="collect($performanceOverTime)->pluck('position')->toArray()" color="#f59e0b" />
+                                <x-charts.sparkline wire:key="spark-position-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($performanceOverTime)->pluck('position')->toArray()" color="#f59e0b" />
                             @endif
                         </x-ui.card>
                     </div>

@@ -1,4 +1,4 @@
-<div>
+<div {!! $hasRunningJobs ? 'wire:poll.3s="checkJobProgress"' : '' !!}>
     <x-scripts.data-table />
 
     @if($connection && $connection->is_active)
@@ -9,7 +9,16 @@
 
     <x-ui.flash-alert type="success" key="success" />
     <x-ui.flash-alert type="error" key="error" />
-    <x-ui.flash-alert type="info" key="analytics-refreshing" />
+
+    @if($hasRunningJobs)
+        <div class="mb-4 flex items-center gap-2 rounded-lg border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-700">
+            <svg aria-hidden="true" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            {{ __('Fetching Analytics data for this period...') }}
+        </div>
+    @endif
 
     @if($connection && $connection->is_active)
         @php $status = $this->googleConnectionStatus; @endphp
@@ -115,14 +124,14 @@
                     <div class="text-xs font-medium text-gray-500">Users</div>
                     <div class="mt-1 text-2xl font-semibold text-gray-900">{{ number_format($overview['total_users']) }}</div>
                     @if(count($usersOverTime) > 1)
-                        <x-charts.sparkline :data="collect($usersOverTime)->pluck('users')->toArray()" color="#7B68EE" />
+                        <x-charts.sparkline wire:key="spark-users-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($usersOverTime)->pluck('users')->toArray()" color="#7B68EE" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
                     <div class="text-xs font-medium text-gray-500">Sessions</div>
                     <div class="mt-1 text-2xl font-semibold text-gray-900">{{ number_format($overview['sessions']) }}</div>
                     @if(count($usersOverTime) > 1)
-                        <x-charts.sparkline :data="collect($usersOverTime)->pluck('sessions')->toArray()" color="#10b981" />
+                        <x-charts.sparkline wire:key="spark-sessions-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($usersOverTime)->pluck('sessions')->toArray()" color="#10b981" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
@@ -131,9 +140,11 @@
                 </x-ui.card>
             </div>
 
-            {{-- Users Over Time chart with Daily/Weekly toggle --}}
+            {{-- Users Over Time chart with Daily/Weekly toggle. wire:key per range:
+                 the data lives inside x-data, which Alpine evaluates only when the
+                 node is (re)created — a morph in place would keep the old chart. --}}
             @if(count($usersOverTime) > 0)
-                <div class="mt-6" x-data="{
+                <div class="mt-6" wire:key="ga-chart-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" x-data="{
                     aggregation: 'daily',
                     annotations: @js($annotations),
                     rawLabels: @js(collect($usersOverTime)->pluck('date')->toArray()),

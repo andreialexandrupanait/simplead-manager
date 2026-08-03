@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Livewire\Sites\Detail;
 
 use App\Jobs\FetchAnalyticsData;
+use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\AnalyticsCache;
 use App\Models\AnalyticsConnection;
@@ -18,7 +19,21 @@ use Livewire\Component;
 
 class SiteAnalytics extends Component
 {
-    use WithSiteAuthorization;
+    use WithJobTracking, WithSiteAuthorization;
+
+    /**
+     * Mirrors FetchAnalyticsData::uniqueId()/JobTracker key — including the
+     * range suffix P1-49 added there. Watching the un-suffixed key means the
+     * poll never sees the job and the page never refreshes after a range switch.
+     */
+    protected function jobTrackingKeys(): array
+    {
+        $rangeKey = $this->dateRange === 'custom'
+            ? 'custom-'.($this->customStart ?? '').'-'.($this->customEnd ?? '')
+            : $this->dateRange;
+
+        return ['fetch' => 'analytics-'.$this->site->id.'-'.$rangeKey];
+    }
 
     public Site $site;
 
@@ -38,6 +53,7 @@ class SiteAnalytics extends Component
     {
         $this->authorizeSiteAccess($site);
         $this->site = $site;
+        $this->initJobTracking();
 
         // Auto-trigger property picker after OAuth return
         if (session('success') && ! $this->site->analyticsConnection) {
@@ -110,8 +126,7 @@ class SiteAnalytics extends Component
             ->first();
 
         if (! $cache || $cache->expires_at->isPast()) {
-            FetchAnalyticsData::dispatch($this->site, $this->dateRange);
-            session()->flash('analytics-refreshing', true);
+            $this->dispatchTrackedJob('fetch', new FetchAnalyticsData($this->site, $this->dateRange), 'Fetching Analytics data...');
         }
     }
 
@@ -134,8 +149,7 @@ class SiteAnalytics extends Component
             ->first();
 
         if (! $cache || $cache->expires_at->isPast()) {
-            FetchAnalyticsData::dispatch($this->site, 'custom', $start, $end);
-            session()->flash('analytics-refreshing', true);
+            $this->dispatchTrackedJob('fetch', new FetchAnalyticsData($this->site, 'custom', $start, $end), 'Fetching Analytics data...');
         }
     }
 
@@ -146,8 +160,11 @@ class SiteAnalytics extends Component
             return;
         }
 
-        FetchAnalyticsData::dispatch($this->site, $this->dateRange);
-        session()->flash('analytics-refreshing', true);
+        $job = $this->dateRange === 'custom'
+            ? new FetchAnalyticsData($this->site, 'custom', $this->customStart, $this->customEnd)
+            : new FetchAnalyticsData($this->site, $this->dateRange);
+
+        $this->dispatchTrackedJob('fetch', $job, 'Fetching Analytics data...');
     }
 
     public function connectAnalytics(): void

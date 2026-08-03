@@ -126,11 +126,15 @@ class ResponseTimeChart extends Component
                     'pointRadius' => 0,
                 ],
                 [
+                    // Rendered as a soft band from the avg line up to p95 (fill
+                    // '-1') — a full-strength dashed line at hourly resolution
+                    // zigzags so hard the chart is unreadable.
                     'label' => 'P95 (ms)',
                     'data' => $p95,
                     'color' => '#F59E0B',
                     'pointRadius' => 0,
-                    'borderDash' => [4, 4],
+                    'borderWidth' => 1,
+                    'fill' => '-1',
                 ],
             ],
         ];

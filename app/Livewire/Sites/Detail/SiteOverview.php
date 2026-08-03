@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Jobs\FetchAnalyticsData;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithJobTracking;
 use App\Livewire\Traits\WithSiteAuthorization;
@@ -76,6 +77,9 @@ class SiteOverview extends Component
     {
         return [
             'sync' => 'sync-wp-'.$this->site->id,
+            // Mirrors FetchAnalyticsData::uniqueId() — the card fetches missing
+            // ranges on demand and polls this key until the data lands.
+            'analytics' => 'analytics-'.$this->site->id.'-'.$this->analyticsPeriod,
         ];
     }
 
@@ -88,6 +92,27 @@ class SiteOverview extends Component
     public function setAnalyticsPeriod(string $period): void
     {
         $this->analyticsPeriod = $period;
+
+        // The scheduler only ever syncs 28d — any other range has data only if
+        // someone fetched it before. Fetch it on demand instead of leaving the
+        // card on "No analytics data for this period" forever.
+        $connection = $this->site->analyticsConnection;
+        if (! $connection || ! $connection->is_active) {
+            return;
+        }
+
+        $cache = AnalyticsCache::where('site_id', $this->site->id)
+            ->where('date_range', $period)
+            ->latest('fetched_at')
+            ->first();
+
+        if (! $cache || $cache->expires_at->isPast()) {
+            $this->dispatchTrackedJob(
+                'analytics',
+                new FetchAnalyticsData($this->site, $period),
+                'Fetching Analytics data...',
+            );
+        }
     }
 
     #[Computed]
