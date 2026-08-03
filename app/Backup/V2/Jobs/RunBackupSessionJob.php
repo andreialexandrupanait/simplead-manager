@@ -103,6 +103,12 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
+        // The container ships php.ini at 256M while supervisor-backups budgets a gigabyte per
+        // worker — a large site's file inventory plus one buffered HTTP response is enough to
+        // hit the smaller of the two, and the worker dies without cleanup (motivonti.ro,
+        // nightly, OOM in guzzle). Same raise the V1 RestoreBackup job already does.
+        ini_set('memory_limit', '1G');
+
         $session = BackupSession::findOrFail($this->backupSessionId);
         $site = $session->site;
         if (! $site instanceof Site) {

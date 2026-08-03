@@ -59,6 +59,10 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
+        // php.ini caps at 256M; supervisor-backups budgets 1G per worker. Building the portable
+        // package re-reads every chunk of the session, so give it the budget it was tuned for.
+        ini_set('memory_limit', '1G');
+
         $session = BackupSession::findOrFail($this->backupSessionId);
         $site = $session->site;
         if (! $site instanceof Site) {
