@@ -14,6 +14,7 @@ use App\Models\PerformancePage;
 use App\Models\PerformanceTest;
 use App\Models\Site;
 use App\Models\UpdateLog;
+use App\Services\RetentionPolicyService;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Locked;
@@ -264,6 +265,17 @@ class SitePerformance extends Component
                 'change' => $prevDesktop ? $currentDesktop - (int) round($prevDesktop) : null,
             ],
         ];
+    }
+
+    /**
+     * How long completed tests are actually kept — ranges longer than this
+     * cannot have data no matter what the user selects, so the UI says so
+     * instead of showing a silently truncated chart.
+     */
+    #[Computed]
+    public function historyRetentionDays(): int
+    {
+        return app(RetentionPolicyService::class)->getDays('performance');
     }
 
     #[Computed]

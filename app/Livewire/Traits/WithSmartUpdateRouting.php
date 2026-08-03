@@ -27,8 +27,8 @@ trait WithSmartUpdateRouting
     }
 
     /**
-     * Score the freshly-created safe update against the decision engine, persist
-     * the AI risk score/assessment, and return the route it should take.
+     * Score the freshly-created safe update against the decision engine and
+     * return the route it should take.
      *
      * AwaitApproval also flips `approval_required = true` so the caller can hold
      * the dispatch and an operator can later approve it.
@@ -40,14 +40,7 @@ trait WithSmartUpdateRouting
     protected function decideSafeUpdateRoute(SafeUpdate $safeUpdate, SitePlugin $plugin): UpdateRoute
     {
         try {
-            $decision = app(UpdateDecisionService::class)->decide($plugin);
-
-            $safeUpdate->update([
-                'ai_risk_score' => $decision->score(),
-                'ai_risk_assessment' => $decision->toArray(),
-            ]);
-
-            $route = $decision->route;
+            $route = app(UpdateDecisionService::class)->decide($plugin)->route;
         } catch (\Throwable $e) {
             Log::error(
                 "Smart update decision failed for plugin {$plugin->id} on site {$plugin->site_id}: "

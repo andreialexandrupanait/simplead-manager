@@ -20,8 +20,7 @@ use Illuminate\Support\Facades\Log;
  *
  * Deliberately NOT AI-driven: category membership is a fact about what a plugin
  * does, not a judgement call, and it must be available the moment a site
- * connects. {@see PluginRiskAssessmentService} still scores the individual
- * update; this decides which plugins are never worth auto-applying at all.
+ * connects. This decides which plugins are never worth auto-applying at all.
  *
  * Manual entries are sacred: a row with source = 'manual' is never overwritten,
  * in either direction, so an operator's explicit "this one is fine" survives

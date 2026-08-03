@@ -124,7 +124,10 @@
     @endif
 
     {{-- Performance --}}
-    @if(in_array('performance', $sections) && isset($data['performance']) && $data['performance'])
+    {{-- array_diff_key strips the _integration marker: a gatherer that found its
+         integration unconfigured (or without data) returns ONLY the marker, and
+         rendering the partial against it crashes on the missing data keys. --}}
+    @if(in_array('performance', $sections) && array_diff_key($data['performance'] ?? [], ['_integration' => 0]) !== [])
         @php $sectionNumber++; @endphp
         <div class="report-section">
             @include('reports.partials.performance')
@@ -132,7 +135,7 @@
     @endif
 
     {{-- Cloudflare / CDN --}}
-    @if(in_array('cloudflare', $sections) && isset($data['cloudflare']) && $data['cloudflare'])
+    @if(in_array('cloudflare', $sections) && array_diff_key($data['cloudflare'] ?? [], ['_integration' => 0]) !== [])
         @php $sectionNumber++; @endphp
         <div class="report-section">
             @include('reports.partials.cloudflare')

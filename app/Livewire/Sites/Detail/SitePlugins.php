@@ -16,7 +16,6 @@ use App\Models\SitePlugin;
 use App\Models\SiteTheme;
 use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
-use App\Services\PluginRiskAssessmentService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -47,10 +46,6 @@ class SitePlugins extends Component
     public ?string $changelog = null;
 
     public bool $changelogLoading = false;
-
-    public ?array $riskAssessment = null;
-
-    public bool $riskLoading = false;
 
     protected function jobTrackingKeys(): array
     {
@@ -426,32 +421,6 @@ class SitePlugins extends Component
         }
 
         $this->changelogLoading = false;
-    }
-
-    public function assessRisk(int $pluginId): void
-    {
-        $plugin = $this->site->sitePlugins()->findOrFail($pluginId);
-
-        if (! $plugin->has_update) {
-            return;
-        }
-
-        $this->riskLoading = true;
-        $this->riskAssessment = null;
-
-        try {
-            $this->riskAssessment = app(PluginRiskAssessmentService::class)->assess($plugin);
-        } catch (\Throwable $e) {
-            $this->riskAssessment = [
-                'score' => 50,
-                'level' => 'unknown',
-                'reasons' => ['Assessment failed: '.$e->getMessage()],
-                'recommendation' => 'Proceed with caution.',
-            ];
-        }
-
-        $this->riskLoading = false;
-        $this->dispatch('open-modal-risk-assessment');
     }
 
     public function quickBackup(): void

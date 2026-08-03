@@ -31,6 +31,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property array|null $sent_to
  * @property array|null $data_snapshot
  * @property string|null $view_token
+ * @property string|null $send_held_reason
+ * @property \Illuminate\Support\Carbon|null $send_held_at
  * @property \Illuminate\Support\Carbon|null $generated_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at

@@ -93,6 +93,7 @@ class ReportSchedule extends Model
     {
         $tz = $this->timezone ?? 'Europe/Bucharest';
         [$hour, $minute] = explode(':', $this->time ?? '08:00');
+        $appTz = config('app.timezone');
 
         if ($this->frequency === 'weekly') {
             $next = now($tz)->next(Carbon::getDays()[$this->day_of_week ?? 0]);
@@ -115,6 +116,12 @@ class ReportSchedule extends Model
             }
         }
 
-        return $next->utc();
+        // Datetimes are persisted as naive strings in the APP timezone, so the
+        // value must be converted to it — NOT to UTC. Returning ->utc() here
+        // stored "05:00 Bucharest" as a naive "02:00": every schedule fired 3h
+        // early and stayed due (<= now) until the real hour arrived, so the
+        // dispatcher re-claimed it on every 5-minute tick — the 2026-08-01
+        // triple-report incident.
+        return $next->timezone($appTz);
     }
 }

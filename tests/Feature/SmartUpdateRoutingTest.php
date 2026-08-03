@@ -16,7 +16,6 @@ use App\Models\SitePlugin;
 use App\Models\User;
 use App\Services\UpdateDecisionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -91,16 +90,11 @@ class SmartUpdateRoutingTest extends TestCase
             'status' => 'pending',
             'approval_required' => false,
         ]);
-
-        // No engine ran, so no risk score/assessment was written.
-        $safeUpdate = SafeUpdate::where('site_id', $site->id)->firstOrFail();
-        $this->assertNull($safeUpdate->ai_risk_score);
-        $this->assertNull($safeUpdate->ai_risk_assessment);
     }
 
     /**
      * Flag ON + AwaitApproval route → the update is HELD: no dispatch,
-     * approval_required = true, and the risk score/assessment are persisted.
+     * approval_required = true.
      */
     public function test_flag_on_await_approval_holds_update_without_dispatch(): void
     {
@@ -109,7 +103,7 @@ class SmartUpdateRoutingTest extends TestCase
 
         $this->mock(UpdateDecisionService::class, function ($mock) {
             $mock->shouldReceive('decide')->once()->andReturn(
-                new UpdateDecision(UpdateRoute::AwaitApproval, 80, ['Major version bump.']),
+                new UpdateDecision(UpdateRoute::AwaitApproval, ['Major version bump.']),
             );
         });
 
@@ -124,22 +118,19 @@ class SmartUpdateRoutingTest extends TestCase
         $safeUpdate = SafeUpdate::where('site_id', $site->id)->firstOrFail();
         $this->assertTrue($safeUpdate->approval_required);
         $this->assertSame('pending', $safeUpdate->status);
-        $this->assertSame(80, $safeUpdate->ai_risk_score);
-        $this->assertSame(UpdateRoute::AwaitApproval->value, $safeUpdate->ai_risk_assessment['route']);
     }
 
     /**
-     * Flag ON + AutoMinor route → dispatched as normal, no approval gate, but
-     * the risk score/assessment ARE recorded.
+     * Flag ON + AutoMinor route → dispatched as normal, no approval gate.
      */
-    public function test_flag_on_auto_minor_dispatches_with_score(): void
+    public function test_flag_on_auto_minor_dispatches(): void
     {
         config(['updates.smart_rules_enabled' => true]);
         Queue::fake();
 
         $this->mock(UpdateDecisionService::class, function ($mock) {
             $mock->shouldReceive('decide')->once()->andReturn(
-                new UpdateDecision(UpdateRoute::AutoMinor, 10, ['Minor/patch update.']),
+                new UpdateDecision(UpdateRoute::AutoMinor, ['Minor/patch update.']),
             );
         });
 
@@ -153,7 +144,6 @@ class SmartUpdateRoutingTest extends TestCase
 
         $safeUpdate = SafeUpdate::where('site_id', $site->id)->firstOrFail();
         $this->assertFalse($safeUpdate->approval_required);
-        $this->assertSame(10, $safeUpdate->ai_risk_score);
     }
 
     /**
@@ -167,7 +157,7 @@ class SmartUpdateRoutingTest extends TestCase
 
         $this->mock(UpdateDecisionService::class, function ($mock) {
             $mock->shouldReceive('decide')->once()->andReturn(
-                new UpdateDecision(UpdateRoute::CriticalBypass, 95, ['Active critical vulnerability.']),
+                new UpdateDecision(UpdateRoute::CriticalBypass, ['Active critical vulnerability.']),
             );
         });
 
@@ -184,13 +174,11 @@ class SmartUpdateRoutingTest extends TestCase
     /**
      * Flag ON + a real major version bump through the REAL engine (no mock) →
      * held for approval. Proves the end-to-end wiring, not just a mocked route.
-     * Http is faked so the risk assessor makes no real network calls.
      */
     public function test_flag_on_real_engine_holds_major_bump(): void
     {
         config(['updates.smart_rules_enabled' => true]);
         Queue::fake();
-        Http::fake(); // assessor's wp.org/AI calls resolve empty → "unknown"
 
         [$site, $plugin] = $this->siteWithUpdatablePlugin('5.0.0', '6.0.0');
 

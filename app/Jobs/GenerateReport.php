@@ -80,18 +80,24 @@ class GenerateReport implements ShouldBeUnique, ShouldQueue
         // Idempotency: reuse existing report on retry
         $report = $this->reportId ? Report::find($this->reportId) : null;
 
-        // Dedup check: look for a recent report for this schedule+period
+        // Dedup check: one report per schedule+period, no matter how old. The
+        // previous 1-hour window let a re-fired schedule mint a fresh duplicate
+        // (and re-send it) every time the window lapsed — three per night in the
+        // 2026-08-01 incident.
         if (! $report && $this->schedule) {
             $report = Report::where('report_schedule_id', $this->schedule->id)
                 ->where('period_start', $this->periodStart->toDateString())
                 ->where('period_end', $this->periodEnd->toDateString())
                 ->whereIn('status', ['generating', 'completed'])
-                ->where('created_at', '>=', now()->subHours(1))
+                ->latest('created_at')
                 ->first();
         }
 
-        if ($report && $report->status === ReportStatus::Completed && $report->was_sent) {
-            Log::info("Report #{$report->id} already completed and sent, skipping", [
+        // Sent, or generated and deliberately held by the send gate (§12.3) — in
+        // both cases the period is done; regenerating would either re-send or
+        // silently replace a report awaiting manual review.
+        if ($report && $report->status === ReportStatus::Completed && ($report->was_sent || $report->send_held_at !== null)) {
+            Log::info("Report #{$report->id} already completed (sent or held), skipping", [
                 'site_id' => $this->site->id,
                 'schedule_id' => $this->schedule?->id,
             ]);

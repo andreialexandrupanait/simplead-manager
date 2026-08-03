@@ -251,15 +251,27 @@
                 </div>
             </div>
             @if(count($this->scoreHistory['labels']) > 0)
+                {{-- wire:key per range: Livewire must swap the node (not morph it)
+                     so Alpine re-evaluates x-data and the chart actually re-renders. --}}
                 <x-charts.line-chart
+                    wire:key="score-history-{{ $historyRange }}-{{ $selectedPageId }}"
                     :labels="$this->scoreHistory['labels']"
                     :datasets="$this->scoreHistory['datasets']"
                     :annotations="$this->scoreHistory['annotations'] ?? []"
                     height="300px"
                 />
+                @if(in_array($historyRange, ['90d', '180d']) && $this->historyRetentionDays < ['90d' => 90, '180d' => 180][$historyRange])
+                    <p class="mt-2 text-xs text-gray-400">
+                        {{ __('Test results are kept for :days days — longer ranges can only show what is still retained.', ['days' => $this->historyRetentionDays]) }}
+                    </p>
+                @endif
             @else
-                <div class="py-12 text-center text-sm text-gray-500">
-                    {{ __('Not enough data yet. Run more tests to see score history.') }}
+                <div wire:key="score-history-empty-{{ $historyRange }}-{{ $selectedPageId }}" class="py-12 text-center text-sm text-gray-500">
+                    @if(in_array($historyRange, ['90d', '180d']) && $this->historyRetentionDays < ['90d' => 90, '180d' => 180][$historyRange])
+                        {{ __('No data for this range. Test results are kept for :days days, so older history is no longer available.', ['days' => $this->historyRetentionDays]) }}
+                    @else
+                        {{ __('No completed tests in this period. Run a test or pick a different range.') }}
+                    @endif
                 </div>
             @endif
         </x-ui.card>

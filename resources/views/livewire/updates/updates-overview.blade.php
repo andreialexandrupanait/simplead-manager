@@ -46,9 +46,6 @@
                             <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $held->name }}</p>
                             <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
                                 {{ $held->site?->name ?? '—' }} · {{ $held->from_version }} → {{ $held->to_version }}
-                                @if ($held->ai_risk_score !== null)
-                                    · {{ __('risk') }} {{ $held->ai_risk_score }}
-                                @endif
                             </p>
                         </div>
                         <button wire:click="approveUpdate({{ $held->id }})"

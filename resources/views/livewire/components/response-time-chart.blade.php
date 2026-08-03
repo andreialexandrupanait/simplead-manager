@@ -17,7 +17,7 @@
         <x-charts.line-chart
             wire:key="chart-{{ $range }}"
             :labels="$this->chartData['labels']"
-            :datasets="[['label' => 'Response Time (ms)', 'data' => $this->chartData['data'], 'color' => '#7B68EE']]"
+            :datasets="$this->chartData['datasets']"
             height="250px"
         />
 
@@ -28,7 +28,7 @@
             </div>
             <div>
                 <p class="text-xs text-gray-500">Min</p>
-                <p class="text-sm font-semibold text-gray-900">{{ $this->responseStats['min'] }}ms</p>
+                <p class="text-sm font-semibold text-gray-900">{{ $this->responseStats['min'] !== null ? $this->responseStats['min'].'ms' : '—' }}</p>
             </div>
             <div>
                 <p class="text-xs text-gray-500">Max</p>

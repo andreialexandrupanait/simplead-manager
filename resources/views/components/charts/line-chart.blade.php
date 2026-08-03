@@ -102,7 +102,12 @@
                     scales: {
                         x: {
                             grid: { color: document.documentElement.classList.contains('dark') ? '#2C2C2C' : '#f3f4f6' },
-                            ticks: { color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280' },
+                            ticks: {
+                                color: document.documentElement.classList.contains('dark') ? '#9ca3af' : '#6b7280',
+                                autoSkip: true,
+                                maxTicksLimit: 12,
+                                maxRotation: 0,
+                            },
                         },
                         y: {
                             grid: { color: document.documentElement.classList.contains('dark') ? '#2C2C2C' : '#f3f4f6' },
