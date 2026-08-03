@@ -84,15 +84,19 @@ final class SAM_Backup_Loopback {
         $timestamp = (string) time();
         $nonce = wp_generate_password(32, false);
 
-        // GET, so the signed body is the empty string, exactly as SAM_Backup_Auth
-        // reconstructs it on the other side.
+        // POST with an empty body, which is what the manager uses — and, unlike GET, is a method
+        // no CDN will cache. Probing with GET produced the first cacheable 200 this endpoint had
+        // ever returned, and on a Cloudflare-fronted site that response was then served to
+        // unauthenticated callers until it expired.
         $signature = hash_hmac(
             'sha256',
-            implode('|', array('GET', $route, $timestamp, $nonce, '')),
+            implode('|', array('POST', $route, $timestamp, $nonce, '')),
             SAM_Backup_Options::api_secret()
         );
 
-        $response = wp_remote_get(rest_url(SAM_BACKUP_REST_NAMESPACE . '/capabilities'), array(
+        $response = wp_remote_post(rest_url(SAM_BACKUP_REST_NAMESPACE . '/capabilities'), array(
+            'method'    => 'POST',
+            'body'      => '',
             'timeout'   => 5,
             'blocking'  => true, // the whole point: a verdict, not a hope
             'sslverify' => false,

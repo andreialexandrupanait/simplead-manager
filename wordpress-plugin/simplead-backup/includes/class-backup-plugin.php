@@ -30,6 +30,15 @@ final class SAM_Backup_Plugin {
     public function boot(): void {
         add_action('rest_api_init', array($this, 'register_routes'));
 
+        // Nothing this namespace returns may ever sit in a cache.
+        //
+        // The responses are authenticated and host-specific — capabilities alone carries the
+        // absolute webroot path, the database name and the PHP/MariaDB versions, and
+        // database/chunk-download streams the client's own data. WordPress did not put a
+        // Cache-Control header on them, and on a site behind Cloudflare a single cacheable 200
+        // was enough for the CDN to store it and then serve it to anyone who asked, unsigned.
+        add_filter('rest_post_dispatch', array($this, 'forbid_caching'), 10, 3);
+
         // The background half of an async apply, when the host has no loopback and falls back to
         // wp-cron. Runs the restore in a detached request rather than under the manager's socket.
         add_action('sam_backup_restore_apply', array($this, 'run_detached_apply'), 10, 1);
@@ -101,6 +110,32 @@ final class SAM_Backup_Plugin {
             // what the manager reads. Nothing is waiting on this call.
             SAM_Backup_Logger::error('detached apply failed', array('token' => $safe, 'error' => $e->getMessage()));
         }
+    }
+
+    /**
+     * Mark every response from this plugin's namespace as never-cacheable.
+     *
+     * Applied to the whole namespace rather than to the endpoints that happen to accept GET
+     * today, because the next route to be added would otherwise have to remember.
+     *
+     * @param  WP_HTTP_Response  $result
+     * @return WP_HTTP_Response
+     */
+    public function forbid_caching($result, $server, $request) {
+        if (!($request instanceof WP_REST_Request)
+            || strpos((string) $request->get_route(), '/' . SAM_BACKUP_REST_NAMESPACE . '/') !== 0) {
+            return $result;
+        }
+
+        if (is_object($result) && method_exists($result, 'header')) {
+            $result->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0, private');
+            $result->header('Pragma', 'no-cache');
+            // A CDN with no Cache-Control falls back to heuristic freshness, and Last-Modified is
+            // what it measures that from.
+            $result->header('Last-Modified', '');
+        }
+
+        return $result;
     }
 
     /**
