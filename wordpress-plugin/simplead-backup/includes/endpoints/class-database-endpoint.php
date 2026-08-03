@@ -28,6 +28,7 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
                 'callback'            => array($this, 'dump'),
                 'permission_callback' => array($this, 'check_permission'),
                 'args'                => array(
+                    'run_id'        => array('type' => 'string', 'required' => false),
                     'session_id'    => array('type' => 'string', 'required' => false),
                     'time_budget'   => array('type' => 'number', 'required' => false),
                     'segment_bytes' => array('type' => 'integer', 'required' => false),
@@ -43,7 +44,10 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
                 'callback'            => array($this, 'chunk_download'),
                 'permission_callback' => array($this, 'check_permission'),
                 'args'                => array(
-                    'session_id'  => array('type' => 'string',  'required' => true),
+                    // One of run_id / session_id must be present; enforced in the handler
+                    // because either key satisfies it (schema "required" cannot say OR).
+                    'run_id'      => array('type' => 'string',  'required' => false),
+                    'session_id'  => array('type' => 'string',  'required' => false),
                     'chunk_index' => array('type' => 'integer', 'required' => true),
                     'delete'      => array('type' => 'boolean', 'required' => false),
                 ),
@@ -70,7 +74,7 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
             SAM_Backup_Logger::warn('leftover sweep failed', array('error' => $e->getMessage()));
         }
 
-        $session_id = (string) ($request->get_param('session_id') ?: ('sess_' . gmdate('Ymd_His') . '_' . wp_generate_password(6, false)));
+        $session_id = ($this->session_id_from($request) ?: ('sess_' . gmdate('Ymd_His') . '_' . wp_generate_password(6, false)));
         $output_dir = SAM_Backup_Temp::session_dir($session_id) . '/database';
 
         // `??`, not `?:`. With the old falsy-coalesce an explicit 0 or an empty
@@ -113,12 +117,12 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
      * it afterwards so WP temp stays bounded (pull-and-free), symmetric with files.
      */
     public function chunk_download(WP_REST_Request $request) {
-        $session_id   = (string) $request->get_param('session_id');
+        $session_id   = $this->session_id_from($request);
         $chunk_index  = (int) $request->get_param('chunk_index');
         $delete_after = (bool) $request->get_param('delete');
 
         if ($session_id === '') {
-            return new WP_REST_Response(array('ok' => false, 'error' => array('code' => 'NOT_FOUND', 'message' => 'Missing session_id.')), 404);
+            return new WP_REST_Response(array('ok' => false, 'error' => array('code' => 'NOT_FOUND', 'message' => 'Missing run_id.')), 404);
         }
 
         $db_dir  = SAM_Backup_Temp::session_dir($session_id) . '/database';

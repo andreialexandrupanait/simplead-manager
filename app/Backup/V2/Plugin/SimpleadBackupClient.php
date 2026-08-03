@@ -49,6 +49,7 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
         private readonly int $dbTimeBudget = 90,
         private readonly int $dbSegmentBytes = 8388608,
         private readonly ?BackupLogger $logger = null,
+        private readonly string $sessionKey = 'run_id',
     ) {}
 
     /**
@@ -99,6 +100,13 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
             dbTimeBudget: (int) config('backup_v2.plugin.db_time_budget', 90),
             dbSegmentBytes: (int) config('backup_v2.plugin.db_segment_bytes', 8388608),
             logger: $logger,
+            // `run_id` is the wire name since plugin 0.8.2 — feaa.ugal.ro's mod_security
+            // 403s any request body whose parameter is literally named `session_id`, key
+            // alone, value irrelevant. Older plugins only know the old name, and the
+            // version read here is the live probe's answer, refreshed on every install.
+            sessionKey: version_compare((string) $site->backup_plugin_version, '0.8.2', '>=')
+                ? 'run_id'
+                : 'session_id',
         );
     }
 
@@ -110,7 +118,7 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     public function filesInventory(string $sessionId, array $rules, array $options = []): array
     {
         return $this->json('POST', 'files/inventory', array_merge([
-            'session_id' => $sessionId,
+            $this->sessionKey => $sessionId,
             'rules' => $rules,
         ], $options));
     }
@@ -118,7 +126,7 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     public function dbDump(string $sessionId, array $params = []): array
     {
         $body = array_merge([
-            'session_id' => $sessionId,
+            $this->sessionKey => $sessionId,
             'time_budget' => $this->dbTimeBudget,
             'segment_bytes' => $this->dbSegmentBytes,
         ], $params);
@@ -138,7 +146,7 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     public function dbChunkDownload(string $sessionId, int $chunkIndex, bool $deleteAfter): DownloadedChunk
     {
         return $this->download('database/chunk-download', [
-            'session_id' => $sessionId,
+            $this->sessionKey => $sessionId,
             'chunk_index' => $chunkIndex,
             'delete' => $deleteAfter,
         ], $chunkIndex, 'v2db_');
@@ -147,7 +155,7 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     public function filesChunkExec(string $sessionId, int $chunkIndex): array
     {
         return $this->json('POST', 'files/chunk-exec', [
-            'session_id' => $sessionId,
+            $this->sessionKey => $sessionId,
             'chunk_index' => $chunkIndex,
         ]);
     }
@@ -155,7 +163,7 @@ final class SimpleadBackupClient implements PluginClient, RestoreClient
     public function filesChunkDownload(string $sessionId, int $chunkIndex, bool $deleteAfter): DownloadedChunk
     {
         return $this->download('files/chunk-download', [
-            'session_id' => $sessionId,
+            $this->sessionKey => $sessionId,
             'chunk_index' => $chunkIndex,
             'delete' => $deleteAfter,
         ], $chunkIndex, 'v2files_');

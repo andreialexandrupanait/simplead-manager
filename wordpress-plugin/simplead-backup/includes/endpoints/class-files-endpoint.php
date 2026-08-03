@@ -29,6 +29,7 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
                 'callback'            => array($this, 'inventory'),
                 'permission_callback' => array($this, 'check_permission'),
                 'args'                => array(
+                    'run_id'           => array('type' => 'string',  'required' => false),
                     'session_id'       => array('type' => 'string',  'required' => false),
                     'rules'            => array('type' => 'array',   'required' => false),
                     'include_defaults' => array('type' => 'boolean', 'required' => false),
@@ -48,7 +49,10 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
                 'callback'            => array($this, 'chunk_exec'),
                 'permission_callback' => array($this, 'check_permission'),
                 'args'                => array(
-                    'session_id'  => array('type' => 'string',  'required' => true),
+                    // One of run_id / session_id must be present; enforced in the handler
+                    // because either key satisfies it (schema "required" cannot say OR).
+                    'run_id'      => array('type' => 'string',  'required' => false),
+                    'session_id'  => array('type' => 'string',  'required' => false),
                     'chunk_index' => array('type' => 'integer', 'required' => true),
                 ),
             ),
@@ -60,7 +64,8 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
                 'callback'            => array($this, 'chunk_download'),
                 'permission_callback' => array($this, 'check_permission'),
                 'args'                => array(
-                    'session_id'  => array('type' => 'string',  'required' => true),
+                    'run_id'      => array('type' => 'string',  'required' => false),
+                    'session_id'  => array('type' => 'string',  'required' => false),
                     'chunk_index' => array('type' => 'integer', 'required' => true),
                     'delete'      => array('type' => 'boolean', 'required' => false),
                 ),
@@ -126,7 +131,7 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
             $plan = $chunker->plan($inv['files']);
         }
 
-        $session_id = (string) ($request->get_param('session_id') ?: ('sess_' . gmdate('Ymd_His') . '_' . wp_generate_password(6, false)));
+        $session_id = ($this->session_id_from($request) ?: ('sess_' . gmdate('Ymd_His') . '_' . wp_generate_password(6, false)));
         $files_dir  = SAM_Backup_Temp::session_dir($session_id) . '/files';
         if (!is_dir($files_dir)) {
             @mkdir($files_dir, 0700, true);
@@ -204,7 +209,7 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
         @ini_set('max_execution_time', '0');
         @ini_set('memory_limit', '512M');
 
-        $session_id  = (string) $request->get_param('session_id');
+        $session_id  = $this->session_id_from($request);
         $chunk_index = (int) $request->get_param('chunk_index');
 
         $doc = $this->load_plan($session_id);
@@ -241,7 +246,7 @@ final class SAM_Backup_Files_Endpoint extends SAM_Backup_REST_Controller {
     // ── chunk-download (pull-and-free) ───────────────────────────────────
 
     public function chunk_download(WP_REST_Request $request) {
-        $session_id   = (string) $request->get_param('session_id');
+        $session_id   = $this->session_id_from($request);
         $chunk_index  = (int) $request->get_param('chunk_index');
         $delete_after = (bool) $request->get_param('delete');
 

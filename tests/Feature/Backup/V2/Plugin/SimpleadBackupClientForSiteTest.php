@@ -57,4 +57,37 @@ class SimpleadBackupClientForSiteTest extends TestCase
             return true;
         });
     }
+
+    /**
+     * The wire name of the session id follows the probed plugin version: `run_id` from
+     * 0.8.2 (feaa.ugal.ro's mod_security 403s any body with a key literally named
+     * `session_id`), `session_id` for older plugins that only know the old name.
+     */
+    public function test_session_key_follows_probed_plugin_version(): void
+    {
+        foreach ([
+            '0.8.0' => 'session_id',
+            null => 'session_id',
+            '0.8.2' => 'run_id',
+            '0.9.0' => 'run_id',
+        ] as $version => $expectedKey) {
+            $site = Site::factory()->create([
+                'api_key' => 'k',
+                'api_secret' => 's',
+                'backup_plugin_version' => $version === '' ? null : $version,
+            ]);
+
+            Http::fake(['*' => Http::response(['ok' => true], 200)]);
+
+            SimpleadBackupClient::forSite($site)->filesChunkExec('sess-abc', 3);
+
+            Http::assertSent(function (Request $request) use ($expectedKey): bool {
+                $body = json_decode($request->body(), true);
+                $this->assertSame('sess-abc', $body[$expectedKey] ?? null);
+                $this->assertCount(1, array_intersect(array_keys($body), ['run_id', 'session_id']));
+
+                return true;
+            });
+        }
+    }
 }
