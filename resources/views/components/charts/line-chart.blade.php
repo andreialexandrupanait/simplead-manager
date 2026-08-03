@@ -17,6 +17,15 @@
             this.$watch('datasets', () => this.renderChart());
             this.$watch('annotations', () => this.renderChart());
         },
+        // Alpine calls this when the node is removed (e.g. a wire:key swap on a
+        // range change). Without it every switch leaks a live Chart instance —
+        // and its ResizeObserver — on a detached canvas.
+        destroy() {
+            if (this.chart) {
+                this.chart.destroy();
+                this.chart = null;
+            }
+        },
         async renderChart() {
             const Chart = await window.loadChart();
             if (this.chart) {

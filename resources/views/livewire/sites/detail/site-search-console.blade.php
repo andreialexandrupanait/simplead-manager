@@ -140,6 +140,12 @@
                 {{-- Chart --}}
                 chart: null,
                 init() { this.$nextTick(() => this.renderChart()); },
+                destroy() {
+                    if (this.chart) {
+                        this.chart.destroy();
+                        this.chart = null;
+                    }
+                },
                 async renderChart() {
                     const Chart = await window.loadChart();
                     if (this.chart) this.chart.destroy();
