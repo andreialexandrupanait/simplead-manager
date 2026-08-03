@@ -243,36 +243,53 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
             );
         }
 
-        // Claimed BEFORE dispatching, so a poll that lands between the kick and the worker starting
-        // sees `applying` rather than the previous state — which the manager would read as "nothing
-        // happened" and retry.
-        $engine->mark_apply_queued();
+        // The claim is staked INSIDE each branch that actually dispatches.
+        //
+        // It used to be staked here, before either route was tried, on the strength of return
+        // values that could not fail: a non-blocking POST reports success for a request the site
+        // answers 401 to, and wp_next_scheduled() only proves an event is on the calendar, not
+        // that anything will ever run it. Between them, a host that could detach neither way was
+        // told its apply was queued, and the token sat in `applying`/`queued` — where the
+        // synchronous retry was refused and rollback was refused too.
+        if (SAM_Backup_Loopback::available()) {
+            $engine->mark_apply_queued();
 
-        if ($this->dispatch_apply_loopback($token)) {
-            SAM_Backup_Logger::info('restore/apply dispatched', array('token' => $token, 'method' => 'loopback'));
-            return new WP_REST_Response(
-                array('ok' => true, 'async' => true, 'token' => $token, 'method' => 'loopback'),
-                200
-            );
+            if ($this->dispatch_apply_loopback($token)) {
+                SAM_Backup_Logger::info('restore/apply dispatched', array('token' => $token, 'method' => 'loopback'));
+                return new WP_REST_Response(
+                    array('ok' => true, 'async' => true, 'token' => $token, 'method' => 'loopback'),
+                    200
+                );
+            }
+
+            // The probe said yes and the dispatch still failed. Do not leave the claim standing.
+            SAM_Backup_Loopback::forget();
+            $engine->clear_apply_queued();
         }
 
-        $hook = 'sam_backup_restore_apply';
-        if (!wp_next_scheduled($hook, array($token))) {
-            wp_schedule_single_event(time(), $hook, array($token));
-            spawn_cron();
-        }
-        if (wp_next_scheduled($hook, array($token))) {
-            SAM_Backup_Logger::info('restore/apply dispatched', array('token' => $token, 'method' => 'cron'));
-            return new WP_REST_Response(
-                array('ok' => true, 'async' => true, 'token' => $token, 'method' => 'cron'),
-                200
-            );
+        // wp-cron only runs when something asks WordPress to run it. On a host with
+        // DISABLE_WP_CRON — which is this fleet — spawn_cron() returns without doing anything and
+        // the event waits for a system cron that may not exist. Scheduling one anyway and calling
+        // it a dispatch is how a restore was reported as running on a host where nothing ran.
+        if (SAM_Backup_Loopback::cron_runs()) {
+            $hook = 'sam_backup_restore_apply';
+            if (!wp_next_scheduled($hook, array($token))) {
+                wp_schedule_single_event(time(), $hook, array($token));
+                spawn_cron();
+            }
+            if (wp_next_scheduled($hook, array($token))) {
+                $engine->mark_apply_queued();
+                SAM_Backup_Logger::info('restore/apply dispatched', array('token' => $token, 'method' => 'cron'));
+                return new WP_REST_Response(
+                    array('ok' => true, 'async' => true, 'token' => $token, 'method' => 'cron'),
+                    200
+                );
+            }
         }
 
-        // Neither route works on this host. Put the state back so the synchronous retry is not
-        // refused by apply()'s own re-entry guard, and say plainly that async is unavailable.
-        $engine->clear_apply_queued();
-        SAM_Backup_Logger::warning('restore/apply cannot detach on this host', array('token' => $token));
+        // Neither route works on this host. Nothing was claimed, so the manager's synchronous
+        // apply — which is what `async: false` asks it for — is not refused by the re-entry guard.
+        SAM_Backup_Logger::warn('restore/apply cannot detach on this host', array('token' => $token));
 
         return new WP_REST_Response(
             array('ok' => true, 'async' => false, 'token' => $token, 'reason' => 'no loopback or cron available'),
@@ -312,7 +329,11 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
         $timestamp = (string) time();
         $nonce = wp_generate_password(32, false);
         $route = '/' . $this->namespace() . '/restore/apply-execute';
-        $secret = (string) get_option('sam_api_secret', '');
+        // The engine's own credentials, which is what SAM_Backup_Auth checks. Reading the
+        // connector's options directly signed the call with an empty secret on every site that has
+        // dedicated backup credentials provisioned — and because the request below is
+        // non-blocking, the resulting 401 was invisible and the dispatch reported success.
+        $secret = SAM_Backup_Options::api_secret();
         $signature = hash_hmac('sha256', implode('|', array('POST', $route, $timestamp, $nonce, $body)), $secret);
 
         $result = wp_remote_post(rest_url($this->namespace() . '/restore/apply-execute'), array(
@@ -321,7 +342,7 @@ final class SAM_Backup_Restore_Endpoint extends SAM_Backup_REST_Controller {
             'blocking'  => false,
             'headers'   => array(
                 'Content-Type'            => 'application/json',
-                'X-SAM-Backup-Key'        => (string) get_option('sam_api_key', ''),
+                'X-SAM-Backup-Key'        => SAM_Backup_Options::api_key(),
                 'X-SAM-Backup-Timestamp'  => $timestamp,
                 'X-SAM-Backup-Nonce'      => $nonce,
                 'X-SAM-Backup-Signature'  => $signature,

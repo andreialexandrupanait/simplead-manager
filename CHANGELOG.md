@@ -55,6 +55,74 @@ WordPress sites.
   follow their deploy instructions.
 
 ### Fixed
+- **Backup engine 0.9.0 — the restore engine no longer destroys what it needs to undo
+  itself.** A code review of `wordpress-plugin/` surfaced fifteen defects, most of them in
+  the V2 restore path and most of them silent:
+  - The hourly leftover sweep judged a session by the modification time of its own
+    top-level directory, which freezes when the directory is created — everything an apply
+    writes goes one level down. A restore running past the hour looked abandoned, so the
+    sweep deleted the trash holding the only copy of every live file the restore had
+    displaced, and the rollback that followed reported success over an empty trash. It now
+    reads `status.json` and applies a per-state TTL, and the engine touches that file at
+    every chunk boundary so a three-hour restore stays visibly alive.
+  - A retried apply called a token-blind cleanup that dropped **every** `sambk_old_*`
+    table in the database — the retained pre-restore originals, including other
+    restores'. Staging and retained tables now carry the session's token digest, the
+    apply-time cleanup touches only its own staging tables, and an apply is refused
+    outright once the database has already been swapped for that token.
+  - `extract_zip_into()` skipped an entry it could not write and the caller deleted the
+    chunk regardless, so a file could be absent from the restored site with its only copy
+    gone while `apply()` returned `{ok: true}`. `fwrite` was unchecked, so a full disk
+    produced a truncated file swapped over the live one. Every skip is now a failure, and
+    the bytes written are compared against the entry's size.
+  - `reverse_journal()` moved the live file out to staging *before* the unchecked rename
+    that brings the original back, then `rollback_files()` deleted both directories — so a
+    failed reversal destroyed the file it had just moved, and rollback answered
+    `{ok: true, rolled_back: true}`. Renames are checked, a failed reversal keeps the trash
+    as evidence and throws, and the journal is append-only JSONL that rollback can now
+    **replay** — which is what recovers a tree left half-swapped by a killed worker, using
+    a file the engine had always written and never read.
+  - `is_safe_relative()` rejected any path containing `..` as a substring, so a file
+    called `logo..png` was dropped from the restore set and, in MIRROR, deleted from the
+    site for being "absent from the backup". The check is per path segment now, and MIRROR
+    no longer walks its own staging and trash directories, the engine's own plugin
+    directory, or through symlinked directories.
+  - A chunk redelivered after the apply consumed it rewrote the status back to `staging`,
+    erasing `applied` and re-arming a second apply; staging after an apply is now refused.
+- **Backup engine 0.9.0 — a detached apply is only claimed when it can actually run.**
+  The loopback signed its call to itself with the *connector's* credentials rather than the
+  engine's, and sent it non-blocking — so on every site with dedicated backup credentials
+  the call 401'd invisibly and the dispatch reported success. `wp_next_scheduled()` was read
+  as proof that wp-cron would run the event, on a fleet where `DISABLE_WP_CRON` is set. Either
+  way the token was pinned in `applying`/`queued`, where the manager's synchronous retry was
+  refused and so was rollback, with no expiry. Now: a real signed blocking probe decides
+  whether the loopback works (cached, and reported honestly in `/capabilities` instead of the
+  hardcoded `true`), the claim is staked only inside a branch that dispatches, a stale claim
+  expires after 90s, and `flock` — not an advisory flag in a JSON file — is what keeps two
+  applies apart. `SAM_Backup_Logger::warning()`, which does not exist, made the "this host
+  cannot detach" branch a fatal 500 instead of the reply the manager needed.
+- **Backup engine 0.9.0 — the V2 dumper sizes its pages from the memory it actually has.**
+  The adaptive batching that fixed the connector's OOM was never ported: the engine now
+  backing up the whole fleet read a flat 1000 rows per page with `MYSQLI_STORE_RESULT`,
+  buffering the entire page into PHP. It now sizes each page from `AVG_ROW_LENGTH` and the
+  free memory and streams with `MYSQLI_USE_RESULT`. `time_budget=0` meant "already over
+  budget" rather than "no budget", so the first table was skipped and the orchestrator
+  restarted forever.
+- **Connector — the SAVEQUERIES guard did nothing.** `$wpdb->save_queries = false` cannot
+  switch off query logging, because `wpdb` reads the `SAVEQUERIES` *constant*; on a site
+  where a developer had once enabled it, the dump still accumulated every query with a full
+  backtrace and died of the exact memory exhaustion the guard claimed to prevent, while the
+  guard's presence hid it. The log is now truncated per batch, which is what is actually
+  available, and both dump paths close their file handle on failure.
+- **Connector — the contact-form test exercises the form the operator chose.** Detection
+  returned the first active plugin in allowlist order, with MC4WP ahead of Elementor Pro —
+  so on the fleet's most common pairing the test asked a newsletter plugin whether its abort
+  filter was registered, reported `submitted: true` without submitting anything, and the
+  manager recorded a passing deliverability test for a contact form nobody had touched. The
+  newsletter plugin is last now, `/form-test/run` accepts the plugin the chosen form belongs
+  to (which discovery had always reported and the manager had always discarded, and which is
+  now stored in `sites.form_test_plugin`), and the MC4WP branch says plainly that it
+  submitted nothing.
 - **Livewire's JS is now published at build time instead of committed.** Production
   served `/vendor/livewire/livewire.min.js` from 6.5 MB of files committed in March
   2026, while `composer.lock` had moved on to `livewire/livewire ^4.1` — so every
@@ -77,6 +145,26 @@ WordPress sites.
   generated, not source. 53 branches already merged into `main` were deleted.
 
 ### Security
+- **Connector 2.27.0 — the REST self-exemption is decided from the resolved route, not
+  from the raw request URI.** Both `restrict_rest_api()` and `enforce_htaccess_rules()`
+  looked for our namespace *anywhere* in `REQUEST_URI` — query string included. Appending
+  `?x=/wp-json/simplead/v1/` to any request therefore claimed to be us: it skipped the
+  blocked-file rules, the query-string firewall, and the REST restriction whose whole job is
+  keeping unauthenticated callers out of *other* plugins' endpoints. The exemption is now
+  taken from `rest_route` as WordPress resolved it, falling back to the URI **path** and the
+  `rest_route` parameter — so plain-permalink hosts still work and a query string proves
+  nothing. `enforce_htaccess_rules()` also exempted only `simplead/v1`, never
+  `simplead-backup/v1`; both now come from one list. The generated MU-plugin carried the same
+  bug and is regenerated with the same logic on self-update.
+- **Connector 2.27.0 — `expected_hash` is required on `/plugins/install-package` and
+  `/self-update`.** Both endpoints verified the package only *if* a hash happened to be
+  supplied, while the install endpoint's own docblock justified its existence on that
+  verification — the guarantee that keeps a leaked API key at "read the site" instead of
+  "own the server". A check the caller can decline is not a control: a signed request with
+  the hash omitted and any `download_url` installed and activated an arbitrary zip.
+  `download_url` is now also restricted to http(s); `FILTER_VALIDATE_URL` alone accepted
+  `file://` and `ftp://`. The manager already sent the hash from every path that mattered;
+  the two that did not (`RestoreBackup`, `connector:update`) now do.
 - **Connector 2.19.0 — authenticated IP auto-whitelisting.** Until 2.18.0 the
   connector's permission chain was *IP whitelist → rate limit → HMAC*, and `/info`
   auto-added the calling IP. Every synced site therefore held a whitelist containing

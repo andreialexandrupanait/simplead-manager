@@ -36,6 +36,9 @@ final class SAM_Backup_Capabilities_Endpoint extends SAM_Backup_REST_Controller 
 
         $db = $this->probe_database();
 
+        $probe_request = SAM_Backup_Loopback::is_probe_request();
+        $loopback = $probe_request ? true : SAM_Backup_Loopback::available();
+
         return array(
             'plugin' => array(
                 'name'          => 'simplead-backup',
@@ -63,10 +66,15 @@ final class SAM_Backup_Capabilities_Endpoint extends SAM_Backup_REST_Controller 
             // tell an old plugin from a new one, and would have to guess whether asking for an
             // async apply is safe — on an old plugin the flag is simply absent and it stays
             // synchronous, which is still correct for a small site.
+            // Both `async` and `loopback` used to be the literal `true`, which told the manager to
+            // ask for a detached apply on hosts that cannot detach — and the failure landed as a
+            // restore stuck in `queued` rather than as a slower, working, synchronous one. They
+            // are measured now. The probe answering this very request must not start another, so
+            // it says yes and lets the caller judge by the HTTP status.
             'restore' => array(
-                'async'    => true,
-                'loopback' => true,
-                'cron'     => (bool) (! defined('DISABLE_WP_CRON') || ! DISABLE_WP_CRON),
+                'async'    => $probe_request ? true : ($loopback || SAM_Backup_Loopback::cron_runs()),
+                'loopback' => $loopback,
+                'cron'     => SAM_Backup_Loopback::cron_runs(),
             ),
             'extensions' => array(
                 'zip'    => class_exists('ZipArchive'),

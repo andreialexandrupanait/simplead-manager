@@ -127,7 +127,11 @@ final class SAM_Backup_Consistent_Dumper {
 
             foreach ($tables as $ti => $table) {
                 // Soft time budget: stop cleanly BEFORE starting a new table if over budget.
-                if ((microtime(true) - $started) > $this->time_budget) {
+                // A budget of zero means no budget, as the endpoint's own documentation promises.
+                // Read literally it meant "already over", so the first table was skipped, the dump
+                // came back done=false having written nothing, and the orchestrator restarted it
+                // forever.
+                if ($this->time_budget > 0 && (microtime(true) - $started) > $this->time_budget) {
                     $done   = false;
                     $cursor = array('table_index' => $ti, 'table' => $table, 'offset' => 0);
                     break;
@@ -214,9 +218,13 @@ final class SAM_Backup_Consistent_Dumper {
         $pending_bytes = 0;
         $flush_at_bytes = 512 * 1024; // cap a single multi-row INSERT ~512 KiB
 
+        // MySQL's own estimate of how wide a row of this table is. It does not change inside the
+        // snapshot, so it is worth one query per table and nothing more.
+        $avg_row = $this->avg_row_length($mysqli, $table);
+
         while (true) {
             // Time-budget check inside the paging loop for large tables.
-            if ((microtime(true) - $started) > $this->time_budget) {
+            if ($this->time_budget > 0 && (microtime(true) - $started) > $this->time_budget) {
                 if (!empty($pending)) {
                     $seg->write("INSERT INTO {$q} {$col_list} VALUES " . implode(",\n", $pending) . ";\n");
                     $pending = array();
@@ -225,8 +233,17 @@ final class SAM_Backup_Consistent_Dumper {
                 return $rows_written;
             }
 
-            $sql = "SELECT {$select_cols} FROM {$q} {$order_by} LIMIT {$offset}, {$this->batch_rows}";
-            $res = $mysqli->query($sql, MYSQLI_STORE_RESULT);
+            // How many rows this host can hold at once, recomputed per page because the free
+            // memory is what moves. A flat thousand rows is what exhausted 512M on a site whose
+            // postmeta carries multi-megabyte serialised values — the connector learned that and
+            // grew adaptive batching; the engine that replaced it did not inherit any of it.
+            $page = $this->page_rows($avg_row);
+
+            $sql = "SELECT {$select_cols} FROM {$q} {$order_by} LIMIT {$offset}, {$page}";
+            // USE_RESULT streams the page row by row instead of buffering all of it into PHP
+            // first. Safe here only because this loop issues no other query against $mysqli until
+            // the result is freed below — which is also why the free() must stay unconditional.
+            $res = $mysqli->query($sql, MYSQLI_USE_RESULT);
             if ($res === false) {
                 throw new RuntimeException("Read failed for {$table}: " . $mysqli->error);
             }
@@ -250,10 +267,12 @@ final class SAM_Backup_Consistent_Dumper {
             }
             $res->free();
 
-            if ($batch < $this->batch_rows) {
+            // Counted from rows actually consumed, not from the size we asked for: the page size
+            // now varies with free memory, so the two are no longer the same number.
+            if ($batch < $page) {
                 break; // last page
             }
-            $offset += $this->batch_rows;
+            $offset += $batch;
         }
 
         if (!empty($pending)) {
@@ -261,6 +280,73 @@ final class SAM_Backup_Consistent_Dumper {
         }
 
         return $rows_written;
+    }
+
+    /**
+     * MySQL's estimate of the average row width, floored so the division stays honest.
+     *
+     * MariaDB reports 0 for some engines and for empty tables, in which case the
+     * floor simply yields the configured batch size for narrow rows.
+     */
+    private function avg_row_length(mysqli $mysqli, string $table): int {
+        $esc = $mysqli->real_escape_string($table);
+        $sql = "SELECT COALESCE(AVG_ROW_LENGTH, 0) FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{$esc}'";
+
+        $res = $mysqli->query($sql, MYSQLI_STORE_RESULT);
+        if ($res === false) {
+            return 256;
+        }
+
+        $row = $res->fetch_row();
+        $res->free();
+
+        return max(256, (int) ($row[0] ?? 0));
+    }
+
+    /**
+     * How many rows of this width fit in the memory we can still spend.
+     *
+     * The factor of three covers the copies of the same data that exist at the
+     * peak of a page: the rows as fetched, the formatted values, and the SQL text
+     * accumulating in $pending — where hex-encoding a binary column doubles it
+     * again. The floor is one row, not a comfortable minimum: a table of
+     * ten-megabyte rows read ten at a time is the same failure this exists to
+     * prevent, only further along, and a slow dump beats a fatal one.
+     */
+    private function page_rows(int $avg_row): int {
+        $available = max(
+            16 * 1024 * 1024,
+            $this->memory_limit_bytes() - memory_get_usage(true)
+        );
+
+        $budget = (int) ($available * 0.15);
+
+        // The configured batch_rows is a ceiling now, not a fixed size.
+        return max(1, min($this->batch_rows, intdiv($budget, $avg_row * 3)));
+    }
+
+    /**
+     * The memory limit in bytes, or a conservative guess when the host declines to
+     * say. -1 means unlimited, which on shared hosting usually means the real
+     * limit lives somewhere else and you meet it without warning.
+     */
+    private function memory_limit_bytes(): int {
+        $raw = trim((string) @ini_get('memory_limit'));
+
+        if ($raw === '' || $raw === '-1') {
+            return 256 * 1024 * 1024;
+        }
+
+        $unit  = strtolower(substr($raw, -1));
+        $value = (int) $raw;
+
+        switch ($unit) {
+            case 'g': return $value * 1024 * 1024 * 1024;
+            case 'm': return $value * 1024 * 1024;
+            case 'k': return $value * 1024;
+            default:  return $value;
+        }
     }
 
     // ---------------------------------------------------------------------------------

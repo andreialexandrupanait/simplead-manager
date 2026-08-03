@@ -93,6 +93,84 @@ class SAM_Security_Hardening {
      * These rules mirror the .htaccess directives so they work on nginx
      * (which ignores .htaccess) and provide defense-in-depth on Apache/LiteSpeed.
      */
+    /**
+     * The REST namespaces this installation owns. Two plugins, not one: the
+     * connector and the backup engine, which has its own namespace and may not be
+     * installed at all.
+     *
+     * @return array<int,string>
+     */
+    private function own_rest_namespaces(): array {
+        return [
+            defined('SAM_REST_NAMESPACE') ? SAM_REST_NAMESPACE : 'simplead/v1',
+            defined('SAM_BACKUP_REST_NAMESPACE') ? SAM_BACKUP_REST_NAMESPACE : 'simplead-backup/v1',
+        ];
+    }
+
+    /**
+     * Is this request one of ours?
+     *
+     * Both callers used to answer this by looking for the namespace ANYWHERE in
+     * REQUEST_URI — which includes the query string. Appending
+     * `?x=/wp-json/simplead/v1/` to any URL therefore claimed to be us, and the
+     * request skipped the file blocks, the firewall and the REST restriction that
+     * exists to keep unauthenticated callers out of other plugins' endpoints. The
+     * exemption is a bypass of every rule here, so it has to be decided from
+     * something the caller cannot forge.
+     *
+     * Three sources, in order of how much they can be trusted:
+     */
+    private function is_own_rest_request(): bool {
+        // 1. The route WordPress actually resolved. Available once the request has
+        //    been parsed — which is the case inside the REST stack, where
+        //    restrict_rest_api() runs — and true for both permalink styles.
+        if (isset($GLOBALS['wp']->query_vars['rest_route'])
+            && $GLOBALS['wp']->query_vars['rest_route'] !== '') {
+            return $this->route_is_ours((string) $GLOBALS['wp']->query_vars['rest_route']);
+        }
+
+        $request_uri = isset($_SERVER['REQUEST_URI'])
+            ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI']))
+            : '';
+
+        // 2. The URI PATH only, for pretty permalinks. enforce_htaccess_rules()
+        //    runs before the request is parsed, so this is all it has. strpos
+        //    rather than a prefix match, because a subdirectory install puts the
+        //    site at /blog/wp-json/.
+        $path = strtolower((string) wp_parse_url($request_uri, PHP_URL_PATH));
+        if ($path !== '') {
+            foreach ($this->own_rest_namespaces() as $namespace) {
+                if (strpos($path, '/wp-json/' . strtolower($namespace) . '/') !== false) {
+                    return true;
+                }
+            }
+        }
+
+        // 3. The rest_route PARAMETER, for plain permalinks, where the namespace
+        //    legitimately lives in the query string. Not a hole: WordPress routes
+        //    any request carrying rest_route into the REST server, so a request
+        //    that has ours really is ours — and it still has to pass our own HMAC
+        //    auth. Anchored to the start of the value, so it cannot be smuggled in
+        //    as a suffix.
+        if (isset($_GET['rest_route'])) {
+            return $this->route_is_ours(sanitize_text_field(wp_unslash((string) $_GET['rest_route'])));
+        }
+
+        return false;
+    }
+
+    private function route_is_ours(string $route): bool {
+        $route = '/' . ltrim($route, '/');
+
+        foreach ($this->own_rest_namespaces() as $namespace) {
+            if (strpos($route, '/' . $namespace . '/') === 0 || $route === '/' . $namespace) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function enforce_htaccess_rules(): void {
         if (empty($this->htaccess_settings)) {
             return;
@@ -106,9 +184,8 @@ class SAM_Security_Hardening {
             return;
         }
 
-        // Never block our own REST endpoints
-        $namespace = defined('SAM_REST_NAMESPACE') ? SAM_REST_NAMESPACE : 'simplead/v1';
-        if (strpos($request_uri, '/wp-json/' . $namespace . '/') !== false) {
+        // Never block our own REST endpoints — both plugins', not just the connector's.
+        if ($this->is_own_rest_request()) {
             return;
         }
 
@@ -229,17 +306,8 @@ class SAM_Security_Hardening {
         // silently cut the backup engine off — installed, running, and answering 401 to the manager
         // that installed it. The backup plugin may not be present at all, so its namespace is read
         // from its constant when it is and named directly when it is not.
-        $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
-
-        $namespaces = [
-            defined('SAM_REST_NAMESPACE') ? SAM_REST_NAMESPACE : 'simplead/v1',
-            defined('SAM_BACKUP_REST_NAMESPACE') ? SAM_BACKUP_REST_NAMESPACE : 'simplead-backup/v1',
-        ];
-
-        foreach ($namespaces as $namespace) {
-            if (strpos($request_uri, '/' . $namespace . '/') !== false) {
-                return null;
-            }
+        if ($this->is_own_rest_request()) {
+            return null;
         }
 
         if (!empty($result)) {

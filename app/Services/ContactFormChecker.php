@@ -28,16 +28,36 @@ class ContactFormChecker
     /**
      * Allowlist: SitePlugin slug => display name. These are the ONLY plugins
      * with a proven integration-suppression path, hence the only supported ones.
+     *
+     * Declaration order is priority order, because a site commonly runs more
+     * than one of these. MC4WP is last on purpose: it is a newsletter
+     * integration, not a form builder, and a site running Mailchimp alongside
+     * Elementor Pro has its contact form in Elementor. Detecting MC4WP there
+     * tested a newsletter opt-in and reported the contact form as fine.
      */
     public const SUPPORTED_PLUGINS = [
         'wpforms-lite' => 'WPForms',
         'wpforms' => 'WPForms',
         'gravityforms' => 'Gravity Forms',
         'ninja-forms' => 'Ninja Forms',
-        'mailchimp-for-wp' => 'MC4WP',
         // 23 of 27 sites build their contact forms with Elementor Pro. Leaving it
         // out is what made this feature cover a single site.
         'elementor-pro' => 'Elementor Pro',
+        'mailchimp-for-wp' => 'MC4WP',
+    ];
+
+    /**
+     * Allowlist slug => the connector's own plugin key, as `/form-test/run`
+     * names it. Sent so the site tests the form the operator picked instead of
+     * re-deriving the plugin from whatever is active.
+     */
+    public const CONNECTOR_PLUGIN_KEYS = [
+        'wpforms-lite' => 'wpforms',
+        'wpforms' => 'wpforms',
+        'gravityforms' => 'gravityforms',
+        'ninja-forms' => 'ninja_forms',
+        'elementor-pro' => 'elementor_pro',
+        'mailchimp-for-wp' => 'mc4wp',
     ];
 
     /**
@@ -56,33 +76,54 @@ class ContactFormChecker
     ) {}
 
     /**
+     * The connector's plugin key for a form as `/form-test/discover` described
+     * it, or null when the form belongs to a plugin we never submit to.
+     *
+     * Discovery reports the plugin per form in `type` ("Elementor Pro", "WPForms"
+     * …). Matching on that is why the operator's choice can travel back to the
+     * site instead of being re-guessed there.
+     */
+    public static function connectorKeyForFormType(?string $type): ?string
+    {
+        $type = trim((string) $type);
+
+        if ($type === '') {
+            return null;
+        }
+
+        foreach (self::SUPPORTED_PLUGINS as $slug => $name) {
+            if (strcasecmp($name, $type) === 0) {
+                return self::CONNECTOR_PLUGIN_KEYS[$slug];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Detect the site's form plugin from SitePlugin slugs (active plugins only).
      *
      * @return array{slug: string, plugin: string, supported: bool}|null
      */
     public function detectFormPlugin(Site $site): ?array
     {
+        // Walk the allowlist, not the query result: on a site running two of
+        // these, the winner has to be the one we ranked, not whichever row
+        // Postgres handed back first.
         $active = $site->sitePlugins()
             ->where('is_active', true)
-            ->get(['slug', 'name']);
+            ->pluck('slug')
+            ->flip();
 
-        foreach ($active as $plugin) {
-            if (isset(self::SUPPORTED_PLUGINS[$plugin->slug])) {
-                return [
-                    'slug' => $plugin->slug,
-                    'plugin' => self::SUPPORTED_PLUGINS[$plugin->slug],
-                    'supported' => true,
-                ];
+        foreach (self::SUPPORTED_PLUGINS as $slug => $name) {
+            if ($active->has($slug)) {
+                return ['slug' => $slug, 'plugin' => $name, 'supported' => true];
             }
         }
 
-        foreach ($active as $plugin) {
-            if (isset(self::UNSUPPORTED_KNOWN_PLUGINS[$plugin->slug])) {
-                return [
-                    'slug' => $plugin->slug,
-                    'plugin' => self::UNSUPPORTED_KNOWN_PLUGINS[$plugin->slug],
-                    'supported' => false,
-                ];
+        foreach (self::UNSUPPORTED_KNOWN_PLUGINS as $slug => $name) {
+            if ($active->has($slug)) {
+                return ['slug' => $slug, 'plugin' => $name, 'supported' => false];
             }
         }
 
@@ -184,6 +225,15 @@ class ContactFormChecker
         if (filled($site->form_test_form_id)
             && $site->connectorAtLeast((string) config('monitoring.form_test.min_form_choice_version', '2.22.0'))) {
             $payload['form_id'] = (string) $site->form_test_form_id;
+        }
+
+        // Name the plugin the chosen form actually belongs to. Discovery already
+        // told us, and without it the site re-derives the plugin from whatever is
+        // active — which is how an Elementor contact form got "tested" by asking
+        // MC4WP whether its abort filter was registered.
+        if (filled($site->form_test_plugin)
+            && $site->connectorAtLeast((string) config('monitoring.form_test.min_plugin_choice_version', '2.27.0'))) {
+            $payload['plugin'] = (string) $site->form_test_plugin;
         }
 
         $response = $this->apiFactory->make($site)

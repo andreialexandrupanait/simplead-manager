@@ -35,6 +35,15 @@ final class SAM_Backup_Logger {
         self::log('warn', $message, $context);
     }
 
+    /**
+     * Alias for warn(). A call site spelled it this way and, on a final class
+     * with no __callStatic, that is a fatal — on the one branch whose whole job
+     * was to tell the manager it had to apply synchronously.
+     */
+    public static function warning(string $message, array $context = array()): void {
+        self::log('warn', $message, $context);
+    }
+
     public static function error(string $message, array $context = array()): void {
         self::log('error', $message, $context);
     }

@@ -57,7 +57,6 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             'wpforms/wpforms.php'                      => ['WPForms', 'wpforms'],
             'gravityforms/gravityforms.php'            => ['Gravity Forms', 'gravityforms'],
             'ninja-forms/ninja-forms.php'              => ['Ninja Forms', 'ninja_forms'],
-            'mailchimp-for-wp/mailchimp-for-wp.php'    => ['MC4WP', 'mc4wp'],
             // 23 of the 27 sites in this fleet build their contact forms with
             // Elementor Pro's Form widget. Excluding it meant the whole feature
             // covered a single site. It qualifies for the same reason the others
@@ -65,6 +64,13 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             // leave through wp_mail or the HTTP API, both of which the generic
             // suppression in register_suppression() now closes.
             'elementor-pro/elementor-pro.php'          => ['Elementor Pro', 'elementor_pro'],
+            // LAST, deliberately. MC4WP is a newsletter integration, not a form
+            // builder, and it is installed almost everywhere. Detecting first
+            // match in this order, it used to win on every site that had both —
+            // so the weekly test asked Mailchimp whether its abort filter was
+            // registered and reported the contact form as fine, having never
+            // submitted anything.
+            'mailchimp-for-wp/mailchimp-for-wp.php'    => ['MC4WP', 'mc4wp'],
         ];
     }
 
@@ -78,7 +84,6 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
             'formidable/formidable.php'            => 'Formidable Forms',
             'forminator/forminator.php'            => 'Forminator',
             'fluentform/fluentform.php'            => 'Fluent Forms',
-            'wpforms-lite/wpforms-lite.php'        => 'WPForms',
         ];
     }
 
@@ -124,6 +129,16 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                     'required'          => false,
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                // Which plugin that form belongs to, as /form-test/discover
+                // reported it. Omitted → we detect, which is a guess on a site
+                // running more than one of these. A key that is not both
+                // supported and active is ignored, so this can never widen the
+                // allowlist — it can only pick a different entry from it.
+                'plugin' => [
+                    'type'              => 'string',
+                    'required'          => false,
+                    'sanitize_callback' => 'sanitize_key',
+                ],
             ],
         ]);
     }
@@ -132,6 +147,32 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
      * Detect the active form plugin. Returns:
      *   ['file','name','key','supported'] or null when no form plugin is active.
      */
+    /**
+     * The allowlist entry for a plugin key, but only if that plugin is actually
+     * active here. An unknown or inactive key returns null and detection takes
+     * over — the fail-safe is that this can never introduce a plugin the
+     * allowlist does not already name.
+     *
+     * @return array{file: string, name: string, key: string, supported: bool}|null
+     */
+    private function supported_active_plugin(string $key): ?array {
+        if ($key === '') {
+            return null;
+        }
+
+        if (!function_exists('is_plugin_active')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        foreach ($this->supported_plugins() as $file => $info) {
+            if ($info[1] === $key && is_plugin_active($file)) {
+                return ['file' => $file, 'name' => $info[0], 'key' => $info[1], 'supported' => true];
+            }
+        }
+
+        return null;
+    }
+
     private function detect_form_plugin(): ?array {
         if (!function_exists('is_plugin_active')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -490,7 +531,11 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
      * successful capability() gate; never scheduled.
      */
     public function run(WP_REST_Request $request): WP_REST_Response {
-        $plugin = $this->detect_form_plugin();
+        // Prefer the plugin the Manager named — it knows which plugin the chosen form belongs to,
+        // because discovery told it. Detection is the fallback, and on a site running a newsletter
+        // plugin alongside a form builder it is a guess that was being made wrong.
+        $plugin = $this->supported_active_plugin((string) $request->get_param('plugin'))
+            ?: $this->detect_form_plugin();
 
         // (1) Fail-safe: unsupported (or no) form plugin → NEVER submit.
         if ($plugin === null || empty($plugin['supported'])) {
@@ -952,17 +997,24 @@ class SAM_Form_Test_Endpoint extends SAM_Endpoint_Base {
                     'submitted'     => true,
                     'form_id'       => (string) $target['id'],
                     'form_name'     => (string) ($target['settings']['form_name'] ?? ''),
-                    'entry_deleted' => true,
+                    // Nothing was stored, so nothing was deleted. Reporting a deletion that never
+                    // happened is the kind of small untruth that makes the rest of the report
+                    // unreadable.
+                    'entry_deleted' => false,
                     'message'       => 'Elementor form exercised with actions stripped and outbound requests blocked; no submission stored.',
                 ];
 
             case 'mc4wp':
-                // MC4WP has no local entry store; the subscribe abort filter is the
-                // whole test. We simply confirm the abort filter is registered.
+                // This submits nothing. It used to say `submitted: true` anyway, and the manager
+                // recorded a passing deliverability test on the strength of it — for a contact
+                // form that was never touched, on every site where MC4WP won detection. MC4WP is
+                // last in the allowlist now, so reaching this branch means it is the only form
+                // plugin here, and the honest answer is that there is nothing to exercise.
                 return [
-                    'submitted' => true,
-                    'entry_deleted' => true,
-                    'message' => 'MC4WP subscribe aborted by suppression filter (no local entry).',
+                    'submitted' => false,
+                    'entry_deleted' => false,
+                    'message' => 'MC4WP is a newsletter integration with no contact form to submit; '
+                        .'suppression is registered but nothing was sent.',
                 ];
         }
 

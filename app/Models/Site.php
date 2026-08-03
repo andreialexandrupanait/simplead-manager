@@ -126,6 +126,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $form_test_email
  * @property bool $form_test_enabled
  * @property string|null $form_test_form_id
+ * @property string|null $form_test_plugin
  * @property \Illuminate\Support\Carbon|null $key_urls_locked_at
  * @property \Illuminate\Support\Carbon|null $key_urls_derived_at
  * @property int|null $smoke_dom_reference
@@ -197,6 +198,7 @@ class Site extends Model
         'form_test_email',
         'form_test_enabled',
         'form_test_form_id',
+        'form_test_plugin',
         'key_urls_locked_at',
         'key_urls_derived_at',
         'smoke_dom_reference',

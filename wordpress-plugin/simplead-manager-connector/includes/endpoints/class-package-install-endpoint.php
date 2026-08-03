@@ -16,7 +16,8 @@ if (!defined('ABSPATH')) {
  * connector into a remote code installer for whoever can sign a request, and the blast radius of a
  * leaked key would stop being "read the site" and become "own the server". Only slugs this file
  * names are accepted, the package is verified against a hash the manager computed from the same
- * source, and nothing else about the site is touched.
+ * source — REQUIRED, because a check that only runs when the caller supplies the input is a check
+ * the caller can decline — and nothing else about the site is touched.
  */
 class SAM_Package_Install_Endpoint extends SAM_Endpoint_Base {
 
@@ -41,13 +42,31 @@ class SAM_Package_Install_Endpoint extends SAM_Endpoint_Base {
         $params        = $request->get_json_params();
         $slug          = isset($params['slug']) ? (string) $params['slug'] : '';
         $download_url  = isset($params['download_url']) ? (string) $params['download_url'] : '';
-        $expected_hash = isset($params['expected_hash']) ? (string) $params['expected_hash'] : '';
+        $expected_hash = isset($params['expected_hash']) ? strtolower(trim((string) $params['expected_hash'])) : '';
 
         if (!isset(self::ALLOWED[$slug])) {
             return $this->fail('SLUG_NOT_ALLOWED', 'This endpoint only installs the manager\'s own plugins.', 400);
         }
         if ($download_url === '' || !filter_var($download_url, FILTER_VALIDATE_URL)) {
             return $this->fail('INVALID_URL', 'A valid download_url is required.', 400);
+        }
+        // http(s) only. FILTER_VALIDATE_URL alone accepts file:// and ftp://, which is not what
+        // "the manager sent us a package" can ever mean.
+        $scheme = strtolower((string) parse_url($download_url, PHP_URL_SCHEME));
+        if ($scheme !== 'http' && $scheme !== 'https') {
+            return $this->fail('INVALID_URL', 'download_url must be http or https.', 400);
+        }
+        // REQUIRED, not optional. The docblock above justifies this endpoint's existence on the
+        // package being verified against a hash the manager computed — but the check only ran when
+        // a hash happened to be supplied, so omitting it turned a signed request into "install
+        // this arbitrary zip and activate it". An optional integrity check is a claim, not a
+        // control.
+        if (!preg_match('/^[0-9a-f]{64}$/', $expected_hash)) {
+            return $this->fail(
+                'HASH_REQUIRED',
+                'A sha256 expected_hash is required; this endpoint refuses unverified packages.',
+                400
+            );
         }
 
         $plugin_file = self::ALLOWED[$slug];
@@ -64,12 +83,10 @@ class SAM_Package_Install_Endpoint extends SAM_Endpoint_Base {
             return $this->fail('DOWNLOAD_FAILED', $package->get_error_message(), 502);
         }
 
-        if ($expected_hash !== '') {
-            $actual = hash_file('sha256', $package);
-            if (!hash_equals($expected_hash, (string) $actual)) {
-                @unlink($package);
-                return $this->fail('HASH_MISMATCH', 'Package integrity check failed.', 400);
-            }
+        $actual = hash_file('sha256', $package);
+        if ($actual === false || !hash_equals($expected_hash, strtolower((string) $actual))) {
+            @unlink($package);
+            return $this->fail('HASH_MISMATCH', 'Package integrity check failed.', 400);
         }
 
         $all_plugins = get_plugins();

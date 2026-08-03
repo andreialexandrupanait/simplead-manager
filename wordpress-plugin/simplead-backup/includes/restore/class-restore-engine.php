@@ -51,6 +51,16 @@ final class SAM_Backup_Restore_Engine {
     const MODE_SAFE_MERGE = 'safe_merge';
     const MODE_MIRROR     = 'mirror';
 
+    /**
+     * How long an `applying`/`queued` claim stays believable, in seconds.
+     *
+     * Kept BELOW RestoreRunner::QUEUED_GRACE_SECONDS (120) in the manager: when a
+     * dispatch is claimed but never runs, the manager gives up waiting and retries
+     * synchronously, and that retry has to be let through here. The two constants
+     * are a pair — moving one without the other re-opens the wedge.
+     */
+    const QUEUED_TTL = 90;
+
     /** Files that are NEVER swapped (live DB credentials + maintenance flag must survive). */
     const PROTECTED_FILES = array('wp-config.php', '.maintenance');
 
@@ -64,6 +74,9 @@ final class SAM_Backup_Restore_Engine {
     /** @var callable|null test fault injector: function(string $phase, int $step): void */
     private $fault = null;
 
+    /** @var resource|null held for the duration of an apply/rollback (see lock_apply()) */
+    private $lock_handle = null;
+
     /**
      * @param array<string,mixed>|null $db_cfg
      */
@@ -72,6 +85,21 @@ final class SAM_Backup_Restore_Engine {
         $this->abspath  = rtrim($abspath, '/');
         $this->work_dir = rtrim($work_dir, '/');
         $this->db_cfg   = $db_cfg;
+    }
+
+    /**
+     * Log, when there is a logger.
+     *
+     * This class is deliberately standalone — the lab harness loads it on its own,
+     * without the plugin bootstrap — so it asks for the logger rather than
+     * depending on it.
+     *
+     * @param array<string,mixed> $context
+     */
+    private function log(string $level, string $message, array $context = array()): void {
+        if (class_exists('SAM_Backup_Logger')) {
+            SAM_Backup_Logger::log($level, $message, $context + array('token' => $this->token));
+        }
     }
 
     /** Test seam: inject a crash at a named phase/step to prove journaled rollback. */
@@ -111,7 +139,7 @@ final class SAM_Backup_Restore_Engine {
             'tombstones'   => array_values(array_map('strval', (array) ($opts['tombstones'] ?? array()))),
             'created_at'   => gmdate('c'),
         );
-        $this->write_json($this->work_dir . '/plan.json', $plan);
+        $this->write_json_strict($this->work_dir . '/plan.json', $plan);
 
         // The disk as it stands BEFORE anything is pushed here. The apply's own watermark can only
         // start once the chunks have already landed, so measured from there the temp filesystem
@@ -148,6 +176,20 @@ final class SAM_Backup_Restore_Engine {
         if ($seq < 0) {
             throw new RuntimeException('chunk seq must be >= 0');
         }
+        // Staging is over once an apply has started, and saying so is the point.
+        //
+        // apply_files() deletes each chunk as it consumes it, so the idempotent early return below
+        // stops recognising a redelivered chunk and the copy path runs instead — ending in a status
+        // write that pushed `applying`/`applied`/`committed` back to `staging`. That erased the
+        // re-entry guard's only input and re-armed has_staged(), which is how one restore could be
+        // applied twice. A late chunk is refused, and the endpoint turns that into a 422.
+        $state = (string) ($this->status()['state'] ?? 'prepared');
+        if ($state !== 'prepared' && $state !== 'staging') {
+            throw new RuntimeException(
+                "restore session is in state '{$state}'; chunks can no longer be staged for this token"
+            );
+        }
+
         $dest = $this->chunks_dir($kind) . '/chunk_' . $seq . '.' . $ext;
 
         // Idempotent: a chunk already staged with the SAME sha is a no-op (resumable retry).
@@ -179,6 +221,25 @@ final class SAM_Backup_Restore_Engine {
      * @return array<string,mixed>
      */
     public function apply(bool $detached = false): array {
+        // The lock first, because everything below reads a file that another process could be
+        // writing. The status check is a diagnostic — an unlocked read of a JSON document — and on
+        // a host where the loopback fires AND wp-cron fires, both workers read `queued`, both are
+        // let through as detached, and two applies run over one token. flock is what actually
+        // stops that; it is also released by the kernel if the process dies, which no flag written
+        // into a file can promise.
+        $this->lock_apply();
+
+        try {
+            return $this->apply_locked($detached);
+        } finally {
+            $this->unlock_apply();
+        }
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function apply_locked(bool $detached): array {
         // Re-entry is REFUSED, not retried, and this is the whole point.
         //
         // apply_files() and drop_orphaned_restore_tables() both clear the previous run's trash and
@@ -203,7 +264,17 @@ final class SAM_Backup_Restore_Engine {
         // first. Two applies over one token destroy each other's rollback data. `$detached` is set
         // by the two internal callers (the loopback route and the cron hook) and by nothing the
         // manager can reach.
-        if ($current === 'applying' && ! ($detached && $phase === 'queued')) {
+        //
+        // The third exemption is a claim that was staked and never executed. The dispatcher marks
+        // `queued` before handing off, and a hand-off that fails invisibly — a loopback the host
+        // rejects, a cron event nothing ever runs — used to leave the token in `queued` with no
+        // expiry: the manager's synchronous retry was refused here, rollback was refused too, and
+        // the session stayed wedged until the sweep deleted it an hour later. A claim older than
+        // QUEUED_TTL is a dead claim. The flock below is what actually keeps two applies apart, so
+        // a zombie worker arriving late still cannot overlap this one.
+        if ($current === 'applying'
+            && ! ($detached && $phase === 'queued')
+            && ! $this->queued_claim_expired($status)) {
             throw new RuntimeException(
                 'an apply is already running for this token; poll restore/status instead of starting another'
             );
@@ -218,6 +289,18 @@ final class SAM_Backup_Restore_Engine {
                 'already' => true,
                 'db'      => $state['db'] ?? null,
                 'files'   => $state['files'] ?? null,
+            );
+        }
+
+        // A retry after a failure that got as far as swapping the database must not run the swap
+        // again. The second swap renames the ALREADY-RESTORED tables into sambk_old_*, so the
+        // pre-restore data — the thing rollback exists to return — is gone, and the rollback that
+        // follows quietly returns the site to the restored state it was trying to escape. The way
+        // out of a half-applied restore is rollback or commit, never another apply.
+        $prior = $this->load_apply_state();
+        if ($prior !== null && isset($prior['db']) && is_array($prior['db'])) {
+            throw new RuntimeException(
+                'a previous apply already swapped the database for this token; roll back or commit before retrying'
             );
         }
 
@@ -245,19 +328,19 @@ final class SAM_Backup_Restore_Engine {
                 // many minutes the swap takes, which reads exactly like a process that has stopped.
                 $this->set_status('applying', array('phase' => 'database', 'started_at' => gmdate('c')));
                 $apply_state['db'] = $this->apply_database($plan);
-                $this->write_json($this->work_dir . '/apply-state.json', $apply_state);
+                $this->write_json_strict($this->work_dir . '/apply-state.json', $apply_state);
             }
 
             // Files: extract → prune → journaled per-path swap (trash kept for rollback).
             if ($has_files) {
                 $this->set_status('applying', array('phase' => 'files', 'started_at' => gmdate('c')));
                 $apply_state['files'] = $this->apply_files($plan);
-                $this->write_json($this->work_dir . '/apply-state.json', $apply_state);
+                $this->write_json_strict($this->work_dir . '/apply-state.json', $apply_state);
             }
 
             $this->disk_sample();
             $apply_state['disk'] = $this->disk_report();
-            $this->write_json($this->work_dir . '/apply-state.json', $apply_state);
+            $this->write_json_strict($this->work_dir . '/apply-state.json', $apply_state);
 
             $this->maintenance_off();
             $maintenance = false;
@@ -285,12 +368,32 @@ final class SAM_Backup_Restore_Engine {
                 'disk'    => $apply_state['disk'],
             );
         } catch (\Throwable $e) {
-            // A throw from apply_database/apply_files has already rolled its own phase back to
-            // pre-apply. Lift maintenance so the (untouched or rolled-back) site is reachable.
+            // Each phase rolls ITSELF back — which leaves the case where the database swap
+            // succeeded and the file phase then failed. The files came back, the database stayed
+            // restored, and the status said `failed`: a manager reading that would reasonably
+            // believe the site was untouched while half of it had been replaced. Undo the swap
+            // here, and when even that cannot be done, say which half is which.
+            $detail = array('error' => $e->getMessage());
+
+            if (isset($apply_state['db']) && is_array($apply_state['db'])) {
+                try {
+                    $this->rollback_database($apply_state['db']);
+                    $detail['db_rolled_back'] = true;
+                } catch (\Throwable $inner) {
+                    $detail['db_left_restored'] = true;
+                    $detail['db_rollback_error'] = $inner->getMessage();
+                    $this->log('error', 'could not undo the database swap after a failed apply', array(
+                        'token' => $this->token,
+                        'error' => $inner->getMessage(),
+                    ));
+                }
+            }
+
+            // Lift maintenance so the site is reachable again.
             if ($maintenance) {
                 $this->maintenance_off();
             }
-            $this->set_status('failed', array('error' => $e->getMessage()));
+            $this->set_status('failed', $detail);
             throw $e;
         }
     }
@@ -310,7 +413,7 @@ final class SAM_Backup_Restore_Engine {
         if (is_array($state) && isset($state['db']) && is_array($state['db'])) {
             $this->drop_tables(array_values((array) ($state['db']['old_map'] ?? array())));
             $this->drop_tables(array_values((array) ($state['db']['name_map'] ?? array()))); // any leftover stg
-            $this->drop_orphaned_restore_tables();
+            $this->drop_own_staging_tables(); // anything this token imported and never swapped
         }
 
         if (is_array($state) && isset($state['files']) && is_array($state['files'])) {
@@ -332,11 +435,31 @@ final class SAM_Backup_Restore_Engine {
      * @return array<string,mixed>
      */
     public function rollback(): array {
+        // Same lock as apply(): reversing a journal another process is still appending to is the
+        // one thing that must never happen, and the status file cannot prevent it.
+        $this->lock_apply();
+
+        try {
+            return $this->rollback_locked();
+        } finally {
+            $this->unlock_apply();
+        }
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    private function rollback_locked(): array {
         // Never while an apply is still moving. Reversing a journal that is still being written
         // leaves the site in a state that is neither the old one nor the new one — and since the
         // manager reaches for rollback exactly when it has stopped hearing from us, this is the
         // likeliest moment for the two to collide.
-        if ((string) ($this->status()['state'] ?? '') === 'applying') {
+        //
+        // A claim that expired is not an apply that is still moving: nothing was ever handed to a
+        // worker, so there is nothing to collide with. Refusing those too is what left a token that
+        // could be neither applied nor rolled back.
+        $status = $this->status();
+        if ((string) ($status['state'] ?? '') === 'applying' && ! $this->queued_claim_expired($status)) {
             throw new RuntimeException(
                 'an apply is still running; wait for it to finish or fail before rolling back'
             );
@@ -344,19 +467,42 @@ final class SAM_Backup_Restore_Engine {
 
         $state = $this->load_apply_state();
         if (!is_array($state)) {
-            // Nothing was applied — the site is already at pre-apply.
-            $this->set_status('rolled_back', array('noop' => true));
-            return array('ok' => true, 'rolled_back' => true, 'noop' => true);
+            // No record of an apply. That is usually the truth — but a process killed during the
+            // file phase leaves no record and a half-swapped tree, so ask the journal before
+            // concluding the site was never touched.
+            $this->maintenance_on();
+            try {
+                $replayed = $this->rollback_files_from_disk();
+            } catch (\Throwable $e) {
+                $this->maintenance_off();
+                throw $e;
+            }
+            $this->maintenance_off();
+
+            $this->set_status('rolled_back', $replayed ? array('from_journal' => true) : array('noop' => true));
+
+            return array('ok' => true, 'rolled_back' => true, 'noop' => !$replayed);
         }
 
         $maintenance = true;
         $this->maintenance_on();
 
-        if (isset($state['files']) && is_array($state['files'])) {
-            $this->rollback_files($state['files']);
-        }
-        if (isset($state['db']) && is_array($state['db'])) {
-            $this->rollback_database($state['db']);
+        try {
+            if (isset($state['files']) && is_array($state['files'])) {
+                $this->rollback_files($state['files']);
+            } else {
+                // The DB phase recorded itself and the file phase did not, which means the process
+                // stopped between them. The journal on disk is the only account of what moved.
+                $this->rollback_files_from_disk();
+            }
+            if (isset($state['db']) && is_array($state['db'])) {
+                $this->rollback_database($state['db']);
+            }
+        } catch (\Throwable $e) {
+            // Never leave the site behind a maintenance flag because the rollback failed; the
+            // status already carries what went wrong.
+            $this->maintenance_off();
+            throw $e;
         }
 
         $this->maintenance_off();
@@ -442,6 +588,12 @@ final class SAM_Backup_Restore_Engine {
      * footprint actually moves: a chunk is extracted, swapped in, and dropped.
      */
     private function disk_sample(): void {
+        // Doubles as the session's heartbeat. Called at every chunk boundary, so a restore that
+        // runs for hours keeps its status file recently modified — which is how the sweep tells a
+        // slow restore from an abandoned one. Nothing else here updates a timestamp the sweep can
+        // see, because every write during an apply goes into a subdirectory.
+        @touch($this->work_dir . '/status.json');
+
         foreach ($this->disk_paths() as $name => $path) {
             if (!isset($this->disk_watermark[$name])) {
                 continue;
@@ -538,6 +690,67 @@ final class SAM_Backup_Restore_Engine {
         $this->set_status('staged', array('async_unavailable' => true));
     }
 
+    /**
+     * Take the session's apply lock, or refuse.
+     *
+     * Non-blocking on purpose: a caller that cannot have the lock is told so
+     * immediately rather than left holding a request open behind a restore that
+     * may take an hour.
+     */
+    private function lock_apply(): void {
+        $this->mkdir($this->work_dir);
+
+        $handle = @fopen($this->work_dir . '/apply.lock', 'c');
+        if ($handle === false) {
+            // A session directory we cannot write to is one we cannot safely apply
+            // in either — better to say so than to proceed unserialised.
+            throw new RuntimeException('could not open the apply lock for this token');
+        }
+
+        if (!@flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+            throw new RuntimeException(
+                'an apply is already running for this token; poll restore/status instead of starting another'
+            );
+        }
+
+        $this->lock_handle = $handle;
+    }
+
+    private function unlock_apply(): void {
+        if ($this->lock_handle !== null) {
+            @flock($this->lock_handle, LOCK_UN);
+            fclose($this->lock_handle);
+            $this->lock_handle = null;
+        }
+    }
+
+    /**
+     * Whether an `applying`/`queued` claim is old enough to be treated as dead.
+     *
+     * queued_at was written from the day the claim existed and read by nothing, so
+     * a dispatch that reported success and never ran pinned the token forever. The
+     * window is deliberately shorter than the manager's own grace period before it
+     * falls back to a synchronous apply — otherwise its retry arrives here and is
+     * refused by the very state the failed dispatch left behind.
+     *
+     * @param array<string,mixed> $status
+     */
+    private function queued_claim_expired(array $status): bool {
+        if ((string) ($status['phase'] ?? '') !== 'queued') {
+            return false;
+        }
+
+        $queued_at = strtotime((string) ($status['queued_at'] ?? ''));
+        if ($queued_at === false) {
+            // A claim with no readable timestamp cannot be aged; treat it as stale
+            // rather than let it wedge the token indefinitely.
+            return true;
+        }
+
+        return (time() - $queued_at) > self::QUEUED_TTL;
+    }
+
     // ── DB apply / rollback ──────────────────────────────────────────────────
 
     /**
@@ -548,7 +761,7 @@ final class SAM_Backup_Restore_Engine {
      * @return array<string,mixed> {name_map, old_map, tables}
      */
     private function apply_database(array $plan): array {
-        $this->drop_orphaned_restore_tables(); // clear debris from a prior crashed restore
+        $this->drop_own_staging_tables(); // clear this token's debris from a prior crashed import
 
         $whitelist = array_flip((array) $plan['db_tables']); // empty = all tables
         $mysqli    = $this->db_connect();
@@ -687,7 +900,23 @@ final class SAM_Backup_Restore_Engine {
         return substr($sql, 0, $offset) . $name_map[$table] . substr($sql, $offset + strlen($table));
     }
 
+    /**
+     * Short digest of the token, stamped into every table this session creates.
+     *
+     * Without it the staging and retained-original tables are indistinguishable
+     * between concurrent restores, and the blanket cleanup that ran at the start
+     * of every apply dropped ALL of them — including another token's only copy
+     * of its pre-restore data.
+     */
+    private function token8(): string {
+        return substr(md5($this->token), 0, 8);
+    }
+
     private function prefixed_table_name(string $table, string $prefix): string {
+        // 10 + 8 + 1 = 19 characters, so the >64 truncation below still leaves
+        // 36 characters of the original name — enough to stay recognisable.
+        $prefix = $prefix . $this->token8() . '_';
+
         $name = $prefix . $table;
         if (strlen($name) > 64) {
             $head = $prefix . substr(md5($table), 0, 8) . '_';
@@ -790,16 +1019,71 @@ final class SAM_Backup_Restore_Engine {
         }
     }
 
-    private function drop_orphaned_restore_tables(): void {
+    /**
+     * Clear THIS token's import debris before re-importing.
+     *
+     * Deliberately blind to sambk_old_*: those are the pre-restore originals, and
+     * dropping them is how a retried apply used to make its own rollback
+     * impossible. They are removed by commit(), by rollback(), or by the sweep
+     * once the session they belong to is gone — never here.
+     */
+    private function drop_own_staging_tables(): void {
         $mysqli = $this->db_connect();
         try {
-            $orphans = array();
+            $prefix = self::DB_STG_PREFIX . $this->token8() . '_';
+            $mine = array();
             foreach ($this->show_tables($mysqli) as $table) {
-                if (strpos($table, self::DB_STG_PREFIX) === 0 || strpos($table, self::DB_OLD_PREFIX) === 0) {
-                    $orphans[] = $table;
+                if (strpos($table, $prefix) === 0) {
+                    $mine[] = $table;
                 }
             }
-            $this->drop_tables_conn($mysqli, $orphans);
+            $this->drop_tables_conn($mysqli, $mine);
+        } finally {
+            @$mysqli->close();
+        }
+    }
+
+    /**
+     * Drop restore tables belonging to sessions that no longer exist.
+     *
+     * Called from the hourly sweep, which knows which session directories are
+     * still on disk. A table whose token digest matches none of them cannot be
+     * rolled back to by anyone.
+     *
+     * Tables from before the per-token prefix existed carry no digest; they are
+     * only removed when there is no restore session on the host at all, because
+     * there is no way to tell whose they are.
+     *
+     * @param array<int,string> $live_digests token8() values of sessions still on disk
+     */
+    public function drop_tables_of_dead_sessions(array $live_digests): int {
+        $live = array_flip(array_map('strval', $live_digests));
+        $mysqli = $this->db_connect();
+
+        try {
+            $dead = array();
+
+            foreach ($this->show_tables($mysqli) as $table) {
+                foreach (array(self::DB_STG_PREFIX, self::DB_OLD_PREFIX) as $prefix) {
+                    if (strpos($table, $prefix) !== 0) {
+                        continue;
+                    }
+
+                    $rest = substr($table, strlen($prefix));
+
+                    if (preg_match('/^([0-9a-f]{8})_/', $rest, $m)) {
+                        if (!isset($live[$m[1]])) {
+                            $dead[] = $table;
+                        }
+                    } elseif (empty($live)) {
+                        $dead[] = $table; // pre-0.9.0 debris, and nothing left that could own it
+                    }
+                }
+            }
+
+            $this->drop_tables_conn($mysqli, $dead);
+
+            return count($dead);
         } finally {
             @$mysqli->close();
         }
@@ -915,7 +1199,71 @@ final class SAM_Backup_Restore_Engine {
      * outside the restore staging area / webroot (e.g. '../wp-config.php').
      */
     private function is_safe_relative(string $rel): bool {
-        return $rel !== '' && strpos($rel, '..') === false && strpos($rel, "\0") === false;
+        if ($rel === '' || strpos($rel, "\0") !== false) {
+            return false;
+        }
+
+        $norm = str_replace('\\', '/', $rel);
+
+        // Absolute paths are not relative paths, whatever else they are.
+        if ($norm[0] === '/' || preg_match('#^[A-Za-z]:#', $norm) === 1) {
+            return false;
+        }
+
+        // Segment by segment, not substring. Testing for '..' anywhere in the
+        // string rejected ordinary filenames — logo..png, jquery..min.js — which
+        // then never entered the restore set, and in MIRROR that reads as "absent
+        // from the backup": the live copy was moved to the trash and deleted at
+        // commit. A file present in both the site and the backup was destroyed
+        // for having two dots in its name.
+        foreach (explode('/', $norm) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * One canonical spelling of a relative path, for comparing paths that reached
+     * us from different sources. Case is left alone: the filesystems this runs on
+     * are case-sensitive, and folding it would let one file mask another.
+     */
+    private function normalize_rel(string $rel): string {
+        $norm = str_replace('\\', '/', $rel);
+        $norm = preg_replace('#/+#', '/', $norm);
+        $norm = (string) $norm;
+
+        while (strpos($norm, './') === 0) {
+            $norm = substr($norm, 2);
+        }
+
+        return ltrim($norm, '/');
+    }
+
+    /**
+     * Paths MIRROR must never delete, however absent from the backup they look.
+     *
+     * The staging and trash directories live inside the webroot because a swap has
+     * to be a rename on one filesystem — which puts them squarely in the walk when
+     * a mirror root is the webroot itself. MIRROR would queue the trash for
+     * deletion into the trash, and the engine's own directory along with it,
+     * leaving the manager unable to reach status, commit or rollback on a site it
+     * had just half-restored.
+     */
+    private function is_mirror_protected(string $rel): bool {
+        if (in_array($rel, self::PROTECTED_FILES, true)) {
+            return true;
+        }
+
+        $first = strtok($rel, '/');
+        if ($first !== false
+            && (strpos($first, self::STAGE_PREFIX) === 0 || strpos($first, self::TRASH_PREFIX) === 0)) {
+            return true;
+        }
+
+        return strpos($rel, 'wp-content/plugins/simplead-backup/') === 0;
     }
 
     /**
@@ -978,6 +1326,17 @@ final class SAM_Backup_Restore_Engine {
         //    the backup". Only when the plan names no paths at all do we fall back to what the
         //    chunks actually carried.
         $final_set = empty($keep) ? $owner : $keep;
+
+        // A second index of the same set, under a canonical spelling. The keys of $owner are zip
+        // entry names and the keys of $keep are manifest paths; the same file can legitimately be
+        // written './x.png' in one and 'x.png' in the other. Consulted only to SPARE a file from
+        // deletion, never to add one, so a spelling difference can cost a redundant keep and never
+        // a live file.
+        $final_norm = array();
+        foreach (array_keys($final_set) as $kept) {
+            $final_norm[$this->normalize_rel((string) $kept)] = true;
+        }
+
         $delete_units = array();
         if ($mode === self::MODE_MIRROR) {
             foreach ($mirror_roots as $root) {
@@ -989,10 +1348,11 @@ final class SAM_Backup_Restore_Engine {
                 $live_root = $this->abspath . '/' . $root;
                 foreach ($this->relative_files($live_root) as $rel_under) {
                     $rel = ($root === '' ? '' : $root . '/') . $rel_under;
-                    if (in_array($rel, self::PROTECTED_FILES, true)) {
+                    if ($this->is_mirror_protected($rel)) {
                         continue;
                     }
-                    if (!isset($final_set[$rel]) || isset($tombstone_set[$rel])) {
+                    $known = isset($final_set[$rel]) || isset($final_norm[$this->normalize_rel($rel)]);
+                    if (!$known || isset($tombstone_set[$rel])) {
                         $delete_units[] = $rel;
                     }
                 }
@@ -1023,7 +1383,7 @@ final class SAM_Backup_Restore_Engine {
         //    disk — is what the manager's preflight now refuses up front.
         $unit_dir     = $staging_dir . '/.sam-unit';
         $journal      = array();
-        $journal_file = $trash_dir . '/journal.json';
+        $journal_file = $trash_dir . '/journal.jsonl';
         $failure      = null;
         $step_no      = 0;
 
@@ -1062,7 +1422,18 @@ final class SAM_Backup_Restore_Engine {
         }
 
         if ($failure !== null) {
-            $this->reverse_journal($journal, $staging_dir, $trash_dir);
+            $failures = $this->reverse_journal($journal, $staging_dir, $trash_dir);
+
+            if (!empty($failures)) {
+                // Keep the trash: it is the only place the missing originals could still be.
+                throw new RuntimeException(sprintf(
+                    'file restore swap failed (%s) AND %d file(s) could not be rolled back; the trash has been kept at %s',
+                    $failure,
+                    count($failures),
+                    $trash_dir
+                ));
+            }
+
             $this->recursive_delete($trash_dir);
             $this->recursive_delete($staging_dir);
             throw new RuntimeException("file restore swap failed ({$failure}); the original files were rolled back.");
@@ -1100,14 +1471,16 @@ final class SAM_Backup_Restore_Engine {
 
         $journal[] = $step;
         $idx = count($journal) - 1;
-        $this->write_json($journal_file, $journal);
+        if ($step['live_in_trash']) {
+            $this->journal_append($journal_file, $rel, 'swap', 'live_trashed');
+        }
 
         $this->mkdir(dirname($live));
         if (!@rename($staged, $live)) {
             throw new RuntimeException("could not move staged '{$rel}' into place");
         }
         $journal[$idx]['staged_live'] = true;
-        $this->write_json($journal_file, $journal);
+        $this->journal_append($journal_file, $rel, 'swap', 'staged_live');
     }
 
     /**
@@ -1126,7 +1499,85 @@ final class SAM_Backup_Restore_Engine {
             throw new RuntimeException("could not delete live '{$rel}' (mirror)");
         }
         $journal[] = array('unit' => $rel, 'op' => 'delete', 'live_in_trash' => true, 'staged_live' => false);
-        $this->write_json($journal_file, $journal);
+        $this->journal_append($journal_file, $rel, 'delete', 'live_trashed');
+    }
+
+    /**
+     * Record one completed move, as one line.
+     *
+     * The journal used to be rewritten in full after every rename — twice per
+     * file. On a site with fifty thousand files that is quadratic work and fifty
+     * thousand windows in which the file is truncated, and it was written with
+     * the result discarded, so a journal that could not be written was simply
+     * lost. It is the only record of what to undo, so a failure to write it stops
+     * the apply here, while the trash still matches what the journal says.
+     */
+    private function journal_append(string $journal_file, string $rel, string $op, string $event): void {
+        $line = json_encode(array(
+            'unit'  => $rel,
+            'op'    => $op,
+            'event' => $event,
+        ), JSON_UNESCAPED_SLASHES) . "\n";
+
+        $this->mkdir(dirname($journal_file));
+
+        if (@file_put_contents($journal_file, $line, FILE_APPEND | LOCK_EX) !== strlen($line)) {
+            throw new RuntimeException(
+                "could not write the restore journal for '{$rel}'; stopping before moving anything else"
+            );
+        }
+    }
+
+    /**
+     * Rebuild the journal from the trash directory.
+     *
+     * apply-state.json only gains its `files` entry once the whole file phase has
+     * returned, so a process killed mid-apply leaves it null and rollback used to
+     * conclude there were no files to put back — while the tree was half swapped.
+     * The events on disk describe exactly what moved.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    private function journal_from_disk(string $trash_dir): array {
+        $file = $trash_dir . '/journal.jsonl';
+        if (!is_file($file)) {
+            return array();
+        }
+
+        $steps = array();
+        $index = array();
+
+        foreach (explode("\n", (string) @file_get_contents($file)) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $event = json_decode($line, true);
+            if (!is_array($event) || !isset($event['unit'])) {
+                continue; // a torn final line: everything before it still stands
+            }
+
+            $rel = (string) $event['unit'];
+            if (!isset($index[$rel])) {
+                $index[$rel] = count($steps);
+                $steps[] = array(
+                    'unit'          => $rel,
+                    'op'            => (string) ($event['op'] ?? 'swap'),
+                    'live_in_trash' => false,
+                    'staged_live'   => false,
+                );
+            }
+
+            $at = $index[$rel];
+            if (($event['event'] ?? '') === 'live_trashed') {
+                $steps[$at]['live_in_trash'] = true;
+            } elseif (($event['event'] ?? '') === 'staged_live') {
+                $steps[$at]['staged_live'] = true;
+            }
+        }
+
+        return $steps;
     }
 
     /**
@@ -1134,23 +1585,46 @@ final class SAM_Backup_Restore_Engine {
      *
      * @param array<int,array<string,mixed>> $journal
      */
-    private function reverse_journal(array $journal, string $staging_dir, string $trash_dir): void {
+    private function reverse_journal(array $journal, string $staging_dir, string $trash_dir): array {
+        $failures = array();
+
         for ($i = count($journal) - 1; $i >= 0; $i--) {
             $step = $journal[$i];
             $rel  = (string) $step['unit'];
             $live = $this->abspath . '/' . $rel;
 
-            if (!empty($step['staged_live'])) {
+            if (!empty($step['staged_live']) && (file_exists($live) || is_link($live))) {
                 // The staged file is currently live — put it back into staging.
                 $this->mkdir(dirname($staging_dir . '/' . $rel));
-                @rename($live, $staging_dir . '/' . $rel);
+                // When the original is waiting in the trash this eviction is only tidying: the
+                // rename below puts the original back over it either way. It is only a failure
+                // when the file was newly added by the restore and would otherwise stay behind.
+                if (!@rename($live, $staging_dir . '/' . $rel) && empty($step['live_in_trash'])) {
+                    $failures[] = array('unit' => $rel, 'reason' => 'could not remove the restored file');
+                }
             }
+
             if (!empty($step['live_in_trash'])) {
-                // The original live file is in trash — restore it.
+                $trashed = $trash_dir . '/' . $rel;
+
+                if (!file_exists($trashed) && !is_link($trashed)) {
+                    // Nothing in the trash. Either an earlier attempt already put this one back,
+                    // or the trash is gone — which used to be indistinguishable, because the live
+                    // file had already been moved out to staging by the time we looked.
+                    if (!file_exists($live) && !is_link($live)) {
+                        $failures[] = array('unit' => $rel, 'reason' => 'the original is neither in the trash nor in place');
+                    }
+                    continue;
+                }
+
                 $this->mkdir(dirname($live));
-                @rename($trash_dir . '/' . $rel, $live);
+                if (!@rename($trashed, $live)) {
+                    $failures[] = array('unit' => $rel, 'reason' => 'could not move the original back into place');
+                }
             }
         }
+
+        return $failures;
     }
 
     /**
@@ -1160,12 +1634,59 @@ final class SAM_Backup_Restore_Engine {
         $journal     = (array) ($files_state['journal'] ?? array());
         $staging_dir = (string) ($files_state['staging_dir'] ?? '');
         $trash_dir   = (string) ($files_state['trash_dir'] ?? '');
-        if (empty($journal)) {
-            return;
+
+        $failures = $this->reverse_journal($journal, $staging_dir, $trash_dir);
+
+        // The trash and staging directories are the evidence. Deleting them after a reversal that
+        // did not fully work is what turned "some of your files are gone" into "some of your files
+        // are gone and there is nothing left to recover them from" — while the caller went on to
+        // report the rollback as successful.
+        if (!empty($failures)) {
+            $this->set_status('failed', array(
+                'error'           => 'rollback could not return every file to its pre-apply state',
+                'rollback_failed' => true,
+                'failures'        => array_slice($failures, 0, 20),
+                'trash_dir'       => $trash_dir,
+            ));
+
+            throw new RuntimeException(sprintf(
+                'rollback incomplete: %d file(s) could not be restored; the trash has been kept at %s',
+                count($failures),
+                $trash_dir
+            ));
         }
-        $this->reverse_journal($journal, $staging_dir, $trash_dir);
+
         $this->recursive_delete($trash_dir);
         $this->recursive_delete($staging_dir);
+    }
+
+    /**
+     * Roll back a file phase that never got as far as recording itself.
+     *
+     * The paths are derived from the token exactly as apply_files() derives them,
+     * and the steps come from the journal the swap wrote as it went.
+     */
+    private function rollback_files_from_disk(): bool {
+        $staging_dir = $this->abspath . '/' . self::STAGE_PREFIX . $this->token;
+        $trash_dir   = $this->abspath . '/' . self::TRASH_PREFIX . $this->token;
+
+        $journal = $this->journal_from_disk($trash_dir);
+        if (empty($journal)) {
+            return false;
+        }
+
+        $this->log('warn', 'rolling back from the on-disk journal', array(
+            'token' => $this->token,
+            'steps' => count($journal),
+        ));
+
+        $this->rollback_files(array(
+            'journal'     => $journal,
+            'staging_dir' => $staging_dir,
+            'trash_dir'   => $trash_dir,
+        ));
+
+        return true;
     }
 
     // ── zip extraction (path-traversal safe) ─────────────────────────────────
@@ -1183,6 +1704,14 @@ final class SAM_Backup_Restore_Engine {
             if ($zip->open($zip_file) !== true) {
                 throw new RuntimeException("cannot open staged zip {$zip_file}");
             }
+
+            // Worth a line: the consistency check is the cheapest warning of a
+            // damaged chunk, and taking the lenient path repeatedly is a pattern
+            // the support bundle should show rather than hide.
+            $this->log('warn', 'staged zip opened without consistency check', array(
+                'token' => $this->token,
+                'chunk' => basename($zip_file),
+            ));
         }
 
         return $zip;
@@ -1241,41 +1770,91 @@ final class SAM_Backup_Restore_Engine {
             $zip->close();
             throw new RuntimeException("staging dir missing: {$dest}");
         }
+        // Nothing here is skipped quietly.
+        //
+        // Every one of these used to be a `continue`: the entry simply did not appear in the
+        // returned list, was never swapped in, and the chunk zip carrying it was deleted a few
+        // lines later by the caller. The apply then reported success. A file the backup contained
+        // was missing from the restored site and its only remaining copy was gone — with no error
+        // anywhere. A restore that cannot place a file has failed, and saying so lets the caller
+        // reverse the journal while the trash is still there.
         $written = array();
-        foreach ($only as $name) {
-            if (strpos($name, '..') !== false || strpos($name, "\0") !== false) {
-                continue; // reject traversal / null byte
-            }
-            $target_dir = $real_dest . '/' . dirname($name);
-            if (!is_dir($target_dir)) {
-                @mkdir($target_dir, 0755, true);
-            }
-            $resolved = realpath($target_dir);
-            if ($resolved === false || strpos($resolved . '/', $real_dest . '/') !== 0) {
-                continue; // escaped the staging root
-            }
-            $safe_path = $resolved . '/' . basename($name);
-            $stream = $zip->getStream($name);
-            if ($stream === false) {
-                continue;
-            }
-            $out = fopen($safe_path, 'wb');
-            if ($out === false) {
-                fclose($stream);
-                continue;
-            }
-            while (!feof($stream)) {
-                $buf = fread($stream, 524288);
-                if ($buf === false) {
-                    break;
+        try {
+            foreach ($only as $name) {
+                if (!$this->is_safe_relative($name)) {
+                    throw new RuntimeException("refusing unsafe entry name in chunk: {$name}");
                 }
-                fwrite($out, $buf);
+                $target_dir = $real_dest . '/' . dirname($name);
+                if (!is_dir($target_dir)) {
+                    @mkdir($target_dir, 0755, true);
+                }
+                $resolved = realpath($target_dir);
+                if ($resolved === false || strpos($resolved . '/', $real_dest . '/') !== 0) {
+                    throw new RuntimeException("entry escaped the staging root: {$name}");
+                }
+                $safe_path = $resolved . '/' . basename($name);
+                // Suppressed so the failure is reported as ours, with the entry name attached,
+                // rather than as a bare PHP warning from whichever host happens to promote them.
+                $stream = @$zip->getStream($name);
+                if ($stream === false) {
+                    throw new RuntimeException("could not read {$name} from " . basename($zip_file));
+                }
+                $out = @fopen($safe_path, 'wb');
+                if ($out === false) {
+                    fclose($stream);
+                    $why = error_get_last();
+                    throw new RuntimeException(sprintf(
+                        'could not open staging file for %s%s',
+                        $name,
+                        isset($why['message']) ? ' (' . $why['message'] . ')' : ''
+                    ));
+                }
+
+                $stat     = $zip->statName($name);
+                $expected = is_array($stat) && isset($stat['size']) ? (int) $stat['size'] : null;
+                $bytes    = 0;
+
+                while (!feof($stream)) {
+                    $buf = fread($stream, 524288);
+                    if ($buf === false) {
+                        fclose($out);
+                        fclose($stream);
+                        @unlink($safe_path);
+                        throw new RuntimeException("read failed part-way through {$name}");
+                    }
+                    if ($buf === '') {
+                        break;
+                    }
+                    // An unchecked fwrite is how a full disk produced a TRUNCATED file that was then
+                    // renamed over the live one, with the good copy moved into the trash — the worst
+                    // outcome available, reported as a success.
+                    $n = fwrite($out, $buf);
+                    if ($n === false || $n !== strlen($buf)) {
+                        fclose($out);
+                        fclose($stream);
+                        @unlink($safe_path);
+                        throw new RuntimeException("short write extracting {$name} (out of disk?)");
+                    }
+                    $bytes += $n;
+                }
+
+                $closed = fclose($out);
+                fclose($stream);
+
+                if (!$closed) {
+                    @unlink($safe_path);
+                    throw new RuntimeException("could not flush {$name} to disk");
+                }
+                if ($expected !== null && $bytes !== $expected) {
+                    @unlink($safe_path);
+                    throw new RuntimeException("size mismatch for {$name}: wrote {$bytes} of {$expected} bytes");
+                }
+
+                $written[] = $name;
             }
-            fclose($out);
-            fclose($stream);
-            $written[] = $name;
+        } finally {
+            $zip->close();
         }
-        $zip->close();
 
         return $written;
     }
@@ -1331,8 +1910,19 @@ final class SAM_Backup_Restore_Engine {
         }
         $out = array();
         $prefix_len = strlen(rtrim($dir, '/')) + 1;
+
+        // Do not descend through a symlinked directory. RecursiveDirectoryIterator
+        // follows them by default, which in MIRROR means files that live outside
+        // the webroot entirely get listed as "under a mirror root" and, being
+        // absent from the backup, moved to the trash and deleted at commit. The
+        // link itself is still listed below — it is a normal entry to swap.
         $it = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            new RecursiveCallbackFilterIterator(
+                new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+                static function ($current) {
+                    return !($current->isDir() && $current->isLink());
+                }
+            ),
             RecursiveIteratorIterator::LEAVES_ONLY
         );
         foreach ($it as $file) {
@@ -1393,19 +1983,70 @@ final class SAM_Backup_Restore_Engine {
      * @param array<string,mixed> $extra
      */
     private function set_status(string $state, array $extra): void {
-        $this->write_json($this->work_dir . '/status.json', array_merge(array(
+        $ok = $this->write_json($this->work_dir . '/status.json', array_merge(array(
             'token'      => $this->token,
             'state'      => $state,
             'updated_at' => gmdate('c'),
         ), $extra));
+
+        // Deliberately does not throw: set_status is called from catch blocks and
+        // from commit/rollback, where a throw would replace a real error with a
+        // bookkeeping one. A status we could not write is still worth a log line —
+        // it is what the sweep and the manager both read.
+        if (!$ok) {
+            $this->log('error', 'could not write restore status', array(
+                'token' => $this->token,
+                'state' => $state,
+            ));
+        }
     }
 
     /**
+     * Write JSON the readers cannot catch half-written.
+     *
+     * status.json is rewritten at every transition while the manager polls it,
+     * and a torn read decodes to null — which status() reports as 'unknown' and
+     * rollback() treats as "nothing to undo". Temp file plus rename makes every
+     * read see either the old document or the new one.
+     *
      * @param mixed $data
      */
-    private function write_json(string $path, $data): void {
+    private function write_json(string $path, $data): bool {
         $this->mkdir(dirname($path));
-        @file_put_contents($path, json_encode($data, JSON_UNESCAPED_SLASHES));
+
+        $json = json_encode($data, JSON_UNESCAPED_SLASHES);
+        if (!is_string($json)) {
+            return false;
+        }
+
+        // Same directory, so the rename stays on one filesystem and is atomic.
+        $tmp = $path . '.tmp' . getmypid() . bin2hex(random_bytes(4));
+
+        if (@file_put_contents($tmp, $json) !== strlen($json)) {
+            @unlink($tmp);
+            return false;
+        }
+
+        if (!@rename($tmp, $path)) {
+            @unlink($tmp);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * For the two documents an apply cannot proceed without: plan.json, which
+     * says what to restore, and apply-state.json, which is the only record of
+     * how to undo it. Continuing past a failed write here means doing damage we
+     * have no note of.
+     *
+     * @param mixed $data
+     */
+    private function write_json_strict(string $path, $data): void {
+        if (!$this->write_json($path, $data)) {
+            throw new RuntimeException('could not write ' . basename($path) . '; refusing to continue without it');
+        }
     }
 
     /**

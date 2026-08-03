@@ -43,6 +43,11 @@ class RestoreLeftoverSweepTest extends TestCase
         $base = base_path('wordpress-plugin/simplead-backup');
         require_once $base.'/includes/support/class-temp.php';
         require_once $base.'/includes/support/class-logger.php';
+        require_once $base.'/includes/support/class-sweep-policy.php';
+        // The sweep names the staging/trash directories by the engine's own prefixes, and asks it
+        // to drop the tables of sessions that are gone. Without a database here that second half
+        // fails into its own catch, which is exactly what it is written to do.
+        require_once $base.'/includes/restore/class-restore-engine.php';
         require_once $base.'/includes/class-backup-plugin.php';
 
         $this->tempRoot = \SAM_Backup_Temp::ensure('sessions');
@@ -101,6 +106,65 @@ class RestoreLeftoverSweepTest extends TestCase
 
         $this->assertDirectoryExists($backup);
         \SAM_Backup_Temp::remove_dir($backup);
+    }
+
+    /**
+     * The bug this file exists to prevent a second time.
+     *
+     * A directory's own mtime freezes when it is created — everything an apply writes goes one
+     * level down — so a restore that ran past the hour looked abandoned. The sweep then deleted
+     * the trash holding the only copy of every live file the restore had displaced, and the
+     * rollback that followed had nothing to put back and said it had succeeded.
+     */
+    public function test_it_leaves_a_long_running_apply_alone(): void
+    {
+        $session = $this->tempRoot.'/restore_slow';
+        @mkdir($session, 0700, true);
+        file_put_contents($session.'/status.json', json_encode(['token' => 'slow', 'state' => 'applying']));
+
+        // Three hours in, and the directory itself has not been touched since it was made.
+        $this->age($session, hours: 3);
+        @touch($session.'/status.json', time() - 600);
+
+        $trash = rtrim(ABSPATH, '/').'/sam-restore-trash-slow';
+        $this->leftover($trash);
+
+        \SAM_Backup_Plugin::instance()->sweep_restore_leftovers();
+
+        $this->assertDirectoryExists($session, 'the session of a running apply must survive');
+        $this->assertDirectoryExists($trash, 'and so must the trash rollback depends on');
+
+        \SAM_Backup_Temp::remove_dir($session);
+    }
+
+    public function test_a_committed_session_is_still_collected_after_an_hour(): void
+    {
+        $session = $this->tempRoot.'/restore_done';
+        @mkdir($session, 0700, true);
+        file_put_contents($session.'/status.json', json_encode(['token' => 'done', 'state' => 'committed']));
+        $this->age($session, hours: 3);
+        @touch($session.'/status.json', time() - (3 * 3600));
+
+        $trash = $this->leftover(rtrim(ABSPATH, '/').'/sam-restore-trash-done');
+
+        \SAM_Backup_Plugin::instance()->sweep_restore_leftovers();
+
+        $this->assertDirectoryDoesNotExist($session);
+        $this->assertDirectoryDoesNotExist($trash, 'the session governs the directories carrying its token');
+    }
+
+    public function test_staging_a_large_site_is_given_longer_than_an_hour(): void
+    {
+        $session = $this->tempRoot.'/restore_staging';
+        @mkdir($session, 0700, true);
+        file_put_contents($session.'/status.json', json_encode(['token' => 'staging', 'state' => 'staging']));
+        $this->age($session, hours: 3);
+        @touch($session.'/status.json', time() - (3 * 3600));
+
+        \SAM_Backup_Plugin::instance()->sweep_restore_leftovers();
+
+        $this->assertDirectoryExists($session);
+        \SAM_Backup_Temp::remove_dir($session);
     }
 
     /** A directory with a file in it, old enough that the sweep is entitled to take it. */

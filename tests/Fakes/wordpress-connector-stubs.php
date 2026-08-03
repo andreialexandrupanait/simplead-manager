@@ -123,6 +123,47 @@ if (! class_exists('WP_REST_Request')) {
         {
             return $this->body;
         }
+
+        /**
+         * @return array<string, mixed>
+         */
+        public function get_json_params(): array
+        {
+            $decoded = json_decode($this->body, true);
+
+            return is_array($decoded) ? $decoded : [];
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get_param(string $key)
+        {
+            return $this->get_json_params()[$key] ?? null;
+        }
+    }
+}
+
+if (! class_exists('WP_REST_Response')) {
+    class WP_REST_Response
+    {
+        /**
+         * @param  mixed  $data
+         */
+        public function __construct(public $data = null, public int $status = 200) {}
+
+        /**
+         * @return mixed
+         */
+        public function get_data()
+        {
+            return $this->data;
+        }
+
+        public function get_status(): int
+        {
+            return $this->status;
+        }
     }
 }
 

@@ -23,7 +23,7 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
 
         $params = $request->get_json_params();
         $download_url   = $params['download_url']   ?? '';
-        $expected_hash  = $params['expected_hash']  ?? '';
+        $expected_hash  = strtolower(trim((string) ($params['expected_hash'] ?? '')));
 
         if (empty($download_url) || !filter_var($download_url, FILTER_VALIDATE_URL)) {
             return new WP_REST_Response([
@@ -32,31 +32,50 @@ class SAM_Self_Update_Endpoint extends SAM_Endpoint_Base {
             ], 400);
         }
 
-        // If a hash was supplied, download the zip manually, verify, then pass the
-        // local temp file path to the upgrader so it doesn't re-download.
-        $local_package = null;
-        if (!empty($expected_hash)) {
-            require_once ABSPATH . 'wp-admin/includes/file.php';
-
-            $tmp = download_url($download_url, 120);
-            if (is_wp_error($tmp)) {
-                return new WP_REST_Response([
-                    'success' => false,
-                    'error'   => ['code' => 'DOWNLOAD_FAILED', 'message' => $tmp->get_error_message()],
-                ], 500);
-            }
-
-            $actual_hash = hash_file('sha256', $tmp);
-            if (!hash_equals($expected_hash, $actual_hash)) {
-                @unlink($tmp);
-                return new WP_REST_Response([
-                    'success' => false,
-                    'error'   => ['code' => 'HASH_MISMATCH', 'message' => 'Package integrity check failed.'],
-                ], 400);
-            }
-
-            $local_package = $tmp;
+        // http(s) only — FILTER_VALIDATE_URL alone accepts file:// and ftp://.
+        $scheme = strtolower((string) parse_url($download_url, PHP_URL_SCHEME));
+        if ($scheme !== 'http' && $scheme !== 'https') {
+            return new WP_REST_Response([
+                'success' => false,
+                'error'   => ['code' => 'INVALID_URL', 'message' => 'download_url must be http or https.'],
+            ], 400);
         }
+
+        // Required. This endpoint replaces the running plugin, so an unverified package is remote
+        // code execution with extra steps; while the check was optional, a leaked key was enough
+        // to point the site at any zip on the internet.
+        if (!preg_match('/^[0-9a-f]{64}$/', $expected_hash)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error'   => [
+                    'code'    => 'HASH_REQUIRED',
+                    'message' => 'A sha256 expected_hash is required; this endpoint refuses unverified packages.',
+                ],
+            ], 400);
+        }
+
+        // Download the zip ourselves, verify it, then hand the upgrader the local temp file so it
+        // does not fetch it a second time — and so what it installs is what we checked.
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+
+        $tmp = download_url($download_url, 120);
+        if (is_wp_error($tmp)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'error'   => ['code' => 'DOWNLOAD_FAILED', 'message' => $tmp->get_error_message()],
+            ], 500);
+        }
+
+        $actual_hash = hash_file('sha256', $tmp);
+        if ($actual_hash === false || !hash_equals($expected_hash, strtolower((string) $actual_hash))) {
+            @unlink($tmp);
+            return new WP_REST_Response([
+                'success' => false,
+                'error'   => ['code' => 'HASH_MISMATCH', 'message' => 'Package integrity check failed.'],
+            ], 400);
+        }
+
+        $local_package = $tmp;
 
         require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
         require_once ABSPATH . 'wp-admin/includes/plugin.php';

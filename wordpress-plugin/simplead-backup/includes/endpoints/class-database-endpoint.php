@@ -86,7 +86,10 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
         $overrides = array(
             'time_budget'    => (float) ($request->get_param('time_budget') ?? SAM_Backup_Options::get('time_budget', 90)),
             'segment_bytes'  => (int) ($request->get_param('segment_bytes') ?? SAM_Backup_Options::get('segment_bytes', 8388608)),
-            'batch_rows'     => (int) ($request->get_param('batch_rows') ?? 1000),
+            // A ceiling on the page size, not a fixed one — the dumper sizes each page from the
+            // memory actually free. Read from the options like its neighbours; the literal here
+            // meant the one knob that matters on a memory-poor host could not be set per site.
+            'batch_rows'     => $this->positive_int($request->get_param('batch_rows'), (int) SAM_Backup_Options::get('batch_rows', 1000), 1000),
             'exclude_tables' => (array) ($request->get_param('exclude_tables') ?? array()),
         );
 
@@ -110,6 +113,24 @@ final class SAM_Backup_Database_Endpoint extends SAM_Backup_REST_Controller {
         ));
 
         return new WP_REST_Response($manifest, $manifest['done'] ? 200 : 202);
+    }
+
+    /**
+     * A positive integer from the request, the option, or the built-in default.
+     *
+     * Zero is not a meaningful page size — as a request parameter it used to reach
+     * the dumper as "one SELECT per row" — so it falls through to the next source
+     * rather than being honoured.
+     *
+     * @param mixed $param
+     */
+    private function positive_int($param, int $option, int $fallback): int {
+        $value = (int) $param;
+        if ($value > 0) {
+            return $value;
+        }
+
+        return $option > 0 ? $option : $fallback;
     }
 
     /**

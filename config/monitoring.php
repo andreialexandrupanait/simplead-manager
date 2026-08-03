@@ -147,5 +147,9 @@ return [
         // to an Elementor Pro form. Below this, a site whose forms are Elementor
         // widgets reports "no form plugin" however many forms it actually has.
         'min_discovery_version' => '2.23.0',
+        // Connector release that accepts the plugin the chosen form belongs to.
+        // Below this the site decides for itself, and on a site running both a
+        // newsletter plugin and a form builder it can decide wrong.
+        'min_plugin_choice_version' => '2.27.0',
     ],
 ];

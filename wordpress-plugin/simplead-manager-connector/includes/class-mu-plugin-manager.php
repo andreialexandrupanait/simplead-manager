@@ -197,10 +197,33 @@ if (defined('SAM_VERSION')) {
                 // 401 rest_not_logged_in, from us, about our own plugin. Found on 13 of 29 sites
                 // the day the fleet moved to the new engine. This file is generated text and
                 // cannot see the backup plugin's constant, so the namespace is written out.
-                $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
-                if (strpos($uri, '/wp-json/simplead/v1/') !== false
-                    || strpos($uri, '/wp-json/simplead-backup/v1/') !== false) {
-                    return null;
+                //
+                // Matched against the resolved route, or failing that the URI PATH and the
+                // rest_route parameter — never the raw REQUEST_URI. Looking anywhere in the raw
+                // URI meant `?x=/wp-json/simplead/v1/` appended to any request claimed to be ours
+                // and unlocked every REST endpoint this filter exists to protect.
+                $ours = ['/simplead/v1', '/simplead-backup/v1'];
+                $route = '';
+                if (isset($GLOBALS['wp']->query_vars['rest_route'])) {
+                    $route = (string) $GLOBALS['wp']->query_vars['rest_route'];
+                } elseif (isset($_GET['rest_route'])) {
+                    $route = (string) $_GET['rest_route'];
+                }
+                if ($route !== '') {
+                    $route = '/' . ltrim($route, '/');
+                    foreach ($ours as $ns) {
+                        if ($route === $ns || strpos($route, $ns . '/') === 0) {
+                            return null;
+                        }
+                    }
+                } else {
+                    $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+                    $path = (string) parse_url($uri, PHP_URL_PATH);
+                    foreach ($ours as $ns) {
+                        if ($path !== '' && strpos($path, '/wp-json' . $ns . '/') !== false) {
+                            return null;
+                        }
+                    }
                 }
                 if (!empty($result)) {
                     return $result;

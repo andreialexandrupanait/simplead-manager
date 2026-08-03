@@ -104,46 +104,163 @@ final class SAM_Backup_Plugin {
     }
 
     /**
-     * Delete restore staging and trash directories left behind by an interrupted restore.
+     * Delete restore staging, trash and session directories left behind by an interrupted restore.
      *
-     * Only ones older than an hour, so a restore in progress is never touched — the manager's whole
-     * restore, staging included, is minutes not hours.
+     * What may be deleted is decided by SAM_Backup_Sweep_Policy from the session's own state, not
+     * from a directory timestamp. The old version compared the age of the session directory against
+     * a flat hour — but that timestamp freezes when the directory is created, because everything a
+     * running restore writes goes one level down. A restore past the hour mark therefore looked
+     * abandoned to the sweep, and the sweep deleted its trash: the only copy of every live file the
+     * restore had displaced. This runs from an hourly cron, from every database dump, and from
+     * every restore/prepare, so it had three chances an hour to do that.
+     *
+     * A session directory governs the staging and trash directories carrying its token: they are
+     * one restore, and the state file is the only thing that knows how it is going.
      */
     public function sweep_restore_leftovers(): void {
-        $root = rtrim(ABSPATH, '/');
-        $removed = 0;
+        $root       = rtrim(ABSPATH, '/');
+        $temp_root  = SAM_Backup_Temp::root();
+        $removed    = 0;
+        $live_tokens = array();
 
-        // Each pattern carries the root we are willing to delete beneath: restore staging and trash
-        // live inside the site (a swap must be a rename on one filesystem), the pushed chunks live
-        // in our own temp directory. The chunk directories were missing from the first version of
-        // this sweep and they are the expensive ones — a full copy of the restore point each.
-        // commit() and rollback() drop them now, but a restore that reached neither still leaves one.
-        $patterns = array(
-            array($root . '/sam-restore-trash-*', $root),
-            array($root . '/sam-restore-staging-*', $root),
-            array(SAM_Backup_Temp::root() . '/sessions/restore_*', SAM_Backup_Temp::root()),
-        );
+        foreach ((array) glob($temp_root . '/sessions/restore_*', GLOB_ONLYDIR) as $dir) {
+            if (!is_string($dir) || $dir === '') {
+                continue;
+            }
 
-        foreach ($patterns as $pattern) {
-            list($glob, $allowed_root) = $pattern;
+            $token  = substr(basename($dir), strlen('restore_'));
+            $status = $this->read_session_status($dir);
 
-            foreach ((array) glob($glob, GLOB_ONLYDIR) as $dir) {
-                if (!is_string($dir) || $dir === '') {
-                    continue;
+            // The status file is rewritten at every transition and touched at every chunk boundary,
+            // so its mtime is how recently the restore was alive. Fall back to the directory only
+            // when there is no status file at all.
+            $stamp = @filemtime($dir . '/status.json');
+            if ($stamp === false) {
+                $stamp = @filemtime($dir);
+            }
+            $age = time() - (int) $stamp;
+
+            if (!SAM_Backup_Sweep_Policy::should_sweep($status, $age)) {
+                if ($token !== '') {
+                    $live_tokens[] = $token;
                 }
-                $age = time() - (int) @filemtime($dir);
-                if ($age < self::LEFTOVER_MAX_AGE) {
-                    continue;
-                }
+                continue;
+            }
 
-                SAM_Backup_Temp::remove_dir_under($dir, $allowed_root);
-                $removed++;
+            if (SAM_Backup_Sweep_Policy::holds_rollback_data($status)) {
+                SAM_Backup_Logger::error('sweeping a restore session that still held rollback data', array(
+                    'token' => $token,
+                    'state' => is_array($status) ? ($status['state'] ?? null) : null,
+                    'age'   => $age,
+                ));
+            }
+
+            SAM_Backup_Temp::remove_dir_under($dir, $temp_root);
+            $removed++;
+
+            if ($token !== '') {
+                foreach (array($root . '/sam-restore-trash-' . $token, $root . '/sam-restore-staging-' . $token) as $side) {
+                    if (is_dir($side)) {
+                        SAM_Backup_Temp::remove_dir_under($side, $root);
+                        $removed++;
+                    }
+                }
             }
         }
+
+        $removed += $this->sweep_orphan_side_dirs($root, $live_tokens);
+        $this->sweep_dead_restore_tables($live_tokens);
 
         if ($removed > 0) {
             SAM_Backup_Logger::info('swept restore leftovers', array('directories' => $removed));
         }
+    }
+
+    /**
+     * Staging/trash directories whose session directory is gone.
+     *
+     * These are the only ones still judged by a timestamp, because there is no state left to ask.
+     * The trash carries the apply journal, which is appended to throughout the swap, so it is a
+     * truer clock than the directory itself.
+     *
+     * @param array<int,string> $live_tokens tokens whose session survived this sweep
+     */
+    private function sweep_orphan_side_dirs(string $root, array $live_tokens): int {
+        $live = array_flip($live_tokens);
+        $removed = 0;
+
+        $prefixes = array(
+            SAM_Backup_Restore_Engine::TRASH_PREFIX,
+            SAM_Backup_Restore_Engine::STAGE_PREFIX,
+        );
+
+        foreach ($prefixes as $prefix) {
+            foreach ((array) glob($root . '/' . $prefix . '*', GLOB_ONLYDIR) as $dir) {
+                if (!is_string($dir) || $dir === '') {
+                    continue;
+                }
+
+                $token = substr(basename($dir), strlen($prefix));
+                if (isset($live[$token]) || is_dir(SAM_Backup_Temp::root() . '/sessions/restore_' . $token)) {
+                    continue; // its session decides, and it decided to keep it
+                }
+
+                $stamp = @filemtime($dir . '/journal.jsonl');
+                if ($stamp === false) {
+                    $stamp = @filemtime($dir);
+                }
+
+                if ((time() - (int) $stamp) < self::LEFTOVER_MAX_AGE) {
+                    continue;
+                }
+
+                SAM_Backup_Temp::remove_dir_under($dir, $root);
+                $removed++;
+            }
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Drop the staging and retained-original tables of sessions that no longer exist.
+     *
+     * Best-effort and never fatal: the sweep runs inside unrelated requests, and a database that
+     * cannot be reached is not a reason to fail a dump.
+     *
+     * @param array<int,string> $live_tokens
+     */
+    private function sweep_dead_restore_tables(array $live_tokens): void {
+        try {
+            $digests = array();
+            foreach ($live_tokens as $token) {
+                $digests[] = substr(md5($token), 0, 8);
+            }
+
+            // Only the database side of the engine is used here, so the paths are irrelevant.
+            $engine  = new SAM_Backup_Restore_Engine('sweep', ABSPATH, SAM_Backup_Temp::root());
+            $dropped = $engine->drop_tables_of_dead_sessions($digests);
+
+            if ($dropped > 0) {
+                SAM_Backup_Logger::info('swept dead restore tables', array('tables' => $dropped));
+            }
+        } catch (\Throwable $e) {
+            SAM_Backup_Logger::warn('restore table sweep failed', array('error' => $e->getMessage()));
+        }
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private function read_session_status(string $session_dir): ?array {
+        $file = $session_dir . '/status.json';
+        if (!is_file($file)) {
+            return null;
+        }
+
+        $decoded = json_decode((string) @file_get_contents($file), true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     /**

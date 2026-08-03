@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Models\Site;
 use App\Services\WordPressApiServiceFactory;
+use App\Support\PluginPackage;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\URL;
 
@@ -73,11 +74,16 @@ class UpdateConnectorPlugin extends Command
     {
         $label = "{$site->name} ({$site->url})";
 
+        $payload = ['download_url' => $downloadUrl];
+
+        $hash = PluginPackage::connector()->hash();
+        if ($hash !== null) {
+            $payload['expected_hash'] = $hash;
+        }
+
         try {
             $api = app(WordPressApiServiceFactory::class)->make($site);
-            $response = $api->request('POST', '/self-update', [
-                'download_url' => $downloadUrl,
-            ], [], 120);
+            $response = $api->request('POST', '/self-update', $payload, [], 120);
 
             if ($response->successful()) {
                 $data = $response->json();

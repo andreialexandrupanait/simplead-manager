@@ -98,6 +98,13 @@ if (! function_exists('wp_unslash')) {
     }
 }
 
+if (! function_exists('wp_parse_url')) {
+    function wp_parse_url(string $url, int $component = -1)
+    {
+        return parse_url($url, $component);
+    }
+}
+
 if (! function_exists('is_user_logged_in')) {
     function is_user_logged_in(): bool
     {

@@ -1248,12 +1248,17 @@ class RestoreBackup implements ShouldBeUnique, ShouldQueue
             now()->addMinutes(30)
         );
 
+        $payload = ['download_url' => $zipUrl];
+
+        $hash = \App\Support\PluginPackage::connector()->hash();
+        if ($hash !== null) {
+            $payload['expected_hash'] = $hash;
+        }
+
         $lastError = '';
         for ($attempt = 1; $attempt <= 3; $attempt++) {
             try {
-                $update = $api->request('POST', '/self-update', [
-                    'download_url' => $zipUrl,
-                ], [], 120);
+                $update = $api->request('POST', '/self-update', $payload, [], 120);
 
                 if ($update->successful()) {
                     Log::info("Plugin updated successfully for backup {$this->backup->id} (attempt {$attempt})");

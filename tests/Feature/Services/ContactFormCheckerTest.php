@@ -179,4 +179,95 @@ class ContactFormCheckerTest extends TestCase
             'status' => 'submitted',
         ]);
     }
+
+    /**
+     * A site running a newsletter plugin next to a form builder must resolve to the form builder.
+     *
+     * Detection walked the active-plugin rows and returned the first one that happened to be in
+     * the allowlist — so on the fleet's most common pairing it returned whichever Postgres handed
+     * back first. MC4WP usually won, and the weekly test then reported a passing result for a
+     * contact form nobody had submitted.
+     */
+    public function test_a_form_builder_beats_a_newsletter_plugin_whatever_order_the_rows_come_back_in(): void
+    {
+        $site = Site::factory()->create();
+        // Inserted first on purpose: this is the row order that used to decide it.
+        $this->makePlugin($site, 'mailchimp-for-wp', 'MC4WP');
+        $this->makePlugin($site, 'elementor-pro', 'Elementor Pro');
+
+        $detected = app(ContactFormChecker::class)->detectFormPlugin($site);
+
+        $this->assertSame('elementor-pro', $detected['slug']);
+        $this->assertSame('Elementor Pro', $detected['plugin']);
+    }
+
+    /**
+     * The plugin the chosen form belongs to travels with the request, so the site stops
+     * re-deriving it. Discovery has always reported it; the Manager used to throw it away.
+     */
+    public function test_it_sends_the_chosen_forms_plugin_to_a_connector_new_enough_to_use_it(): void
+    {
+        $payloads = [];
+        $site = Site::factory()->create([
+            'connector_version' => '2.27.0',
+            'form_test_form_id' => 'abc123',
+            'form_test_plugin' => 'elementor_pro',
+        ]);
+        $this->makePlugin($site, 'elementor-pro', 'Elementor Pro');
+
+        $this->checkerRecordingPayloads($payloads)->runGatedTest($site);
+
+        $this->assertSame('elementor_pro', $payloads['/form-test/run']['plugin'] ?? null);
+        $this->assertSame('abc123', $payloads['/form-test/run']['form_id'] ?? null);
+    }
+
+    public function test_it_omits_the_plugin_for_a_connector_that_would_not_understand_it(): void
+    {
+        $payloads = [];
+        $site = Site::factory()->create([
+            'connector_version' => '2.26.0',
+            'form_test_form_id' => 'abc123',
+            'form_test_plugin' => 'elementor_pro',
+        ]);
+        $this->makePlugin($site, 'elementor-pro', 'Elementor Pro');
+
+        $this->checkerRecordingPayloads($payloads)->runGatedTest($site);
+
+        $this->assertArrayNotHasKey('plugin', $payloads['/form-test/run']);
+        $this->assertSame('abc123', $payloads['/form-test/run']['form_id'] ?? null);
+    }
+
+    /** Discovery reports the plugin per form; this is the mapping the picker saves. */
+    public function test_it_maps_a_discovered_form_type_to_the_connectors_plugin_key(): void
+    {
+        $this->assertSame('elementor_pro', ContactFormChecker::connectorKeyForFormType('Elementor Pro'));
+        $this->assertSame('gravityforms', ContactFormChecker::connectorKeyForFormType('Gravity Forms'));
+        $this->assertSame('wpforms', ContactFormChecker::connectorKeyForFormType('WPForms'));
+        $this->assertNull(ContactFormChecker::connectorKeyForFormType('Contact Form 7'));
+        $this->assertNull(ContactFormChecker::connectorKeyForFormType(null));
+    }
+
+    /** Like checkerRecording(), but keeps what was SENT rather than only where. */
+    private function checkerRecordingPayloads(array &$payloads): ContactFormChecker
+    {
+        $api = $this->createMock(WordPressApiServiceInterface::class);
+        $api->method('request')->willReturnCallback(
+            function (string $method, string $endpoint, array $payload = []) use (&$payloads) {
+                $payloads[$endpoint] = $payload;
+
+                return $this->jsonResponse([
+                    'success' => true,
+                    'supported' => true,
+                    'submitted' => true,
+                    'suppression_confirmed' => true,
+                    'form_plugin' => 'Elementor Pro',
+                ]);
+            }
+        );
+
+        $factory = $this->createMock(WordPressApiServiceFactory::class);
+        $factory->method('make')->willReturn($api);
+
+        return new ContactFormChecker($factory);
+    }
 }

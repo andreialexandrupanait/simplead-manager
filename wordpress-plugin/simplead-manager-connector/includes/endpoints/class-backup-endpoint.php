@@ -2206,6 +2206,20 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             unset($rows, $row);
             $wpdb->flush();
 
+            // SAVEQUERIES is a CONSTANT: wpdb::_do_query() checks defined('SAVEQUERIES') directly,
+            // so setting $wpdb->save_queries — which is what the dump used to do — switches
+            // nothing off. On a site where a developer once enabled it, every batch and every SHOW
+            // CREATE was still logged with a full backtrace, and the dump died of the exact memory
+            // exhaustion the guard was written to prevent, while looking like our bug.
+            //
+            // Nothing can stop the logging. Truncating the log each batch is what is actually
+            // available: growth becomes bounded per batch instead of unbounded per dump. The
+            // per-query backtrace cost remains, and a profiler reading $wpdb->queries later in
+            // this request sees a short log — acceptable inside a backup request.
+            if (defined('SAVEQUERIES') && SAVEQUERIES) {
+                $wpdb->queries = array();
+            }
+
             if ($row_limit !== null && $rows_dumped >= $row_limit) {
                 break;
             }
@@ -2223,35 +2237,34 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
         }
 
         // SAVEQUERIES accumulates every query plus its backtrace for the life of
-        // the request, with no ceiling. A client who once turned it on to debug
-        // something would fail this dump no matter how carefully the batches are
-        // sized, and the failure would look like ours.
-        $saved_queries = isset($wpdb->save_queries) ? $wpdb->save_queries : null;
-        $wpdb->save_queries = false;
-        $wpdb->queries = array();
+        // the request, with no ceiling. See dump_table_rows() for what can actually
+        // be done about it: setting $wpdb->save_queries here did nothing, because
+        // wpdb reads the CONSTANT, and the guard's presence hid the failure it
+        // claimed to prevent.
+        try {
+            fwrite($fh, "-- SimpleAd Manager Database Backup\n");
+            fwrite($fh, "-- Date: " . date('Y-m-d H:i:s') . "\n");
+            fwrite($fh, "-- Database: {$db_name}\n\n");
+            fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
 
-        fwrite($fh, "-- SimpleAd Manager Database Backup\n");
-        fwrite($fh, "-- Date: " . date('Y-m-d H:i:s') . "\n");
-        fwrite($fh, "-- Database: {$db_name}\n\n");
-        fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
+            $tables = $wpdb->get_col("SHOW TABLES");
 
-        $tables = $wpdb->get_col("SHOW TABLES");
+            foreach ($tables as $table) {
+                $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
+                if (!$create || !isset($create[1])) {
+                    continue; // a view or a table that vanished mid-dump; guarded as elsewhere
+                }
+                fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
+                fwrite($fh, $create[1] . ";\n\n");
 
-        foreach ($tables as $table) {
-            $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
-            fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
-            fwrite($fh, $create[1] . ";\n\n");
+                $this->dump_table_rows($wpdb, $fh, $table);
 
-            $this->dump_table_rows($wpdb, $fh, $table);
+                fwrite($fh, "\n");
+            }
 
-            fwrite($fh, "\n");
-        }
-
-        fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
-        fclose($fh);
-
-        if ($saved_queries !== null) {
-            $wpdb->save_queries = $saved_queries;
+            fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
+        } finally {
+            fclose($fh);
         }
     }
 
@@ -2301,32 +2314,26 @@ class SAM_Backup_Endpoint extends SAM_Endpoint_Base {
             fwrite($fh, "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS = 0;\n\n");
         }
 
-        // See php_database_dump() for why SAVEQUERIES is neutralised here.
-        $saved_queries = isset($wpdb->save_queries) ? $wpdb->save_queries : null;
-        $wpdb->save_queries = false;
-        $wpdb->queries = array();
+        // SAVEQUERIES is handled in dump_table_rows(), which both dump paths share.
+        try {
+            foreach ($tables as $table) {
+                if ($emit_ddl) {
+                    $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
+                    if (!$create || !isset($create[1])) continue;
+                    fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
+                    fwrite($fh, $create[1] . ";\n\n");
+                }
 
-        foreach ($tables as $table) {
-            if ($emit_ddl) {
-                $create = $wpdb->get_row("SHOW CREATE TABLE `{$table}`", ARRAY_N);
-                if (!$create) continue;
-                fwrite($fh, "DROP TABLE IF EXISTS `{$table}`;\n");
-                fwrite($fh, $create[1] . ";\n\n");
+                $this->dump_table_rows($wpdb, $fh, $table, $row_offset, $row_limit);
+
+                fwrite($fh, "\n");
             }
 
-            $this->dump_table_rows($wpdb, $fh, $table, $row_offset, $row_limit);
-
-            fwrite($fh, "\n");
-        }
-
-        if ($include_footer) {
-            fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
-        }
-
-        fclose($fh);
-
-        if ($saved_queries !== null) {
-            $wpdb->save_queries = $saved_queries;
+            if ($include_footer) {
+                fwrite($fh, "SET FOREIGN_KEY_CHECKS = 1;\n");
+            }
+        } finally {
+            fclose($fh);
         }
     }
 

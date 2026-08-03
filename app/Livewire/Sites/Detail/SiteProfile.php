@@ -192,9 +192,37 @@ class SiteProfile extends Component
             'form_test_email' => $this->formTestEmail !== '' ? $this->formTestEmail : null,
             'form_test_enabled' => $this->formTestEnabled,
             'form_test_form_id' => $this->formTestFormId !== '' ? $this->formTestFormId : null,
+            'form_test_plugin' => $this->pluginForChosenForm(),
         ]);
 
         $this->dispatch('notify', type: 'success', message: __('Profile saved.'));
+    }
+
+    /**
+     * Which plugin the chosen form belongs to, as the connector names it.
+     *
+     * Discovery reports it per form; saving it is what stops the site from
+     * re-deriving the plugin and testing a newsletter opt-in instead of the
+     * contact form. When the picker was not re-run this request, an unchanged
+     * form id keeps whatever was stored — only a changed choice we cannot
+     * attribute clears it, and null simply restores the old site-decides
+     * behaviour.
+     */
+    private function pluginForChosenForm(): ?string
+    {
+        if ($this->formTestFormId === '') {
+            return null;
+        }
+
+        foreach ($this->discoveredForms as $form) {
+            if ((string) ($form['id'] ?? '') === $this->formTestFormId) {
+                return ContactFormChecker::connectorKeyForFormType($form['type'] ?? null);
+            }
+        }
+
+        return $this->formTestFormId === (string) ($this->site->form_test_form_id ?? '')
+            ? $this->site->form_test_plugin
+            : null;
     }
 
     /**
