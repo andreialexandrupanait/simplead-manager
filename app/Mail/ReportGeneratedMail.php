@@ -10,6 +10,7 @@ use App\Models\Site;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Attachment;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -30,6 +31,14 @@ class ReportGeneratedMail extends Mailable
      * on the client, not the app default.
      */
     private const RECIPIENT_LOCALE = 'ro';
+
+    /**
+     * The name clients have been seeing on this email, pinned for the same reason
+     * as the locale. The global from-name serves the internal alerts and now says
+     * the product's name; changing it must not quietly re-label the one email
+     * that goes to customers.
+     */
+    private const SENDER_NAME = 'SAD Mentenanta';
 
     public function __construct(
         public Report $report,
@@ -52,7 +61,10 @@ class ReportGeneratedMail extends Mailable
                 'to' => $this->report->period_end->format('d.m.Y'),
             ]);
 
-        return new Envelope(subject: $subject);
+        return new Envelope(
+            from: new Address((string) config('mail.from.address'), self::SENDER_NAME),
+            subject: $subject,
+        );
     }
 
     public function content(): Content

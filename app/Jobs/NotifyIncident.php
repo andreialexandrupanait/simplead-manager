@@ -95,6 +95,12 @@ class NotifyIncident implements ShouldQueue
             mailableClass: UptimeAlertMail::class,
             mailableArgs: [$this->incident, $this->type],
             channelIds: $channelIds,
+            // A site that flaps inside the 5-minute dedup window opens a second,
+            // genuinely separate incident. Keyed only on event+site+severity, that
+            // second outage was suppressed as a duplicate and nobody was told. The
+            // incident id makes each outage its own occurrence, while a retry of
+            // this job still collapses into one alert.
+            dedupDiscriminator: 'incident-'.$this->incident->id,
         );
 
         // Track which channels were notified

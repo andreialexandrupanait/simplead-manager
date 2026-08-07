@@ -54,14 +54,15 @@ class NotificationService
         ?array $webhookPayload = null,
         ?string $mailableClass = null,
         ?array $mailableArgs = null,
-        ?array $channelIds = null
+        ?array $channelIds = null,
+        ?string $dedupDiscriminator = null
     ): void {
         // P1-21: during quiet hours, non-critical channel sends are DEFERRED (not
         // dropped) and the in-app record is still written below — nothing is lost.
         $deferChannels = $severity !== 'critical' && static::isQuietHours();
 
         // Deduplication — skip if same event+site+severity was sent recently
-        if (static::isDuplicate($event, $site->id, $severity)) {
+        if (static::isDuplicate($event, $site->id, $severity, $dedupDiscriminator)) {
             return;
         }
 
@@ -200,6 +201,7 @@ class NotificationService
         ?string $mailableClass = null,
         ?array $mailableArgs = null,
         ?array $channelIds = null,
+        ?string $dedupDiscriminator = null,
     ): void {
         $message = $deepLink !== null && $deepLink !== ''
             ? $summary."\n".$deepLink
@@ -216,6 +218,7 @@ class NotificationService
             mailableClass: $mailableClass,
             mailableArgs: $mailableArgs,
             channelIds: $channelIds,
+            dedupDiscriminator: $dedupDiscriminator,
         );
     }
 
@@ -497,9 +500,22 @@ class NotificationService
      * concurrent alerts could both pass a has() probe. Suppressions are logged so
      * a swallowed alert is never traceless.
      */
-    protected static function isDuplicate(string $event, ?int $siteId = null, string $severity = 'warning'): bool
-    {
+    protected static function isDuplicate(
+        string $event,
+        ?int $siteId = null,
+        string $severity = 'warning',
+        ?string $discriminator = null,
+    ): bool {
+        // The discriminator separates genuinely different occurrences of the same
+        // event on the same site. Without one, a site that flaps down → up → down
+        // inside the window has its SECOND outage silently swallowed: the reader
+        // is told about the first and never hears that it happened again. Callers
+        // that can name the occurrence — an incident id, say — pass it here.
         $key = 'notification_dedup:'.$event.':'.($siteId ?? 'app').':'.$severity;
+
+        if ($discriminator !== null && $discriminator !== '') {
+            $key .= ':'.$discriminator;
+        }
 
         // Atomic: add() only writes when the key is absent and returns true iff it
         // did. A false return means another call already claimed this window — so

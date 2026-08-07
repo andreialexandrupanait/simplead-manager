@@ -84,6 +84,21 @@ class TransactionalMailTest extends TestCase
         $this->assertStringNotContainsString('Maintenance report', $html);
     }
 
+    public function test_the_client_report_keeps_its_own_sender_name(): void
+    {
+        // The global from-name now says the product's name, for the internal
+        // alerts. Clients have been receiving the report under a different one,
+        // and that must not change underneath them.
+        config()->set('mail.from.name', 'SimpleAd Manager');
+        config()->set('mail.from.address', 'contact@example.com');
+
+        $from = $this->reportGenerated()->envelope()->from;
+
+        $this->assertNotNull($from);
+        $this->assertSame('SAD Mentenanta', $from->name);
+        $this->assertSame('contact@example.com', $from->address);
+    }
+
     public function test_subjects_follow_the_recipient_locale(): void
     {
         $this->app->setLocale('ro');
