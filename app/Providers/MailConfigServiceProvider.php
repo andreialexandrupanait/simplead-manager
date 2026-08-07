@@ -14,9 +14,31 @@ class MailConfigServiceProvider extends ServiceProvider
         //
     }
 
+    /**
+     * Artisan commands during which the database overrides must NOT be applied,
+     * because whatever they set would be frozen into a file.
+     *
+     * `config:cache` boots a fresh application and serialises the resulting
+     * config array — including anything a `booted()` callback wrote. The entry
+     * point runs it on every container start, so the mail credentials that
+     * happened to be in the database at that moment were baked into
+     * bootstrap/cache/config.php. At runtime this is invisible, because the
+     * provider re-applies the same values on top. It stops being invisible the
+     * moment a setting is REMOVED: nothing overrides the baked copy any more,
+     * and the app keeps using a credential that no longer exists anywhere,
+     * until the container is restarted. Diagnosed 2026-08-07, when deleting the
+     * SMTP username had no effect and alerts kept authenticating as the wrong
+     * account.
+     */
+    private const CACHE_BUILDING_COMMANDS = ['config:cache', 'optimize'];
+
     public function boot(): void
     {
         $this->app->booted(function () {
+            if ($this->isBuildingTheConfigCache()) {
+                return;
+            }
+
             try {
                 $settings = app(SettingsService::class);
                 $mailSettings = $settings->getGroup('mail');
@@ -65,5 +87,16 @@ class MailConfigServiceProvider extends ServiceProvider
                 // DB may not be available during migrations
             }
         });
+    }
+
+    private function isBuildingTheConfigCache(): bool
+    {
+        if (! $this->app->runningInConsole()) {
+            return false;
+        }
+
+        $command = $_SERVER['argv'][1] ?? null;
+
+        return is_string($command) && in_array($command, self::CACHE_BUILDING_COMMANDS, true);
     }
 }
