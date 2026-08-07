@@ -19,17 +19,38 @@ class ReportGeneratedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    /**
+     * Client-facing, and pinned to Romanian on purpose.
+     *
+     * This template was hardcoded Romanian while every other one was English,
+     * because its readers are the agency's Romanian-speaking clients — 18 live
+     * schedules send it. Translating it and letting it follow `app.locale`
+     * (which is `en` in production) would have silently switched all of them to
+     * English. When clients need different languages, the right fix is a field
+     * on the client, not the app default.
+     */
+    private const RECIPIENT_LOCALE = 'ro';
+
     public function __construct(
         public Report $report,
         public Site $site,
         public ?ReportSchedule $schedule = null,
         public bool $pdfVerified = true,
-    ) {}
+    ) {
+        // Set here, not in envelope(): Mailable::send() reads $this->locale as
+        // the argument to withLocale() before running the closure that calls
+        // envelope(), so a locale set there would arrive too late to apply.
+        $this->locale(self::RECIPIENT_LOCALE);
+    }
 
     public function envelope(): Envelope
     {
         $subject = $this->schedule?->email_subject
-            ?? "Raport {$this->site->name} — {$this->report->period_start->format('d.m.Y')} - {$this->report->period_end->format('d.m.Y')}";
+            ?? __('Report :site — :from - :to', [
+                'site' => $this->site->name,
+                'from' => $this->report->period_start->format('d.m.Y'),
+                'to' => $this->report->period_end->format('d.m.Y'),
+            ]);
 
         return new Envelope(subject: $subject);
     }

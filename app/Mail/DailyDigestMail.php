@@ -20,10 +20,8 @@ class DailyDigestMail extends Mailable
 
     public function envelope(): Envelope
     {
-        $appName = config('app.name', 'SimpleAd Manager');
-
         return new Envelope(
-            subject: "{$appName} — Daily Digest",
+            subject: __(':app — daily digest', ['app' => app(\App\Services\Branding\EmailBrandingService::class)->appName()]),
         );
     }
 

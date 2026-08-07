@@ -27,7 +27,7 @@ class PerformanceAlertMail extends Mailable
         $site = $this->monitor->site;
 
         return new Envelope(
-            subject: "PERFORMANCE DROP: {$site->name} ({$this->device})"
+            subject: __('Performance drop on :site (:device)', ['site' => $site->name, 'device' => $this->device])
         );
     }
 

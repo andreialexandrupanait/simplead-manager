@@ -26,7 +26,7 @@ class StorageQuotaReachedMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Storage limit reached: {$this->destination->name}",
+            subject: __('Storage limit reached: :destination', ['destination' => $this->destination->name]),
         );
     }
 

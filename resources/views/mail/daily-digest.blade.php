@@ -1,103 +1,59 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f9fafb; }
-        .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
-        .card { background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .header { text-align: center; margin-bottom: 24px; }
-        .header h1 { font-size: 20px; margin: 0 0 4px; color: #1f2937; }
-        .header p { font-size: 14px; color: #6b7280; margin: 0; }
-        .stats-grid { display: table; width: 100%; border-collapse: collapse; margin: 24px 0; }
-        .stat-row { display: table-row; }
-        .stat-label, .stat-value { display: table-cell; padding: 10px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
-        .stat-label { color: #6b7280; }
-        .stat-value { text-align: right; font-weight: 600; color: #1f2937; }
-        .stat-value.success { color: #16a34a; }
-        .stat-value.danger { color: #dc2626; }
-        .stat-value.warning { color: #d97706; }
-        .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #7B68EE; margin: 24px 0 8px; padding-top: 16px; border-top: 2px solid #f3f4f6; }
-        .action-btn { display: inline-block; padding: 12px 24px; background-color: #7B68EE; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
-        .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }
-    </style>
-</head>
-<body>
-<div class="container">
-    <div class="card">
-        <div class="header">
-            <h1>Daily Health Digest</h1>
-            <p>{{ $digest['date'] }}</p>
-        </div>
+@php
+    $allClear = $digest['sites_down'] === 0
+        && $digest['incidents_24h'] === 0
+        && $digest['backups_failed_24h'] === 0
+        && $digest['updates_available'] === 0;
+@endphp
 
-        <div class="section-title">Sites Overview</div>
-        <div class="stats-grid">
-            <div class="stat-row">
-                <div class="stat-label">Total Sites</div>
-                <div class="stat-value">{{ $digest['total_sites'] }}</div>
-            </div>
-            <div class="stat-row">
-                <div class="stat-label">Sites Up</div>
-                <div class="stat-value success">{{ $digest['sites_up'] }}</div>
-            </div>
-            @if($digest['sites_down'] > 0)
-            <div class="stat-row">
-                <div class="stat-label">Sites Down</div>
-                <div class="stat-value danger">{{ $digest['sites_down'] }}</div>
-            </div>
-            @endif
-        </div>
+<x-mail.layout
+    :title="__('Daily digest — :date', ['date' => $digest['date']])"
+    :preheader="$allClear
+        ? __('All :count sites up, nothing needs attention.', ['count' => $digest['total_sites']])
+        : __(':down down, :incidents new incidents, :failed failed backups.', ['down' => $digest['sites_down'], 'incidents' => $digest['incidents_24h'], 'failed' => $digest['backups_failed_24h']])"
+    :message="$message ?? null"
+    :state-color="$allClear ? '#00a32a' : '#cc7a00'">
 
-        <div class="section-title">Incidents (24h)</div>
-        <div class="stats-grid">
-            <div class="stat-row">
-                <div class="stat-label">New Incidents</div>
-                <div class="stat-value {{ $digest['incidents_24h'] > 0 ? 'danger' : '' }}">{{ $digest['incidents_24h'] }}</div>
-            </div>
-            <div class="stat-row">
-                <div class="stat-label">Resolved</div>
-                <div class="stat-value success">{{ $digest['resolved_24h'] }}</div>
-            </div>
-        </div>
+    <x-mail.heading>{{ __('Daily digest') }}</x-mail.heading>
 
-        <div class="section-title">Backups (24h)</div>
-        <div class="stats-grid">
-            <div class="stat-row">
-                <div class="stat-label">Completed</div>
-                <div class="stat-value success">{{ $digest['backups_24h'] }}</div>
-            </div>
-            @if($digest['backups_failed_24h'] > 0)
-            <div class="stat-row">
-                <div class="stat-label">Failed</div>
-                <div class="stat-value danger">{{ $digest['backups_failed_24h'] }}</div>
-            </div>
-            @endif
-        </div>
+    <p>{{ $digest['date'] }}</p>
 
-        <div class="section-title">Attention Needed</div>
-        <div class="stats-grid">
-            @if($digest['updates_available'] > 0)
-            <div class="stat-row">
-                <div class="stat-label">Sites with Updates</div>
-                <div class="stat-value warning">{{ $digest['updates_available'] }}</div>
-            </div>
-            @endif
-            @if($digest['updates_available'] === 0)
-            <div class="stat-row">
-                <div class="stat-label" style="color: #16a34a;">All clear — no attention needed</div>
-                <div class="stat-value"></div>
-            </div>
-            @endif
-        </div>
+    @if($allClear)
+        <p>{{ __('Everything is where it should be: every site answering, no new incidents, every backup finished, nothing waiting on an update.') }}</p>
+    @endif
 
-        <div style="text-align: center; margin-top: 24px;">
-            <a href="{{ config('app.url') }}" class="action-btn">Open Dashboard</a>
-        </div>
-    </div>
+    <x-mail.section>{{ __('Sites') }}</x-mail.section>
+    <x-mail.details>
+        <x-mail.row :label="__('Monitored')">{{ $digest['total_sites'] }}</x-mail.row>
+        <x-mail.row :label="__('Up')" tone="success">{{ $digest['sites_up'] }}</x-mail.row>
+        @if($digest['sites_down'] > 0)
+            <x-mail.row :label="__('Down')" tone="danger">{{ $digest['sites_down'] }}</x-mail.row>
+        @endif
+    </x-mail.details>
 
-    <div class="footer">
-        {{ config('app.name', 'SimpleAd Manager') }}
-    </div>
-</div>
-</body>
-</html>
+    <x-mail.section>{{ __('Incidents, last 24 hours') }}</x-mail.section>
+    <x-mail.details>
+        <x-mail.row :label="__('Opened')" :tone="$digest['incidents_24h'] > 0 ? 'danger' : null">{{ $digest['incidents_24h'] }}</x-mail.row>
+        <x-mail.row :label="__('Resolved')" tone="success">{{ $digest['resolved_24h'] }}</x-mail.row>
+    </x-mail.details>
+
+    <x-mail.section>{{ __('Backups, last 24 hours') }}</x-mail.section>
+    <x-mail.details>
+        <x-mail.row :label="__('Completed')" tone="success">{{ $digest['backups_24h'] }}</x-mail.row>
+        @if($digest['backups_failed_24h'] > 0)
+            <x-mail.row :label="__('Failed')" tone="danger">{{ $digest['backups_failed_24h'] }}</x-mail.row>
+        @endif
+    </x-mail.details>
+
+    @if($digest['updates_available'] > 0)
+        <x-mail.section>{{ __('Waiting on you') }}</x-mail.section>
+        <x-mail.details>
+            <x-mail.row :label="__('Sites with updates available')" tone="warning">{{ $digest['updates_available'] }}</x-mail.row>
+        </x-mail.details>
+    @endif
+
+    <x-mail.button :href="route('dashboard')">{{ __('Open the dashboard') }}</x-mail.button>
+
+    <x-slot:footer>
+        {{ __('You receive this digest once a day. It can be turned off per account.') }}
+    </x-slot:footer>
+</x-mail.layout>

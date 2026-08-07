@@ -27,7 +27,11 @@ class BudgetViolationMail extends Mailable
         $site = $this->monitor->site;
 
         return new Envelope(
-            subject: "BUDGET EXCEEDED: {$site->name} — ".count($this->violations).' violation(s)'
+            subject: trans_choice(
+                '{1}Performance budget exceeded on :site — :count metric|[2,*]Performance budget exceeded on :site — :count metrics',
+                count($this->violations),
+                ['site' => $site->name, 'count' => count($this->violations)],
+            )
         );
     }
 

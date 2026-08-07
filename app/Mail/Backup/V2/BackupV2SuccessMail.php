@@ -28,7 +28,7 @@ class BackupV2SuccessMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Backup completed: {$this->site->name}",
+            subject: __('Backup completed: :site', ['site' => $this->site->name]),
         );
     }
 

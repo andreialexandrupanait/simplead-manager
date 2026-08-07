@@ -91,14 +91,11 @@
     @endif
 
     <x-slot:footer>
-        <p style="margin:0 0 6px;">
-            @if($recipientAddress)
-                {{ __(':address is set up to receive uptime notifications for :site.', ['address' => $recipientAddress, 'site' => $siteUrl]) }}
-            @else
-                {{ __('You are receiving uptime notifications for :site.', ['site' => $siteUrl]) }}
-            @endif
-            {!! __('An administrator can change that in :settings.', ['settings' => '<a href="'.e($settingsUrl).'" style="color:#6b7280; text-decoration:underline;">'.e(__('notification settings')).'</a>']) !!}
-        </p>
-        <p style="margin:0;">{{ __('Cheers, the :app team', ['app' => $appName]) }}</p>
+        @if($recipientAddress)
+            {{ __(':address is set up to receive uptime notifications for :site.', ['address' => $recipientAddress, 'site' => $siteUrl]) }}
+        @else
+            {{ __('You are receiving uptime notifications for :site.', ['site' => $siteUrl]) }}
+        @endif
+        {!! __('An administrator can change that in :settings.', ['settings' => '<a href="'.e($settingsUrl).'" style="color:#6b7280; text-decoration:underline;">'.e(__('notification settings')).'</a>']) !!}
     </x-slot:footer>
 </x-mail.layout>

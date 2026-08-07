@@ -1,62 +1,29 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f9fafb; }
-        .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
-        .card { background: #ffffff; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .header { text-align: center; margin-bottom: 24px; }
-        .status-badge { display: inline-block; padding: 6px 16px; border-radius: 9999px; font-weight: 600; font-size: 14px; background-color: #fef2f2; color: #dc2626; }
-        .action-btn { display: inline-block; padding: 12px 24px; background-color: #7B68EE; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 16px; }
-        .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="card">
-            <div class="header">
-                <h1 style="margin: 0 0 8px; font-size: 20px;">Backup Failed</h1>
-                <span class="status-badge">FAILED</span>
-            </div>
+@php
+    $backupsUrl = route('sites.backups', $site);
+@endphp
 
-            <div class="details">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px; width: 120px;">Site</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ $site->name }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">URL</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ $site->url }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Backup Type</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ ucfirst($backup->type) }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Trigger</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ ucfirst(str_replace('_', ' ', $backup->trigger)) }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Time</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; font-weight: 500;">{{ $backup->started_at?->format('M d, Y H:i:s') }} UTC</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; font-size: 14px;">Error</td>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #dc2626; font-size: 14px; font-weight: 500;">{{ $errorMessage }}</td>
-                    </tr>
-                </table>
-            </div>
+<x-mail.layout
+    :title="__('Backup failed for :site', ['site' => $site->name])"
+    :preheader="__('The :type backup did not finish. :error', ['type' => strtolower($backup->type), 'error' => $errorMessage])"
+    :message="$message ?? null"
+    state-color="#d63638">
 
-            <div style="text-align: center;">
-                <a href="{{ url('/sites/' . $site->id . '/backups') }}" class="action-btn">View Backups</a>
-            </div>
-        </div>
+    <x-mail.heading>{{ __('The backup for :site did not finish', ['site' => $site->name]) }}</x-mail.heading>
 
-        <div class="footer">
-            <p>Sent by SimpleAd Manager</p>
-        </div>
-    </div>
-</body>
-</html>
+    <p>{{ __('A backup was running and stopped before it completed, so there is no restore point from this run. The site itself is unaffected.') }}</p>
+
+    <x-mail.details>
+        <x-mail.row :label="__('Site')">{{ $site->name }}</x-mail.row>
+        <x-mail.row :label="__('URL')">{{ $site->url }}</x-mail.row>
+        <x-mail.row :label="__('Backup type')">{{ ucfirst($backup->type) }}</x-mail.row>
+        <x-mail.row :label="__('Started by')">{{ ucfirst(str_replace('_', ' ', $backup->trigger)) }}</x-mail.row>
+        @if($backup->started_at)
+            <x-mail.row :label="__('Started at')">{{ $backup->started_at->format('M j, Y g:ia') }}</x-mail.row>
+        @endif
+        <x-mail.row :label="__('Error')" tone="danger">{{ $errorMessage }}</x-mail.row>
+    </x-mail.details>
+
+    <p>{{ __('Scheduled backups keep running, so the next one may well succeed on its own. If it fails again with the same error, the cause is worth looking into rather than waiting out.') }}</p>
+
+    <x-mail.button :href="$backupsUrl">{{ __('Open backups') }}</x-mail.button>
+</x-mail.layout>

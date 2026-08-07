@@ -25,7 +25,7 @@ class BackupAlertMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "BACKUP FAILED: {$this->site->name}",
+            subject: __('Backup failed: :site', ['site' => $this->site->name]),
         );
     }
 

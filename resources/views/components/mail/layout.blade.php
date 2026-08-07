@@ -83,15 +83,19 @@
                     </tr>
                 </table>
 
-                @if($footer)
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="sam-wrap" style="width:600px; max-width:600px;">
-                        <tr>
-                            <td class="sam-pad" style="padding:20px 32px 8px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:19px; color:#9199a8;">
-                                {{ $footer }}
-                            </td>
-                        </tr>
-                    </table>
-                @endif
+                {{-- The sign-off lives here rather than in each template, so no
+                     email can ship without one and none of them can drift. The
+                     slot is for whatever context comes above it. --}}
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="sam-wrap" style="width:600px; max-width:600px;">
+                    <tr>
+                        <td class="sam-pad" style="padding:20px 32px 8px; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; font-size:12px; line-height:19px; color:#9199a8;">
+                            @if($footer)
+                                <p style="margin:0 0 6px;">{{ $footer }}</p>
+                            @endif
+                            <p style="margin:0;">{{ __('Cheers, the :app team', ['app' => $appName]) }}</p>
+                        </td>
+                    </tr>
+                </table>
 
             </td>
         </tr>
