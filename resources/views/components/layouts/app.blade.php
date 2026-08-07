@@ -46,7 +46,11 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
-<body class="h-full bg-[#FAFAFA] dark:bg-gray-900 dark:text-gray-100 transition-colors duration-200">
+{{-- The page background reads from the token rather than repeating its hex. There were three
+     answers to "what colour is the app background": --surface-app (#FAFAFA), this literal, and
+     Tailwind's gray-50 remapped to #f0f1f3. Two of them now agree; the third is the reference's
+     value and changing --surface-app to it is a deliberate visual decision, not a cleanup. --}}
+<body class="h-full bg-[var(--surface-app)] dark:text-gray-100 transition-colors duration-200">
 
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:bg-white focus:px-4 focus:py-2 focus:text-accent-700 focus:shadow-lg focus:rounded-md focus:top-2 focus:left-2">
         Skip to content

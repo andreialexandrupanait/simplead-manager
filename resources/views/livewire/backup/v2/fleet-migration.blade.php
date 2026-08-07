@@ -124,10 +124,14 @@
                 <table class="min-w-full text-sm">
                     <thead>
                         <tr class="text-left text-xs uppercase tracking-wide text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                            {{-- The two middle headings used to name the wrong cells: "Backup
+                                 engine" sat above the engine plugin's VERSION, and "Runs" above the
+                                 badge for which engine actually runs. A heading that does not name
+                                 what is under it is worse than none. --}}
                             <th class="py-2 pr-3">{{ __('Site') }}</th>
-                            <th class="py-2 pr-3">{{ __('Connector') }}</th>
-                            <th class="py-2 pr-3">{{ __('Backup engine') }}</th>
-                            <th class="py-2 pr-3">{{ __('Runs') }}</th>
+                            <th class="py-2 pr-3">{{ __('Connector version') }}</th>
+                            <th class="py-2 pr-3">{{ __('Engine version') }}</th>
+                            <th class="py-2 pr-3">{{ __('Runs tonight') }}</th>
                             <th class="py-2 pr-3">{{ __('Storage') }}</th>
                             <th class="py-2 pr-3">{{ __('Schedule') }}</th>
                             <th class="py-2 pr-3 text-right">{{ __('Actions') }}</th>

@@ -12,8 +12,9 @@
                 <x-ui.button href="{{ route('backup-v2.fleet') }}" variant="secondary" size="sm">
                     {{ __('Fleet & migration') }}
                 </x-ui.button>
-                <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
-                    <span class="h-1.5 w-1.5 rounded-full bg-purple-500"></span> {{ __('Preview — engine V2') }}
+                {{-- Was violet: the last of the pre-retheme accent, on a screen themed WordPress blue. --}}
+                <span class="inline-flex items-center gap-1 rounded-full bg-accent-50 px-2.5 py-1 text-xs font-semibold text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">
+                    <span class="h-1.5 w-1.5 rounded-full bg-accent-500"></span> {{ __('Preview — engine V2') }}
                 </span>
             </div>
         </div>

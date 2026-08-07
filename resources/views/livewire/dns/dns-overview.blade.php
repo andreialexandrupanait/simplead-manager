@@ -107,7 +107,7 @@
                                         <span class="text-[10px] font-mono text-gray-500">{{ implode(', ', $aRecords) }}</span>
                                     @endif
                                     @if($usesCloudflare)
-                                        <x-ui.badge variant="purple" class="text-[9px]">CF</x-ui.badge>
+                                        <x-ui.badge variant="blue" class="text-[9px]">CF</x-ui.badge>
                                     @endif
                                 </div>
                             </div>
@@ -335,7 +335,7 @@
                     </div>
                     <div class="min-w-0 flex-1">
                         <div class="flex items-center gap-2">
-                            <x-ui.badge variant="purple">{{ $change->record_type }}</x-ui.badge>
+                            <x-ui.badge variant="blue">{{ $change->record_type }}</x-ui.badge>
                             @if($change->monitor?->site)
                                 <a href="{{ $change->monitor->site->siteCloudflare ? route('sites.cloudflare', $change->monitor->site) : route('sites.overview', $change->monitor->site) }}" class="text-sm text-accent-600 hover:underline" wire:navigate>{{ $change->monitor->domain }}</a>
                             @else

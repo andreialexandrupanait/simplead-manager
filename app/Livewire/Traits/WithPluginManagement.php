@@ -9,6 +9,7 @@ use App\Jobs\CreateBackup;
 use App\Models\SitePlugin;
 use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
+use App\Support\HumanError;
 
 trait WithPluginManagement
 {
@@ -254,7 +255,7 @@ trait WithPluginManagement
                 session()->flash('plugin-error', 'Rollback failed: '.($result['error']['message'] ?? 'Unknown error'));
             }
         } catch (\Throwable $e) {
-            session()->flash('plugin-error', 'Rollback failed: '.$e->getMessage());
+            session()->flash('plugin-error', __('The rollback did not complete: :error', ['error' => HumanError::from($e)]));
         }
     }
 

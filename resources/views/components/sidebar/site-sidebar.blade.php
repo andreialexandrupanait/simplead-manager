@@ -130,7 +130,7 @@
                 <a href="{{ route('sites.index') }}"
                    class="flex items-center gap-2 px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700/50">
                     <x-icons.arrow-left class="h-4 w-4 shrink-0" />
-                    <span>{{ __('Toate site-urile') }}</span>
+                    <span>{{ __('All sites') }}</span>
                 </a>
             </div>
         </div>
@@ -143,7 +143,7 @@
             icon="layout-dashboard"
             :active="request()->routeIs('sites.overview')"
         >
-            Prezentare
+            {{ __('Overview') }}
         </x-sidebar.sidebar-item>
     </div>
 
@@ -153,7 +153,7 @@
              patru sunt taburi ale aceluiași ecran, dar fiecare are rută proprie,
              deci sidebar-ul poate duce direct unde vrei. --}}
         <x-sidebar.sidebar-group
-            title="Pluginuri și teme"
+            :title="__('Plugins & themes')"
             icon="puzzle"
             key="plugins-themes"
             :active="$inPlugins"
@@ -164,25 +164,25 @@
                 :href="route('sites.plugins', $site)"
                 :active="request()->routeIs('sites.plugins')"
             >
-                Pluginuri
+                {{ __('Plugins') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.themes', $site)"
                 :active="request()->routeIs('sites.themes')"
             >
-                Teme
+                {{ __('Themes') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.core', $site)"
                 :active="request()->routeIs('sites.core')"
             >
-                WordPress
+                {{ __('WordPress') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.licenses', $site)"
                 :active="request()->routeIs('sites.licenses')"
             >
-                Licențe
+                {{ __('Licenses') }}
             </x-sidebar.sidebar-item>
         </x-sidebar.sidebar-group>
 
@@ -192,7 +192,7 @@
             icon="hard-drive"
             :active="$inBackups"
         >
-            Backupuri
+            {{ __('Backups') }}
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
 
@@ -203,13 +203,13 @@
             icon="activity"
             :active="$inUptime"
         >
-            Uptime
+            {{ __('Uptime') }}
         </x-sidebar.sidebar-item>
 
         {{-- Securitate ▾ [contor] — spec: Scanare · Vulnerabilități · Integritate ·
              Utilizatori · Hardening. Real: security(Panou), scanning, users, hardening. --}}
         <x-sidebar.sidebar-group
-            title="Securitate"
+            :title="__('Security')"
             icon="shield-check"
             key="security"
             :active="$inSecurity"
@@ -222,14 +222,14 @@
                 :active="request()->routeIs('sites.security') || request()->routeIs('sites.tweaks*')"
                 :inactive="!$moduleService->isModuleActive($site, 'security')"
             >
-                Panou
+                {{ __('Dashboard') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.security.scanning', $site)"
                 icon="search"
                 :active="request()->routeIs('sites.security.scanning')"
             >
-                Scanare
+                {{ __('Scanning') }}
             </x-sidebar.sidebar-item>
             {{-- TODO: rută inexistentă — Vulnerabilități --}}
             {{-- TODO: rută inexistentă — Integritate --}}
@@ -238,14 +238,14 @@
                 icon="users"
                 :active="request()->routeIs('sites.security.users')"
             >
-                Utilizatori
+                {{ __('Users') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.security.hardening', $site)"
                 icon="shield-check"
                 :active="request()->routeIs('sites.security.hardening')"
             >
-                Hardening
+                {{ __('Hardening') }}
             </x-sidebar.sidebar-item>
             {{-- SPEC §13 — cele zece setări curate; catalogul complet al conectorului
                  rămâne accesibil dintr-un link din interiorul ecranului. --}}
@@ -254,7 +254,7 @@
                 icon="sliders"
                 :active="request()->routeIs('sites.presets') || request()->routeIs('sites.tweaks*')"
             >
-                Presetări
+                {{ __('Presets') }}
             </x-sidebar.sidebar-item>
         </x-sidebar.sidebar-group>
 
@@ -263,13 +263,13 @@
             icon="zap"
             :active="$inPerformance"
         >
-            Performanță
+            {{ __('Performance') }}
         </x-sidebar.sidebar-item>
 
         {{-- Verificări ▾ — spec: Formulare · WooCommerce · Linkuri rupte · Erori PHP ·
              Cron · Bază de date. Toate șase există acum. --}}
         <x-sidebar.sidebar-group
-            title="Verificări"
+            :title="__('Checks')"
             icon="check-circle"
             key="checks"
             :active="$inChecks"
@@ -279,35 +279,35 @@
                 icon="mail"
                 :active="request()->routeIs('sites.checks.forms')"
             >
-                Formulare
+                {{ __('Forms') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.checks.woo', $site)"
                 icon="shopping-cart"
                 :active="request()->routeIs('sites.checks.woo')"
             >
-                WooCommerce
+                {{ __('WooCommerce') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.checks.links', $site)"
                 icon="link"
                 :active="request()->routeIs('sites.checks.links')"
             >
-                Linkuri rupte
+                {{ __('Broken links') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.checks.errors', $site)"
                 icon="alert-triangle"
                 :active="request()->routeIs('sites.checks.errors')"
             >
-                Erori PHP
+                {{ __('PHP errors') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.cron', $site)"
                 icon="clock"
                 :active="request()->routeIs('sites.cron')"
             >
-                Cron
+                {{ __('Cron') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.database', $site)"
@@ -315,7 +315,7 @@
                 :active="request()->routeIs('sites.database')"
                 :inactive="!$moduleService->isModuleActive($site, 'database_cleanup')"
             >
-                Bază de date
+                {{ __('Database') }}
             </x-sidebar.sidebar-item>
         </x-sidebar.sidebar-group>
     </x-sidebar.sidebar-section>
@@ -324,7 +324,7 @@
     <x-sidebar.sidebar-section :title="__('Data')">
         {{-- Trafic ▾ — spec: Analytics · Search Console · Cloudflare (toate au rute). --}}
         <x-sidebar.sidebar-group
-            title="Trafic"
+            :title="__('Traffic')"
             icon="bar-chart-2"
             key="traffic"
             :active="$inTraffic"
@@ -335,7 +335,7 @@
                 :active="request()->routeIs('sites.analytics')"
                 :inactive="!$moduleService->isModuleActive($site, 'analytics')"
             >
-                Analytics
+                {{ __('Analytics') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.search-console', $site)"
@@ -343,7 +343,7 @@
                 :active="request()->routeIs('sites.search-console')"
                 :inactive="!$moduleService->isModuleActive($site, 'search_console')"
             >
-                Search Console
+                {{ __('Search Console') }}
             </x-sidebar.sidebar-item>
             <x-sidebar.sidebar-item
                 :href="route('sites.cloudflare', $site)"
@@ -351,7 +351,7 @@
                 :active="request()->routeIs('sites.cloudflare')"
                 :inactive="!$moduleService->isModuleActive($site, 'cloudflare')"
             >
-                Cloudflare
+                {{ __('Cloudflare') }}
             </x-sidebar.sidebar-item>
         </x-sidebar.sidebar-group>
 
@@ -362,7 +362,7 @@
             icon="file-text"
             :active="$inReports"
         >
-            Rapoarte
+            {{ __('Reports') }}
         </x-sidebar.sidebar-item>
 
         {{-- SPEC §9 „Profil" — ce nu se poate împărți cu alt site: URL-uri cheie,
@@ -372,7 +372,7 @@
             icon="sliders"
             :active="request()->routeIs('sites.profile')"
         >
-            Profil
+            {{ __('Profile') }}
         </x-sidebar.sidebar-item>
     </x-sidebar.sidebar-section>
     {{-- „Setări site" eliminat din nav: setările globale sunt deja în footer-ul

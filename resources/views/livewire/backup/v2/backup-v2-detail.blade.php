@@ -1,4 +1,7 @@
-<div>
+{{-- Poll only while the session is still moving. Without this the progress bar sat at whatever
+     percentage the page happened to load at, and the only way to watch a backup was to keep
+     pressing refresh — the V1 screen has had live progress for months. --}}
+<div @if($enabled && $session->state->isActive()) wire:poll.3s @endif>
     @unless($enabled)
         <div class="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
             <p class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ __('The Backup V2 console is not available.') }}</p>
@@ -17,13 +20,7 @@
         <x-ui.card class="mb-6">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <span class="inline-flex rounded-full px-3 py-1 text-sm font-semibold
-                        @if($session->state->value === 'completed') bg-green-100 text-green-700
-                        @elseif(in_array($session->state->value, ['failed','corrupt','cancelled'])) bg-red-100 text-red-700
-                        @elseif($session->state->value === 'paused') bg-amber-100 text-amber-700
-                        @else bg-blue-100 text-blue-700 @endif">
-                        {{ $session->state->value }}
-                    </span>
+                    <x-ui.badge :variant="$session->state->badgeVariant()">{{ $session->state->label() }}</x-ui.badge>
                     <span class="text-sm text-gray-500">{{ $session->stage }}</span>
                     @if($session->protected)<span class="text-xs text-amber-600">🔒 {{ __('protected') }}</span>@endif
                 </div>

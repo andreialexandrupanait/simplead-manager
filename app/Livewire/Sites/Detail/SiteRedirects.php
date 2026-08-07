@@ -8,6 +8,7 @@ use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Models\SiteRedirect;
 use App\Services\RedirectSyncService;
+use App\Support\HumanError;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -87,7 +88,7 @@ class SiteRedirects extends Component
             $this->dispatch('notify', type: 'success', message: 'Redirects saved and pushed to the site.');
         } catch (\Throwable $e) {
             Log::warning("Failed to push redirects for site {$this->site->id}: {$e->getMessage()}");
-            $this->dispatch('notify', type: 'error', message: 'Saved, but pushing to the site failed: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Saved here, but the site did not take the change: :error', ['error' => HumanError::from($e)]));
         }
     }
 

@@ -7,6 +7,7 @@ namespace App\Livewire\Sites\Detail\Tweaks;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\SiteTweaksSettingsService;
+use App\Support\HumanError;
 use Livewire\Component;
 
 class TweaksSiteControl extends Component
@@ -128,7 +129,7 @@ class TweaksSiteControl extends Component
             }
         } catch (\Exception $e) {
             \Log::error('Verify site control settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
+            session()->flash('verify-error', __('Could not verify the change on the site: :error', ['error' => HumanError::from($e)]));
         }
 
         $this->loadCurrentState();

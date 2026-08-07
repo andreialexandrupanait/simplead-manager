@@ -284,7 +284,7 @@
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 min-w-0">
                                 @if($user->avatar_url)
-                                    <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->display_name ?? $user->username }}" loading="lazy" class="h-8 w-8 rounded-full flex-shrink-0" />
+                                    <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->display_name ?? $user->username }}" loading="lazy" width="32" height="32" class="h-8 w-8 rounded-full flex-shrink-0" />
                                 @else
                                     <div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-500">
                                         {{ strtoupper(substr($user->username, 0, 1)) }}
@@ -353,7 +353,7 @@
                                 <td class="py-2 pr-4">
                                     <div class="flex items-center gap-2">
                                         @if($user->avatar_url)
-                                            <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->username }}" loading="lazy" class="h-6 w-6 rounded-full" />
+                                            <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->username }}" loading="lazy" width="24" height="24" class="h-6 w-6 rounded-full" />
                                         @else
                                             <div class="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-500">
                                                 {{ strtoupper(substr($user->username, 0, 1)) }}

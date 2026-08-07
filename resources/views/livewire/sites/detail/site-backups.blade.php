@@ -144,7 +144,7 @@
                     @if($this->backupConfig->incremental_frequency)
                         <div class="flex justify-between">
                             <span class="text-gray-500">{{ __('Incremental') }}</span>
-                            <x-ui.badge variant="purple">{{ __('Enabled') }}</x-ui.badge>
+                            <x-ui.badge variant="blue">{{ __('Enabled') }}</x-ui.badge>
                         </div>
                     @endif
                     <div class="flex justify-between">
@@ -496,7 +496,7 @@
                                 <div class="flex items-center gap-1 flex-shrink-0">
                                     <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
                                     @if($backup->is_locked)
-                                        <x-ui.badge variant="purple">Locked</x-ui.badge>
+                                        <x-ui.badge variant="blue">Locked</x-ui.badge>
                                     @endif
                                 </div>
                             </div>
@@ -668,7 +668,7 @@
                                     <div class="flex items-center gap-1.5">
                                         <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
                                         @if($backup->is_locked)
-                                            <x-ui.badge variant="purple">Locked</x-ui.badge>
+                                            <x-ui.badge variant="blue">Locked</x-ui.badge>
                                         @endif
                                         @if($backup->status === \App\Enums\BackupStatus::Failed && $backup->error_message)
                                             <button @click="$dispatch('show-error-detail', { title: 'Backup Error', message: @js($backup->error_message) })"

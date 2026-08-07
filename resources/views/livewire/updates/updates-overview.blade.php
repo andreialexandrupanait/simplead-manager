@@ -1,37 +1,17 @@
 <div>
     {{-- Header --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <x-ui.page-header title="{{ __('Updates') }}" subtitle="{{ __('Available updates across all sites') }}" />
+        <x-ui.page-header
+            title="{{ __('Updates') }}"
+            :subtitle="$this->stats['total'] > 0
+                ? trans_choice('{1}:updates update waiting, on :sites site|[2,*]:updates updates waiting, across :sites sites', $this->stats['total'], ['updates' => $this->stats['total'], 'sites' => $this->stats['sites']])
+                : __('Everything is up to date')"
+        />
     </div>
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $this->stats['total'] }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Total Updates') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-accent-600">{{ $this->stats['plugins'] }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Plugin Updates') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-green-600">{{ $this->stats['themes'] }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Theme Updates') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-yellow-600">{{ $this->stats['sites'] }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Sites with Updates') }}</p>
-            </div>
-        </x-ui.card>
-    </div>
-
+    {{-- Awaiting approval comes first now. It was below four stat tiles, which meant the one
+         thing on this screen that needs a person to decide something sat under four numbers
+         that need nothing. The tile counts moved onto the filter tabs. --}}
     {{-- Faza 6 — safe updates held for approval by the smart update engine. Only
          appears when the smart-rules flag is on and something is actually held. --}}
     @if (count($this->awaitingApprovals) > 0)
@@ -63,6 +43,7 @@
     <div class="mb-4 flex flex-wrap items-center gap-3">
         <x-ui.filter-tabs
             :options="['all' => __('All'), 'plugins' => __('Plugins'), 'themes' => __('Themes')]"
+            :counts="['all' => $this->stats['total'], 'plugins' => $this->stats['plugins'], 'themes' => $this->stats['themes']]"
             :selected="$filter"
             wire="filter"
         />
@@ -108,7 +89,7 @@
                                 <a href="{{ route('sites.plugins', $group['site_id']) }}" class="text-sm font-semibold text-gray-900 dark:text-white hover:text-accent-600 transition" wire:navigate>
                                     {{ $group['label'] }}
                                 </a>
-                                <x-ui.badge variant="purple">{{ count($group['items']) }} {{ __('update(s)') }}</x-ui.badge>
+                                <x-ui.badge variant="blue">{{ count($group['items']) }} {{ __('update(s)') }}</x-ui.badge>
                             @else
                                 <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ $group['label'] }}</span>
                                 <x-ui.badge :variant="$group['type'] === 'plugin' ? 'purple' : 'green'">{{ ucfirst($group['type']) }}</x-ui.badge>

@@ -43,7 +43,8 @@ class BackupV2DetailTest extends TestCase
             ->test(BackupV2Detail::class, ['session' => $session])
             ->assertSet('enabled', true)
             ->assertSee('Backup session #'.$session->id)
-            ->assertSee('completed')
+            // The state is shown as a person would say it, not as the column stores it.
+            ->assertSee(BackupSessionState::Completed->label())
             ->assertSee('Objects & checksums')
             ->assertSee('chunk_0.zip')
             ->assertSet('progressPercent', 100);

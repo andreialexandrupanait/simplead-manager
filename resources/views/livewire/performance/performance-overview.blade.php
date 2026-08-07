@@ -1,57 +1,45 @@
 <div class="min-w-0">
     {{-- Header with Add Button --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <x-ui.page-header title="Performance" subtitle="Monitor site performance and Core Web Vitals" />
-        <x-ui.button wire:click="testAllSites" wire:loading.attr="disabled" wire:confirm="This will queue performance tests for all monitored sites. Continue?">
+        @php
+            $mobileAvg = $this->stats['avg_mobile'];
+            $desktopAvg = $this->stats['avg_desktop'];
+        @endphp
+        <x-ui.page-header
+            :title="__('Performance')"
+            :subtitle="$this->stats['total'] > 0
+                ? __(':n sites monitored · :mobile mobile, :desktop desktop on average', [
+                    'n' => $this->stats['total'],
+                    'mobile' => $mobileAvg ?? '—',
+                    'desktop' => $desktopAvg ?? '—',
+                  ])
+                : __('No sites are being monitored yet')"
+        />
+        <x-ui.button wire:click="testAllSites" wire:loading.attr="disabled" wire:confirm="{{ __('This will queue performance tests for all monitored sites. Continue?') }}">
             <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            <span wire:loading.remove wire:target="testAllSites">Test All Sites</span>
-            <span wire:loading wire:target="testAllSites">Queuing...</span>
+            <span wire:loading.remove wire:target="testAllSites">{{ __('Test all sites') }}</span>
+            <span wire:loading wire:target="testAllSites">{{ __('Queuing...') }}</span>
         </x-ui.button>
     </div>
 
     <x-ui.flash-alert type="success" key="perf-success" />
 
-    {{-- Stats Cards --}}
-    <div class="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-gray-900">{{ $this->stats['total'] }}</p>
-                <p class="mt-1 text-xs text-gray-500">Sites Monitored</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                @php
-                    $mobileAvg = $this->stats['avg_mobile'];
-                    $mobileColor = $mobileAvg === null ? 'text-gray-400' : ($mobileAvg >= 90 ? 'text-green-600' : ($mobileAvg >= 50 ? 'text-yellow-600' : 'text-red-600'));
-                @endphp
-                <p class="text-2xl font-semibold {{ $mobileColor }}">{{ $mobileAvg ?? '—' }}</p>
-                <p class="mt-1 text-xs text-gray-500">Avg Mobile</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                @php
-                    $desktopAvg = $this->stats['avg_desktop'];
-                    $desktopColor = $desktopAvg === null ? 'text-gray-400' : ($desktopAvg >= 90 ? 'text-green-600' : ($desktopAvg >= 50 ? 'text-yellow-600' : 'text-red-600'));
-                @endphp
-                <p class="text-2xl font-semibold {{ $desktopColor }}">{{ $desktopAvg ?? '—' }}</p>
-                <p class="mt-1 text-xs text-gray-500">Avg Desktop</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-red-600">{{ $this->stats['poor_count'] }}</p>
-                <p class="mt-1 text-xs text-gray-500">Poor (&lt;50)</p>
-            </div>
-        </x-ui.card>
-    </div>
+    {{-- Four stat tiles used to sit here: Sites Monitored, Avg Mobile, Avg Desktop, Poor. Three of
+         them were context rather than decisions, and context belongs in the subtitle — where it now
+         is. The fourth was the only one worth interrupting for, so it is the only one left, and it
+         only appears when it is not zero. --}}
+    @if($this->stats['poor_count'] > 0)
+        <div class="mb-6 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
+            <x-icons.alert-triangle class="h-4 w-4 shrink-0" aria-hidden="true" />
+            {{ trans_choice('{1}One site scores below 50.|[2,*]:count sites score below 50.', $this->stats['poor_count'], ['count' => $this->stats['poor_count']]) }}
+        </div>
+    @endif
 
     {{-- Search --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"
-            placeholder="Search by site name or domain..."
+            placeholder="{{ __('Search by site name or domain...') }}"
             class="w-full sm:ml-auto sm:w-64"
         />
     </div>
@@ -59,7 +47,11 @@
     {{-- Ranking Table --}}
     <x-ui.card class="overflow-hidden">
         @if($monitors->isEmpty())
-            <p class="py-8 text-center text-sm text-gray-500">No monitored sites found.</p>
+            <x-ui.empty-state
+                :title="__('No monitored sites yet')"
+                :description="__('Run a performance test on a site to see it ranked here.')"
+                icon="zap"
+            />
         @else
             {{-- Mobile cards --}}
             <div class="md:hidden space-y-2">

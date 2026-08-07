@@ -37,7 +37,8 @@ class SiteBackupV2Test extends TestCase
             ->assertSet('enabled', true)
             ->assertSee('New backup')
             ->assertSee('History')
-            ->assertSee('completed');
+            // The state is shown as a person would say it, not as the column stores it.
+            ->assertSee(BackupSessionState::Completed->label());
     }
 
     public function test_start_backup_calls_session_actions(): void

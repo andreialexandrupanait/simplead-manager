@@ -19,34 +19,16 @@
         </div>
     </div>
 
-    {{-- Stats cards --}}
-    <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <x-ui.card>
-            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Total') }}</p>
-            <p class="mt-1 text-2xl font-semibold text-gray-900">{{ $this->counts['total'] }}</p>
-        </x-ui.card>
-        <x-ui.card>
-            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Up') }}</p>
-            <p class="mt-1 text-2xl font-semibold text-green-600">{{ $this->counts['up'] }}</p>
-        </x-ui.card>
-        <x-ui.card>
-            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Down') }}</p>
-            <p class="mt-1 text-2xl font-semibold text-red-600">{{ $this->counts['down'] }}</p>
-        </x-ui.card>
-        <x-ui.card>
-            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Degraded') }}</p>
-            <p class="mt-1 text-2xl font-semibold text-yellow-600">{{ $this->counts['degraded'] }}</p>
-        </x-ui.card>
-        <x-ui.card>
-            <p class="text-xs font-medium uppercase tracking-wider text-gray-500">{{ __('Paused') }}</p>
-            <p class="mt-1 text-2xl font-semibold text-gray-400">{{ $this->counts['paused'] }}</p>
-        </x-ui.card>
-    </div>
+    {{-- Filters & Search.
 
-    {{-- Filters & Search --}}
+         There used to be five stat cards above this — Total, Up, Down, Degraded, Paused — sitting
+         directly on top of five filter tabs with exactly the same five categories. The same numbers,
+         twice, one set of them inert. The counts moved onto the tabs, which is what the alerts
+         screen already does and says why in its own markup. --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
         <x-ui.filter-tabs
             :options="['all' => __('All'), 'up' => __('Up'), 'down' => __('Down'), 'degraded' => __('Degraded'), 'paused' => __('Paused')]"
+            :counts="['all' => $this->counts['total'], 'up' => $this->counts['up'], 'down' => $this->counts['down'], 'degraded' => $this->counts['degraded'], 'paused' => $this->counts['paused']]"
             :selected="$filter"
             wire="filter"
         />

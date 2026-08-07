@@ -152,7 +152,7 @@
                     const d = this.chartData;
                     const datasets = [];
                     if (this.activeMetrics.clicks) datasets.push({
-                        label: 'Clicks', data: d.clicks, borderColor: '#7B68EE', backgroundColor: '#7B68EE1A',
+                        label: 'Clicks', data: d.clicks, borderColor: '#2271b1', backgroundColor: '#2271b11A',
                         borderWidth: 2, fill: true, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, yAxisID: 'y',
                     });
                     if (this.activeMetrics.impressions) datasets.push({
@@ -207,7 +207,7 @@
                                 <div class="mt-1 text-xl font-bold text-gray-900">{{ number_format($overview['clicks']) }}</div>
                             </div>
                             @if(count($performanceOverTime) > 1)
-                                <x-charts.sparkline wire:key="spark-clicks-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($performanceOverTime)->pluck('clicks')->toArray()" color="#7B68EE" />
+                                <x-charts.sparkline wire:key="spark-clicks-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($performanceOverTime)->pluck('clicks')->toArray()" color="#2271b1" />
                             @endif
                         </x-ui.card>
                     </div>

@@ -74,7 +74,7 @@
                         <div class="flex items-center justify-between py-3">
                             <div class="flex items-center gap-3">
                                 @if($conn->avatar_url)
-                                    <img src="{{ $conn->avatar_url }}" alt="Avatar {{ $conn->name ?? '' }}" loading="lazy" class="h-8 w-8 rounded-full">
+                                    <img src="{{ $conn->avatar_url }}" alt="Avatar {{ $conn->name ?? '' }}" loading="lazy" width="32" height="32" class="h-8 w-8 rounded-full">
                                 @else
                                     <div class="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-red-100 text-red-600">
                                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

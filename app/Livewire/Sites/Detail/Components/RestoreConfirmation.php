@@ -16,6 +16,7 @@ use App\Models\Site;
 use App\Models\StorageDestination;
 use App\Services\ActivityLogger;
 use App\Services\Backup\BackupBrowserService;
+use App\Support\HumanError;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -165,7 +166,7 @@ class RestoreConfirmation extends Component
             $this->fileTree = $this->buildTree($result['files']);
             $this->fileListLoaded = true;
         } catch (\Exception $e) {
-            $this->fileListError = $e->getMessage();
+            $this->fileListError = HumanError::from($e);
         } finally {
             $this->loadingFileList = false;
         }
@@ -438,7 +439,7 @@ class RestoreConfirmation extends Component
         try {
             $restore = app(SessionActions::class)->startRestore($session, RestoreMode::SafeMerge, $scope);
         } catch (\Throwable $e) {
-            session()->flash('backup-error', __('Could not start the restore: ').$e->getMessage());
+            session()->flash('backup-error', __('Could not start the restore: :error', ['error' => HumanError::from($e)]));
             $this->dispatch('close-modal-restore-confirmation');
 
             return;

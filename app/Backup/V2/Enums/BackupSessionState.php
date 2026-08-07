@@ -92,4 +92,48 @@ enum BackupSessionState: string
     {
         return \App\Backup\V2\StateMachine\BackupStateMachine::transitionsFrom($this);
     }
+
+    /**
+     * Which {@see \App\Enums\BackupStatus::color()}-style badge variant represents this state.
+     *
+     * It lives on the enum because it was previously written out as raw Tailwind classes in two
+     * separate views, byte-for-byte identical — so a palette change had to find both, and the
+     * `amber` one of them used is not a colour the dark-mode sheet retints at all, which made the
+     * paused badge genuinely unreadable on a dark background.
+     */
+    public function badgeVariant(): string
+    {
+        return match ($this) {
+            self::Completed => 'green',
+            self::Failed, self::Corrupt, self::Cancelled => 'red',
+            self::Paused, self::RetryWait => 'yellow',
+            default => 'blue',
+        };
+    }
+
+    /**
+     * The state as a person would say it, rather than as the column stores it.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Requested => __('Queued'),
+            self::CapabilityCheck => __('Checking the site'),
+            self::Inventory => __('Listing files'),
+            self::DatabaseExport => __('Exporting the database'),
+            self::FileDiff => __('Comparing files'),
+            self::Chunking => __('Packing files'),
+            self::UploadInitializing => __('Starting upload'),
+            self::Uploading => __('Uploading'),
+            self::UploadVerifying => __('Checking what was uploaded'),
+            self::Finalizing => __('Finishing'),
+            self::Completed => __('Completed'),
+            self::RetryWait => __('Waiting to retry'),
+            self::Paused => __('Paused'),
+            self::Cancelling => __('Cancelling'),
+            self::Cancelled => __('Cancelled'),
+            self::Failed => __('Failed'),
+            self::Corrupt => __('Corrupt'),
+        };
+    }
 }

@@ -27,7 +27,7 @@ enum BackupStatus: string
     {
         return match ($this) {
             self::Completed => 'green',
-            self::InProgress => 'purple',
+            self::InProgress => 'blue',
             self::Pending => 'yellow',
             self::Failed => 'red',
             self::Cancelled => 'gray',

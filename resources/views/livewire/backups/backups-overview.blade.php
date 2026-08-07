@@ -1,7 +1,10 @@
 <div>
-    {{-- Header with Add Button --}}
+    {{-- Header --}}
     <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <x-ui.page-header title="{{ __('Backups') }}" subtitle="{{ __('Manage site backups and restore points') }}" />
+        <x-ui.page-header
+            title="{{ __('Backups') }}"
+            subtitle="{{ __('Every site, and how recently it could be restored') }}"
+        />
         <x-ui.button wire:click="backupAllSites" wire:loading.attr="disabled" wire:confirm="{{ __('This will queue backups for all connected sites with an active backup configuration. Continue?') }}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" /></svg>
             <span wire:loading.remove wire:target="backupAllSites">{{ __('Backup All Sites') }}</span>
@@ -12,103 +15,158 @@
     <x-ui.flash-alert type="success" key="backup-success" />
     <x-ui.flash-alert type="error" key="backup-error" />
 
-    {{-- Backup Health (averaged across configured sites + bottom-N for triage) --}}
-    @php $health = $this->backupHealth; @endphp
-    @if($health && $health['sites_count'] > 0)
-        @php
-            $avg = (float) ($health['avg_score'] ?? 0);
-            $avgColor = match(true) {
-                $avg >= 80 => 'text-green-600',
-                $avg >= 50 => 'text-yellow-600',
-                $avg >= 25 => 'text-orange-600',
-                default => 'text-red-600',
-            };
-            $avgBg = match(true) {
-                $avg >= 80 => 'bg-green-50',
-                $avg >= 50 => 'bg-yellow-50',
-                $avg >= 25 => 'bg-orange-50',
-                default => 'bg-red-50',
-            };
-        @endphp
-        <x-ui.card class="mb-6">
-            <div class="flex items-start justify-between gap-4">
-                <div class="flex items-center gap-3">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg {{ $avgBg }}">
-                        <span class="text-base font-semibold {{ $avgColor }}">{{ (int) round($avg) }}</span>
-                    </div>
-                    <div>
-                        <h3 class="text-base font-semibold text-gray-900 dark:text-white">{{ __('Backup Health') }}</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Average score across :n configured sites', ['n' => $health['sites_count']]) }}</p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 text-xs">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-green-700"><span class="h-1.5 w-1.5 rounded-full bg-green-500"></span> {{ $health['excellent'] }} {{ __('excellent') }}</span>
-                    <span class="inline-flex items-center gap-1 rounded-full bg-yellow-50 px-2 py-0.5 text-yellow-700"><span class="h-1.5 w-1.5 rounded-full bg-yellow-500"></span> {{ $health['ok'] }} {{ __('ok') }}</span>
-                    <span class="inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 text-orange-700"><span class="h-1.5 w-1.5 rounded-full bg-orange-500"></span> {{ $health['warning'] }} {{ __('warning') }}</span>
-                    <span class="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-red-700"><span class="h-1.5 w-1.5 rounded-full bg-red-500"></span> {{ $health['critical'] }} {{ __('critical') }}</span>
-                </div>
+    {{-- ── The ledger ───────────────────────────────────────────────────────────
+         One row per site, one column per night, worst first. This replaced four stat
+         tiles and a "stale sites" tab: the tiles reported "Completed: 101" while six
+         client sites had no restore point at all, and the tab only listed sites that
+         were ALREADY broken, so it could never show one about to break.
+
+         It is driven by the site list, never by the `backups` table — a site with no
+         runs has no rows, and a query over rows cannot return a site that has none.
+         That is precisely how seventeen sites stayed invisible here. --}}
+    @php $summary = $this->fleetSummary; @endphp
+
+    <x-ui.card class="mb-8 overflow-hidden !p-0">
+        <div class="flex flex-col gap-1 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-baseline sm:justify-between">
+            <p class="text-sm text-gray-700">
+                @if($summary['total'] === 0)
+                    {{ __('No sites yet.') }}
+                @else
+                    @if($summary['failing'] === 0)
+                        {{ __('All :n scheduled sites have a recent restore point.', ['n' => $summary['scheduled']]) }}
+                    @else
+                        {!! __(':count of :n scheduled sites have no recent restore point.', [
+                            'count' => '<strong class="font-semibold text-red-700">'.$summary['failing'].'</strong>',
+                            'n' => $summary['scheduled'],
+                        ]) !!}
+                    @endif
+                    @if($summary['unscheduled'] > 0)
+                        <span class="text-gray-500">{{ trans_choice('{1}One more site has no backup schedule.|[2,*]:count more sites have no backup schedule.', $summary['unscheduled'], ['count' => $summary['unscheduled']]) }}</span>
+                    @endif
+                @endif
+            </p>
+            <p class="text-xs text-gray-500">{{ __('Last :n nights, oldest left', ['n' => \App\Services\Backup\FleetLedger::NIGHTS]) }}</p>
+        </div>
+
+        @if($this->ledger->isEmpty())
+            <x-ui.empty-state
+                :title="__('No sites to show')"
+                :description="__('Add a site and give it a backup schedule to see it here.')"
+                icon="globe"
+            />
+        @else
+            {{-- Column labels. Deliberately quiet: the rows are the content, this is a key. --}}
+            <div class="hidden items-center gap-4 border-b border-gray-100 px-5 py-2 text-[11px] font-medium uppercase tracking-wide text-gray-500 lg:flex">
+                <span class="min-w-0 flex-1">{{ __('Site') }}</span>
+                <span class="w-32 shrink-0 text-right">{{ __('Last restore point') }}</span>
+                <span class="w-[62px] shrink-0"></span>
+                <span class="w-20 shrink-0 text-right">{{ __('Stored') }}</span>
+                <span class="w-28 shrink-0 text-right">{{ __('Next run') }}</span>
             </div>
 
-            @if(! empty($health['bottom']))
-                <div class="mt-4 border-t border-gray-100 dark:border-gray-700 pt-3">
-                    <div class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">{{ __('Lowest scores — needs attention') }}</div>
-                    <div class="space-y-1.5">
-                        @foreach($health['bottom'] as $entry)
-                            @php
-                                $entryColor = match(true) {
-                                    $entry['score'] >= 80 => 'bg-green-100 text-green-700',
-                                    $entry['score'] >= 50 => 'bg-yellow-100 text-yellow-700',
-                                    $entry['score'] >= 25 => 'bg-orange-100 text-orange-700',
-                                    default => 'bg-red-100 text-red-700',
-                                };
-                            @endphp
-                            <div class="flex items-center gap-2 text-sm">
-                                <span class="inline-flex w-9 shrink-0 justify-center rounded px-1.5 py-0.5 text-xs font-semibold {{ $entryColor }}">{{ $entry['score'] }}</span>
-                                <a href="{{ route('sites.backups', $entry['site_id']) }}" class="font-medium text-gray-800 dark:text-gray-100 hover:text-accent-600 dark:hover:text-accent-400 truncate">{{ $entry['name'] }}</a>
-                                <span class="truncate text-xs text-gray-500 dark:text-gray-400">{{ implode(' · ', $entry['reasons']) }}</span>
+            <div class="divide-y divide-gray-100">
+                @foreach($this->ledger as $row)
+                    @php
+                        $site = $row['site'];
+                        $age = $row['age_days'];
+                        $problem = $row['problem'];
+
+                        $ageLabel = match (true) {
+                            $row['last_valid_at'] === null => __('never'),
+                            $age === 0 => $row['last_valid_at']->isoFormat('HH:mm'),
+                            $age === 1 => __('yesterday'),
+                            default => trans_choice('{1}:count day|[2,*]:count days', $age, ['count' => $age]),
+                        };
+
+                        // Colour only where it changes what you would do. A site backed up last
+                        // night is the norm, and the norm should not shout.
+                        $ageTone = match (true) {
+                            $row['last_valid_at'] === null => 'text-red-700 font-semibold',
+                            $problem !== null => 'text-red-700 font-medium',
+                            default => 'text-gray-700',
+                        };
+                    @endphp
+                    <div class="px-5 py-3">
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <div class="order-1 min-w-0 flex-1 basis-full sm:basis-0">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('sites.backups', $site) }}" class="truncate text-sm font-medium text-gray-900 hover:text-accent-600">
+                                        {{ $site->name }}
+                                    </a>
+                                    {{-- The engine badge appears only for the exception. Labelling
+                                         every row "V2" would be labelling the norm. --}}
+                                    @if($row['engine'] === \App\Enums\BackupEngine::V1)
+                                        <x-ui.badge variant="gray">{{ __('Legacy engine') }}</x-ui.badge>
+                                    @endif
+                                </div>
+                                <p class="truncate text-xs text-gray-500">{{ $site->url }}</p>
                             </div>
-                        @endforeach
+
+                            <div class="order-3 w-32 shrink-0 text-right text-sm tabular-nums sm:order-2 {{ $ageTone }}"
+                                 @if($row['last_valid_at']) title="{{ $row['last_valid_at']->toDayDateTimeString() }}" @endif>
+                                {{ $ageLabel }}
+                            </div>
+
+                            <x-ui.night-ledger :nights="$row['nights']" class="order-4 shrink-0 sm:order-3" />
+
+                            <div class="order-5 w-20 shrink-0 text-right text-xs text-gray-500 tabular-nums sm:order-4">
+                                {{ $row['stored_bytes'] > 0 ? \App\Helpers\FormatHelper::bytes($row['stored_bytes'], 0) : '—' }}
+                            </div>
+
+                            <div class="order-6 hidden w-28 shrink-0 text-right text-xs text-gray-500 lg:block">
+                                @if(! $row['scheduled'])
+                                    {{ __('not scheduled') }}
+                                @elseif($row['next_run_at'])
+                                    {{ $row['next_run_at']->isoFormat('D MMM, HH:mm') }}
+                                @else
+                                    —
+                                @endif
+                            </div>
+                        </div>
+
+                        {{-- Only a site with a problem gets a sentence. A healthy fleet is silent,
+                             so every line of text down this page is something to deal with. --}}
+                        @if($problem)
+                            <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 pl-0 text-xs sm:pl-4">
+                                <x-icons.alert-triangle class="h-3.5 w-3.5 shrink-0 text-red-600" aria-hidden="true" />
+                                <span class="text-red-700">{{ $problem['message'] }}</span>
+                                @if($problem['action'])
+                                    <span class="text-gray-600">{{ $problem['action'] }}</span>
+                                @endif
+
+                                @if($site->is_connected && $row['scheduled'])
+                                    <button
+                                        wire:click="backupStaleSite({{ $site->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="backupStaleSite({{ $site->id }})"
+                                        class="ml-auto inline-flex items-center rounded-lg border border-accent-300 px-2.5 py-1 font-medium text-accent-700 transition hover:bg-accent-50 disabled:opacity-50"
+                                    >
+                                        <span wire:loading.remove wire:target="backupStaleSite({{ $site->id }})">{{ __('Back up now') }}</span>
+                                        <span wire:loading wire:target="backupStaleSite({{ $site->id }})">{{ __('Queuing...') }}</span>
+                                    </button>
+                                @elseif(! $site->is_connected)
+                                    <a href="{{ route('sites.overview', $site) }}" class="ml-auto inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1 font-medium text-gray-700 transition hover:bg-gray-50">
+                                        {{ __('Fix connection') }}
+                                    </a>
+                                @else
+                                    <a href="{{ route('sites.backups', $site) }}" class="ml-auto inline-flex items-center rounded-lg border border-gray-300 px-2.5 py-1 font-medium text-gray-700 transition hover:bg-gray-50">
+                                        {{ __('Set a schedule') }}
+                                    </a>
+                                @endif
+                            </div>
+                        @endif
                     </div>
-                </div>
-            @endif
-        </x-ui.card>
-    @endif
+                @endforeach
+            </div>
+        @endif
+    </x-ui.card>
 
-    {{-- Stats Cards --}}
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-gray-900">{{ $this->stats['total'] }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ __('Total Backups') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-green-600">{{ $this->stats['completed'] }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ __('Completed') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-red-600">{{ $this->stats['failed'] }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ __('Failed') }}</p>
-            </div>
-        </x-ui.card>
-        <x-ui.card>
-            <div class="text-center">
-                <p class="text-2xl font-semibold text-accent-600">{{ $this->stats['in_progress'] }}</p>
-                <p class="text-xs text-gray-500 mt-1">{{ __('In Progress') }}</p>
-            </div>
-        </x-ui.card>
-    </div>
+    {{-- ── Individual runs ────────────────────────────────────────────────────── --}}
+    <h2 class="mb-3 text-base font-semibold text-gray-900">{{ __('Recent runs') }}</h2>
 
-    {{-- Filters --}}
     <div class="mb-4 flex flex-wrap items-center gap-3">
-        @php
-            $staleLabel = __('Stale').($this->stats['stale'] > 0 ? ' ('.$this->stats['stale'].')' : '');
-        @endphp
         <x-ui.filter-tabs
-            :options="['all' => __('All'), 'completed' => __('Completed'), 'failed' => __('Failed'), 'in_progress' => __('In Progress'), 'stale' => $staleLabel]"
+            :options="['all' => __('All'), 'completed' => __('Completed'), 'failed' => __('Failed'), 'in_progress' => __('In Progress')]"
             :selected="$filter"
             wire="filter"
         />
@@ -118,169 +176,6 @@
             class="w-full sm:ml-auto sm:w-64"
         />
     </div>
-
-    {{-- Stale Sites view: site-level health, not backup rows --}}
-    @if($filter === 'stale')
-        <x-ui.card class="overflow-hidden !p-0">
-            @if($this->staleSites->isEmpty())
-                <div class="px-6 py-12 text-center">
-                    <svg class="mx-auto h-10 w-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <p class="mt-3 text-sm font-medium text-gray-700">{{ __('No stale sites — all backups are within the last 36h.') }}</p>
-                </div>
-            @else
-                <div class="border-b border-yellow-200 bg-yellow-50 px-5 py-3 text-sm text-yellow-800">
-                    <strong>{{ $this->staleSites->count() }}</strong>
-                    {{ __('site(s) have backup enabled but no successful backup in the last 36 hours (or ever). Investigate each row below.') }}
-                </div>
-
-                {{-- Mobile cards --}}
-                <div class="md:hidden divide-y divide-gray-200">
-                    @foreach($this->staleSites as $site)
-                        @php
-                            $monitoringDisabled = $site->healthState?->is_monitoring_disabled === true;
-                            $cause = ! $site->is_connected
-                                ? __('Plugin disconnected')
-                                : ($monitoringDisabled
-                                    ? __('Monitoring disabled — needs re-enable')
-                                    : ($site->last_backup_at === null ? __('Never ran') : __('Job stuck / errored')));
-                        @endphp
-                        <div class="p-4 space-y-2">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0 flex-1">
-                                    <a href="{{ route('sites.backups', $site) }}" class="text-accent-600 hover:text-accent-800 font-medium text-sm">{{ $site->name }}</a>
-                                    <div class="text-xs text-gray-400 truncate">{{ $site->url }}</div>
-                                </div>
-                                @if($site->is_connected)
-                                    <x-ui.badge variant="green">{{ __('Connected') }}</x-ui.badge>
-                                @else
-                                    <x-ui.badge variant="red">{{ __('Disconnected') }}</x-ui.badge>
-                                @endif
-                            </div>
-                            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
-                                <span>{{ __('Last backup') }}:
-                                    @if($site->last_backup_at)
-                                        <span class="text-gray-700">{{ $site->last_backup_at->diffForHumans() }}</span>
-                                    @else
-                                        <span class="text-red-600 font-medium">{{ __('Never') }}</span>
-                                    @endif
-                                </span>
-                                <span>{{ __('Last sync') }}:
-                                    <span class="text-gray-700">{{ $site->last_synced_at?->diffForHumans() ?? '—' }}</span>
-                                </span>
-                            </div>
-                            <div class="flex items-center justify-between gap-2">
-                                <span class="text-xs font-medium {{ $site->is_connected ? ($monitoringDisabled ? 'text-orange-600' : 'text-yellow-600') : 'text-red-600' }}">{{ $cause }}</span>
-                                @if($site->is_connected && $monitoringDisabled)
-                                    <button
-                                        wire:click="reEnableMonitoring({{ $site->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="reEnableMonitoring({{ $site->id }})"
-                                        class="inline-flex items-center rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 transition"
-                                    >
-                                        <span wire:loading.remove wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enable monitoring') }}</span>
-                                        <span wire:loading wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enabling...') }}</span>
-                                    </button>
-                                @elseif($site->is_connected)
-                                    <button
-                                        wire:click="backupStaleSite({{ $site->id }})"
-                                        wire:loading.attr="disabled"
-                                        wire:target="backupStaleSite({{ $site->id }})"
-                                        class="inline-flex items-center rounded-lg border border-accent-300 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 disabled:opacity-50 transition"
-                                    >
-                                        <span wire:loading.remove wire:target="backupStaleSite({{ $site->id }})">{{ __('Backup Now') }}</span>
-                                        <span wire:loading wire:target="backupStaleSite({{ $site->id }})">{{ __('Queuing...') }}</span>
-                                    </button>
-                                @else
-                                    <a href="{{ route('sites.overview', $site) }}" class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
-                                        {{ __('Fix Connection') }}
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    @endforeach
-                </div>
-
-                {{-- Desktop table --}}
-                <div class="hidden md:block overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Site') }}</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Last Backup') }}</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Last Sync') }}</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Connector') }}</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">{{ __('Likely Cause') }}</th>
-                                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">{{ __('Action') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            @foreach($this->staleSites as $site)
-                                @php
-                                    $monitoringDisabled = $site->healthState?->is_monitoring_disabled === true;
-                                    $cause = ! $site->is_connected
-                                        ? __('Plugin disconnected')
-                                        : ($monitoringDisabled
-                                            ? __('Monitoring disabled — needs re-enable')
-                                            : ($site->last_backup_at === null ? __('Never ran') : __('Job stuck / errored')));
-                                @endphp
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-3 py-3 text-sm">
-                                        <a href="{{ route('sites.backups', $site) }}" class="text-accent-600 hover:text-accent-800 font-medium">{{ $site->name }}</a>
-                                        <div class="text-xs text-gray-400 truncate">{{ $site->url }}</div>
-                                    </td>
-                                    <td class="px-3 py-3 text-sm text-gray-700">
-                                        @if($site->last_backup_at)
-                                            <span title="{{ $site->last_backup_at->toDateTimeString() }}">{{ $site->last_backup_at->diffForHumans() }}</span>
-                                        @else
-                                            <span class="text-red-600 font-medium">{{ __('Never') }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-3 py-3 text-sm text-gray-700">
-                                        {{ $site->last_synced_at?->diffForHumans() ?? '—' }}
-                                    </td>
-                                    <td class="px-3 py-3 text-sm">
-                                        <x-ui.badge :variant="$site->is_connected ? 'green' : 'red'">
-                                            {{ $site->is_connected ? __('Connected') : __('Disconnected') }}
-                                        </x-ui.badge>
-                                    </td>
-                                    <td class="px-3 py-3 text-sm font-medium {{ $site->is_connected ? ($monitoringDisabled ? 'text-orange-600' : 'text-yellow-600') : 'text-red-600' }}">{{ $cause }}</td>
-                                    <td class="px-3 py-3 text-right">
-                                        @if($site->is_connected && $monitoringDisabled)
-                                            <button
-                                                wire:click="reEnableMonitoring({{ $site->id }})"
-                                                wire:loading.attr="disabled"
-                                                wire:target="reEnableMonitoring({{ $site->id }})"
-                                                class="inline-flex items-center rounded-lg border border-orange-300 bg-white px-3 py-1.5 text-xs font-medium text-orange-700 hover:bg-orange-50 disabled:opacity-50 transition"
-                                            >
-                                                <span wire:loading.remove wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enable monitoring') }}</span>
-                                                <span wire:loading wire:target="reEnableMonitoring({{ $site->id }})">{{ __('Re-enabling...') }}</span>
-                                            </button>
-                                        @elseif($site->is_connected)
-                                            <button
-                                                wire:click="backupStaleSite({{ $site->id }})"
-                                                wire:loading.attr="disabled"
-                                                wire:target="backupStaleSite({{ $site->id }})"
-                                                class="inline-flex items-center rounded-lg border border-accent-300 bg-white px-3 py-1.5 text-xs font-medium text-accent-700 hover:bg-accent-50 disabled:opacity-50 transition"
-                                            >
-                                                <span wire:loading.remove wire:target="backupStaleSite({{ $site->id }})">{{ __('Backup Now') }}</span>
-                                                <span wire:loading wire:target="backupStaleSite({{ $site->id }})">{{ __('Queuing...') }}</span>
-                                            </button>
-                                        @else
-                                            <a href="{{ route('sites.overview', $site) }}" class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition">
-                                                {{ __('Fix Connection') }}
-                                            </a>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-        </x-ui.card>
-    @else
 
     {{-- Backups Table --}}
     <x-ui.card class="overflow-hidden !p-0"
@@ -341,7 +236,7 @@
                             <span class="text-xs text-gray-600">{{ $backup->file_size_formatted }}</span>
                             <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
                             @if($backup->is_locked)
-                                <x-ui.badge variant="purple">{{ __('Locked') }}</x-ui.badge>
+                                <x-ui.badge variant="blue">{{ __('Locked') }}</x-ui.badge>
                             @endif
                         </div>
                         <p class="mt-1.5 text-xs text-gray-500">
@@ -432,7 +327,7 @@
                                 <td class="px-3 py-3">
                                     <x-ui.badge :variant="$backup->status_color">{{ $backup->status->label() }}</x-ui.badge>
                                     @if($backup->is_locked)
-                                        <x-ui.badge variant="purple" class="ml-1">{{ __('Locked') }}</x-ui.badge>
+                                        <x-ui.badge variant="blue" class="ml-1">{{ __('Locked') }}</x-ui.badge>
                                     @endif
                                 </td>
                                 <td class="px-3 py-3 text-right">
@@ -457,5 +352,4 @@
             @endif
         @endif
     </x-ui.card>
-    @endif
 </div>

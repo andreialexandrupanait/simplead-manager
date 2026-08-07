@@ -32,7 +32,7 @@
         >
             {{-- Contor selecție --}}
             <div class="flex items-center gap-2 pr-1">
-                <x-ui.badge variant="purple">{{ $count }}</x-ui.badge>
+                <x-ui.badge variant="blue">{{ $count }}</x-ui.badge>
                 <span class="text-sm font-medium text-white/90">
                     {{ $count === 1 ? 'selectat' : 'selectate' }}
                 </span>

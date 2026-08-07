@@ -498,3 +498,19 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 });
+
+/**
+ * The chart accent, read from the design tokens rather than pasted into each chart.
+ *
+ * Every chart component carried `#7B68EE` as its default colour — the violet this app was themed
+ * away from in July. Because it was the DEFAULT, any chart added without an explicit colour came
+ * out violet, so the leak reproduced itself. Reading --accent-500 means the charts follow the
+ * palette from now on instead of drifting from it.
+ */
+window.chartAccent = function (fallback = '#2271b1') {
+    const value = getComputedStyle(document.documentElement)
+        .getPropertyValue('--accent-500')
+        .trim();
+
+    return value || fallback;
+};

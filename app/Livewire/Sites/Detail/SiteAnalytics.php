@@ -13,6 +13,7 @@ use App\Models\GoogleConnection;
 use App\Models\Site;
 use App\Models\UpdateLog;
 use App\Services\GoogleAnalyticsService;
+use App\Support\HumanError;
 use Carbon\Carbon;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -186,7 +187,7 @@ class SiteAnalytics extends Component
                 session()->flash('error', 'No GA4 properties found for this Google account. Make sure the account has access to a GA4 property.');
             }
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to list properties: '.$e->getMessage());
+            session()->flash('error', __('Could not list the Analytics properties: :error', ['error' => HumanError::from($e)]));
         }
     }
 
@@ -236,7 +237,7 @@ class SiteAnalytics extends Component
             $service = new GoogleAnalyticsService($google);
             $this->realtimeData = $service->getRealtimeData($connection->property_id);
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Real-time data failed: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not load real-time data: :error', ['error' => HumanError::from($e)]));
         }
     }
 

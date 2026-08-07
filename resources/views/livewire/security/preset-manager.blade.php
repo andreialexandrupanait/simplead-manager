@@ -82,7 +82,7 @@
                                     <h4 class="text-sm font-semibold text-gray-900">{{ $preset->name }}</h4>
                                     <span class="text-xs text-gray-400">v{{ $preset->version }}</span>
                                     @if($preset->is_default)
-                                        <x-ui.badge variant="purple">{{ __('Default') }}</x-ui.badge>
+                                        <x-ui.badge variant="blue">{{ __('Default') }}</x-ui.badge>
                                     @endif
                                 </div>
                                 @if($preset->description)

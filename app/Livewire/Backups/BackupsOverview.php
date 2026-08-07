@@ -13,7 +13,9 @@ use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\FleetLedger;
 use App\Services\CircuitBreakerService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -83,58 +85,40 @@ class BackupsOverview extends Component
         return $scores;
     }
 
+    /**
+     * One row per site, worst first — see {@see FleetLedger} for why this starts from the site
+     * list rather than from `backups`.
+     */
     #[Computed]
-    public function stats(): array
+    public function ledger(): Collection
     {
-        $ids = $this->visibleSiteIds();
-        $scoped = fn () => Backup::query()
-            ->whereHas('site')
-            ->when($ids !== null, fn ($q) => $q->whereIn('site_id', $ids));
+        return app(FleetLedger::class)->rows($this->visibleSiteIds());
+    }
+
+    /**
+     * The sentence above the ledger.
+     *
+     * It replaces four stat tiles that between them said "Completed: 101" while client sites had
+     * no restore point at all — every number true, none of them the answer.
+     *
+     * Two facts, not one: a scheduled site with no recent restore point is an incident, while a
+     * site with no schedule may be a decision somebody made on purpose. Adding them together
+     * produces a number that overstates the emergency and gets ignored for it.
+     *
+     * @return array{failing: int, scheduled: int, unscheduled: int, total: int}
+     */
+    #[Computed]
+    public function fleetSummary(): array
+    {
+        $rows = $this->ledger;
+        $scheduled = $rows->filter(fn (array $row) => $row['scheduled']);
 
         return [
-            'total' => $scoped()->count(),
-            'completed' => $scoped()->where('status', 'completed')->count(),
-            'failed' => $scoped()->where('status', 'failed')->count(),
-            'in_progress' => $scoped()->whereIn('status', ['pending', 'in_progress'])->count(),
-            'stale' => $this->staleSites->count(),
+            'failing' => $scheduled->filter(fn (array $row) => $row['problem'] !== null)->count(),
+            'scheduled' => $scheduled->count(),
+            'unscheduled' => $rows->count() - $scheduled->count(),
+            'total' => $rows->count(),
         ];
-    }
-
-    /**
-     * Averaged backup health across configured sites, with bottom-N for triage.
-     * Moved here from dashboard so it lives next to the backup tables it summarises.
-     */
-    #[Computed]
-    public function backupHealth(): ?array
-    {
-        // Non-admins only aggregate over the sites they can see; passing null
-        // for admins keeps the full-fleet average + bottom-N.
-        $user = auth()->user();
-        $siteIds = $user && ! $user->isAdmin()
-            ? Site::query()->visibleTo($user)->pluck('id')->all()
-            : null;
-
-        return app(\App\Services\Backup\BackupHealthService::class)->aggregate(5, $siteIds);
-    }
-
-    /**
-     * Sites with backup enabled where last successful backup is older than 36h
-     * (or has never run). Same definition as DashboardService::computeStats(),
-     * but eager-loaded with relations the table needs.
-     */
-    #[Computed]
-    public function staleSites()
-    {
-        return Site::query()
-            ->visibleTo(auth()->user())
-            ->whereHas('backupConfig', fn ($q) => $q->where('is_enabled', true))
-            ->where(fn ($q) => $q
-                ->whereNull('last_backup_at')
-                ->orWhere('last_backup_at', '<', now()->subHours((int) config('backups.stale_after_hours', 36)))
-            )
-            ->with(['backupConfig.storageDestination', 'healthState'])
-            ->orderByRaw('last_backup_at ASC NULLS FIRST')
-            ->get();
     }
 
     public function reEnableMonitoring(int $siteId): void
@@ -149,7 +133,7 @@ class BackupsOverview extends Component
         $this->authorizeSiteModification($site);
 
         CircuitBreakerService::reEnable($site);
-        unset($this->staleSites);
+        unset($this->ledger, $this->fleetSummary);
 
         session()->flash('backup-success', "Monitoring re-enabled for {$site->name}. Backups will resume on the next scheduler tick.");
     }
@@ -244,6 +228,7 @@ class BackupsOverview extends Component
         ]);
 
         CreateBackup::dispatch($site, $type, 'manual_stale', $destination->id, $backup->id);
+        unset($this->ledger, $this->fleetSummary);
         session()->flash('backup-success', "Backup queued for {$site->name}.");
     }
 
@@ -384,11 +369,11 @@ class BackupsOverview extends Component
 
     public function render()
     {
-        // Stale view is site-level and rendered from $this->staleSites; skip the backups query.
+        // `stale` used to be a tab holding its own site-level table. The ledger above answers that
+        // question for every site at once, so the tab is gone — but a bookmarked ?filter=stale must
+        // still land on something usable rather than an empty table with no way back.
         if ($this->filter === 'stale') {
-            return view('livewire.backups.backups-overview', [
-                'backups' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25),
-            ])->layout('components.layouts.app', ['title' => 'Backups']);
+            $this->filter = 'all';
         }
 
         $ids = $this->visibleSiteIds();

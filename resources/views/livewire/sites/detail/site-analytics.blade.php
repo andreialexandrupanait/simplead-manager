@@ -124,7 +124,7 @@
                     <div class="text-xs font-medium text-gray-500">Users</div>
                     <div class="mt-1 text-2xl font-semibold text-gray-900">{{ number_format($overview['total_users']) }}</div>
                     @if(count($usersOverTime) > 1)
-                        <x-charts.sparkline wire:key="spark-users-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($usersOverTime)->pluck('users')->toArray()" color="#7B68EE" />
+                        <x-charts.sparkline wire:key="spark-users-{{ $dateRange }}-{{ $customStart }}-{{ $customEnd }}" :data="collect($usersOverTime)->pluck('users')->toArray()" color="#2271b1" />
                     @endif
                 </x-ui.card>
                 <x-ui.card>
@@ -201,7 +201,7 @@
                         if (this.chart) this.chart.destroy();
                         const d = this.chartData;
                         const datasets = [
-                            { label: 'Users', data: d.users, borderColor: '#7B68EE', backgroundColor: '#7B68EE1A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
+                            { label: 'Users', data: d.users, borderColor: '#2271b1', backgroundColor: '#2271b11A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
                             { label: 'New Users', data: d.newUsers, borderColor: '#06b6d4', backgroundColor: '#06b6d41A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
                             { label: 'Sessions', data: d.sessions, borderColor: '#10b981', backgroundColor: '#10b9811A', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 3, pointHoverRadius: 5 },
                         ];

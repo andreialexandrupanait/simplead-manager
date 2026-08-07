@@ -16,6 +16,8 @@ if (!$job) return;
             x-data="{ progress: {{ $job['progress'] }}, message: '{{ addslashes($job['message']) }}' }"
             x-init="$watch('progress', () => {})"
             x-effect="progress = {{ $job['progress'] }}; message = '{{ addslashes($job['message']) }}';"
+            role="status"
+            aria-live="polite"
             {{ $attributes->merge(['class' => 'mb-4 rounded-lg bg-accent-50 border border-accent-200 p-3']) }}
         >
             <div class="flex items-center justify-between gap-2.5">
@@ -26,7 +28,14 @@ if (!$job) return;
                 <span class="text-xs font-semibold text-accent-600 shrink-0 tabular-nums" x-show="progress > 0" x-text="progress + '%'" x-cloak></span>
             </div>
             <div class="mt-2">
-                <div class="w-full overflow-hidden rounded-full bg-accent-100 h-1.5">
+                <div
+                    class="h-1.5 w-full overflow-hidden rounded-full bg-accent-100"
+                    role="progressbar"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    :aria-valuenow="progress"
+                    :aria-valuetext="progress > 0 ? progress + '%' : '{{ __('starting') }}'"
+                >
                     <div
                         x-show="progress > 0"
                         class="bg-accent-500 h-1.5 rounded-full transition-all duration-700 ease-out"
@@ -48,10 +57,12 @@ if (!$job) return;
             x-transition:leave="transition ease-in duration-200"
             x-transition:leave-start="opacity-100"
             x-transition:leave-end="opacity-0"
+            role="status"
+            aria-live="polite"
             {{ $attributes->merge(['class' => 'mb-4 rounded-lg bg-green-50 border border-green-200 p-3']) }}
         >
             <div class="flex items-center gap-2.5">
-                <x-icons.check-circle class="h-4 w-4 text-green-600 shrink-0" />
+                <x-icons.check-circle class="h-4 w-4 text-green-600 shrink-0" aria-hidden="true" />
                 <span class="text-sm font-medium text-green-700">{{ $job['message'] }}</span>
             </div>
         </div>
@@ -59,15 +70,20 @@ if (!$job) return;
         <div
             x-data="{ show: true }"
             x-show="show"
+            role="alert"
             {{ $attributes->merge(['class' => 'mb-4 rounded-lg bg-red-50 border border-red-200 p-3']) }}
         >
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
-                    <x-icons.x-circle class="h-4 w-4 text-red-600 shrink-0" />
+                    <x-icons.x-circle class="h-4 w-4 text-red-600 shrink-0" aria-hidden="true" />
                     <span class="text-sm font-medium text-red-700">{{ $job['message'] }}</span>
                 </div>
-                <button @click="show = false" class="text-red-400 hover:text-red-600">
-                    <x-icons.x class="h-4 w-4" />
+                <button
+                    @click="show = false"
+                    aria-label="{{ __('Dismiss') }}"
+                    class="rounded text-red-400 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-1"
+                >
+                    <x-icons.x class="h-4 w-4" aria-hidden="true" />
                 </button>
             </div>
         </div>

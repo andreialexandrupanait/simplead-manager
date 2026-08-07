@@ -76,7 +76,7 @@
                         </div>
                         <div class="mt-2 flex flex-wrap items-center gap-1.5">
                             <x-ui.badge :variant="$statusVariant">{{ ucfirst($client->status) }}</x-ui.badge>
-                            <x-ui.badge variant="purple">{{ $client->sites_count }} {{ Str::plural('site', $client->sites_count) }}</x-ui.badge>
+                            <x-ui.badge variant="blue">{{ $client->sites_count }} {{ Str::plural('site', $client->sites_count) }}</x-ui.badge>
                             @if($client->phone)
                                 <span class="text-xs text-gray-500">{{ $client->phone }}</span>
                             @endif
@@ -149,7 +149,7 @@
                                 @endif
                             </x-ui.td>
                             <x-ui.td>
-                                <x-ui.badge variant="purple">{{ $client->sites_count }}</x-ui.badge>
+                                <x-ui.badge variant="blue">{{ $client->sites_count }}</x-ui.badge>
                             </x-ui.td>
                             <x-ui.td>
                                 @php

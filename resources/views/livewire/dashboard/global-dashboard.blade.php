@@ -74,21 +74,21 @@
                     </x-ui.dropdown>
 
                     {{-- Sync --}}
-                    <x-ui.button variant="secondary" size="sm" wire:click="bulkSync">
+                    <x-ui.button variant="secondary" size="sm" wire:click="bulkSync" wire:loading.attr="disabled" wire:target="bulkSync">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                        {{ __('Sync') }}
+                        <span wire:loading.remove wire:target="bulkSync">{{ __('Sync') }}</span><span wire:loading wire:target="bulkSync">{{ __('Syncing…') }}</span>
                     </x-ui.button>
 
                     {{-- Backup --}}
-                    <x-ui.button variant="secondary" size="sm" wire:click="bulkBackup">
+                    <x-ui.button variant="secondary" size="sm" wire:click="bulkBackup" wire:loading.attr="disabled" wire:target="bulkBackup">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
-                        {{ __('Backup') }}
+                        <span wire:loading.remove wire:target="bulkBackup">{{ __('Backup') }}</span><span wire:loading wire:target="bulkBackup">{{ __('Queuing…') }}</span>
                     </x-ui.button>
 
                     {{-- Check Uptime --}}
-                    <x-ui.button variant="secondary" size="sm" wire:click="bulkCheckUptime">
+                    <x-ui.button variant="secondary" size="sm" wire:click="bulkCheckUptime" wire:loading.attr="disabled" wire:target="bulkCheckUptime">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-                        {{ __('Check Uptime') }}
+                        <span wire:loading.remove wire:target="bulkCheckUptime">{{ __('Check Uptime') }}</span><span wire:loading wire:target="bulkCheckUptime">{{ __('Checking…') }}</span>
                     </x-ui.button>
 
                     {{-- Delete (danger) --}}

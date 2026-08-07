@@ -175,6 +175,42 @@
 /* Lighter, more refined sidebar iconography (closer to the reference icon set). */
 [data-sidebar] nav svg { stroke-width: 1.75; }
 
+/* ── Faint text that can actually be read ──────────────────────────────────
+   `text-gray-400` (#9CA3AF) is used 352 times in light mode for meta text —
+   timestamps, counts, secondary labels. On white that is 2.85:1, well under the
+   4.5:1 WCAG AA asks for body text. Retinting the utility fixes all 352 at once
+   instead of editing 103 files, which is the same move the .dark block below
+   makes for the opposite reason.
+
+   #6B7280 is Tailwind's gray-500 — a value this app already uses for secondary
+   text throughout, so nothing changes character, it just stops being unreadable.
+   Dark mode is untouched: the .dark rule further down maps this utility to
+   --text-disabled and wins there. */
+:root:not(.dark) .text-gray-400 { color: #6B7280; }
+
+/* …except on the nav rail, which is #1A1A1A in BOTH themes. Darkening faint text
+   there would take contrast the wrong way, so it keeps the lighter grey. */
+:root:not(.dark) [data-sidebar] .text-gray-400 { color: #9CA3AF; }
+
+/* ── Night ledger: a failed night is struck through ────────────────────────
+   The four states in x-ui.night-ledger differ by fill AND by shape, so the strip
+   survives colour blindness and printing: solid = a verified restore point,
+   outlined = one nothing has checked, struck = a run that failed, hairline-only
+   = a night nothing was attempted.
+
+   The strike is a gradient rather than a shorter bar on purpose. Every cell keeps
+   the same height, so the top edge of the strip stays one clean line — which is
+   what lets a gap in the run read as a gap at a glance. */
+.sad-night-failed {
+    background-image: linear-gradient(
+        to bottom right,
+        transparent calc(50% - 1px),
+        rgba(255, 255, 255, 0.9) calc(50% - 1px),
+        rgba(255, 255, 255, 0.9) calc(50% + 1px),
+        transparent calc(50% + 1px)
+    );
+}
+
 /* ── REFERINTA-VIZUALA module cards (per-site "Prezentare" dashboard) ──────
    Faithful port of .mcard/.mhd/.mico/.mrow/.mbox/.mact so the site overview
    renders exactly like the reference: round colour-coded header icons, soft

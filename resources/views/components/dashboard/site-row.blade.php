@@ -8,21 +8,35 @@
 @php
     $s = \App\Helpers\SiteStatusHelper::compute($site);
 
+    // Every signal below already carries a human-readable `tip` from SiteStatusHelper. The row
+    // used it for exactly one icon and threw the other eight away, which left nine coloured
+    // glyphs with no name — a screen reader announced nothing at all, and a sighted newcomer had
+    // to hover each one in turn to learn what it meant.
     $uptimeColor = $s['uptime']['color'];
+    $uptimeTip = $s['uptime']['tip'];
     $responseColor = $s['response']['color'];
+    $responseTip = $s['response']['tip'];
     $perfColor = $s['performance']['color'];
 
     $pluginsColor = $s['plugins']['color'];
+    $pluginsTip = $s['plugins']['tip'];
     $usersColor = $s['users']['color'];
+    $usersTip = $s['users']['tip'];
     $wpConnColor = $s['wpConn']['color'];
+    $wpConnTip = $s['wpConn']['tip'];
     $backupColor = $s['backup']['color'];
+    $backupTip = $s['backup']['tip'];
     $wpVerColor = $s['wpVersion']['color'];
+    $wpVerTip = $s['wpVersion']['tip'];
     $reportsColor = $s['reports']['color'];
+    $reportsTip = $s['reports']['tip'];
 
     // Analytics (not part of shared helper - site-row specific)
     $analyticsColor = 'text-gray-300';
+    $analyticsTip = __('Analytics: not connected');
     if ($site->analyticsConnection && $site->analyticsConnection->is_active) {
         $analyticsColor = 'text-green-500';
+        $analyticsTip = __('Analytics: connected');
     }
 
     $gscColor = $s['searchConsole']['color'];
@@ -112,7 +126,7 @@
         {{-- 1. Uptime --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $uptimeColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                <svg class="h-5 w-5 {{ $uptimeColor }}" role="img" aria-label="{{ $uptimeTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             </x-slot:trigger>
             <x-hovercards.uptime :site="$site" />
         </x-ui.hovercard>
@@ -120,7 +134,7 @@
         {{-- 2. Response Time --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $responseColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <svg class="h-5 w-5 {{ $responseColor }}" role="img" aria-label="{{ $responseTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </x-slot:trigger>
             <x-hovercards.response-time :site="$site" />
         </x-ui.hovercard>
@@ -128,14 +142,14 @@
         {{-- 4. Analytics --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $analyticsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                <svg class="h-5 w-5 {{ $analyticsColor }}" role="img" aria-label="{{ $analyticsTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
             </x-slot:trigger>
             <x-hovercards.analytics :site="$site" />
         </x-ui.hovercard>
 
         {{-- 5. Search Console --}}
         <x-ui.tooltip :text="$gscTip">
-            <svg class="h-5 w-5 {{ $gscColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <svg class="h-5 w-5 {{ $gscColor }}" role="img" aria-label="{{ $gscTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </x-ui.tooltip>
 
         <div class="mx-3.5 h-4 w-px bg-gray-200"></div>
@@ -143,7 +157,7 @@
         {{-- 6. Plugins/Updates --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $pluginsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
+                <svg class="h-5 w-5 {{ $pluginsColor }}" role="img" aria-label="{{ $pluginsTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/></svg>
             </x-slot:trigger>
             <x-hovercards.plugins :site="$site" />
         </x-ui.hovercard>
@@ -151,7 +165,7 @@
         {{-- 8. Users --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $usersColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                <svg class="h-5 w-5 {{ $usersColor }}" role="img" aria-label="{{ $usersTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
             </x-slot:trigger>
             <x-hovercards.users :site="$site" />
         </x-ui.hovercard>
@@ -159,7 +173,7 @@
         {{-- 9. WordPress Connected --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $wpConnColor }}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM3.5 12c0-1.19.25-2.32.69-3.35l3.81 10.44A8.51 8.51 0 013.5 12zm8.5 8.5c-.83 0-1.64-.12-2.4-.34l2.55-7.41 2.61 7.15c.02.04.04.07.06.1-.89.32-1.84.5-2.82.5zm1.1-12.47c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.83 0-2.24-.11-2.24-.11-.46-.02-.51.68-.05.7 0 0 .43.06.89.08l1.32 3.61-1.85 5.56-3.08-9.17c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.16 0-.35 0-.55-.01A8.49 8.49 0 0112 3.5c2.13 0 4.07.78 5.56 2.07-.04 0-.07-.01-.11-.01-1.39 0-2.08 1.07-2.08 1.9 0 .7.38 1.29.78 2 .3.52.65 1.19.65 2.16 0 .67-.26 1.45-.6 2.53l-.79 2.63-2.86-8.75zM16.62 18.77l2.59-7.47c.48-1.21.64-2.17.64-3.03 0-.31-.02-.6-.06-.87A8.48 8.48 0 0120.5 12a8.51 8.51 0 01-3.88 6.77z"/></svg>
+                <svg class="h-5 w-5 {{ $wpConnColor }}" role="img" aria-label="{{ $wpConnTip }}" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.486 2 2 6.486 2 12s4.486 10 10 10 10-4.486 10-10S17.514 2 12 2zM3.5 12c0-1.19.25-2.32.69-3.35l3.81 10.44A8.51 8.51 0 013.5 12zm8.5 8.5c-.83 0-1.64-.12-2.4-.34l2.55-7.41 2.61 7.15c.02.04.04.07.06.1-.89.32-1.84.5-2.82.5zm1.1-12.47c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.83 0-2.24-.11-2.24-.11-.46-.02-.51.68-.05.7 0 0 .43.06.89.08l1.32 3.61-1.85 5.56-3.08-9.17c.51-.03.97-.08.97-.08.46-.05.4-.72-.05-.7 0 0-1.37.11-2.26.11-.16 0-.35 0-.55-.01A8.49 8.49 0 0112 3.5c2.13 0 4.07.78 5.56 2.07-.04 0-.07-.01-.11-.01-1.39 0-2.08 1.07-2.08 1.9 0 .7.38 1.29.78 2 .3.52.65 1.19.65 2.16 0 .67-.26 1.45-.6 2.53l-.79 2.63-2.86-8.75zM16.62 18.77l2.59-7.47c.48-1.21.64-2.17.64-3.03 0-.31-.02-.6-.06-.87A8.48 8.48 0 0120.5 12a8.51 8.51 0 01-3.88 6.77z"/></svg>
             </x-slot:trigger>
             <x-hovercards.wordpress :site="$site" />
         </x-ui.hovercard>
@@ -169,7 +183,7 @@
         {{-- 10. Backup --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $backupColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                <svg class="h-5 w-5 {{ $backupColor }}" role="img" aria-label="{{ $backupTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
             </x-slot:trigger>
             <x-hovercards.backup :site="$site" />
         </x-ui.hovercard>
@@ -177,7 +191,7 @@
         {{-- 11. WP Version --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $wpVerColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                <svg class="h-5 w-5 {{ $wpVerColor }}" role="img" aria-label="{{ $wpVerTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
             </x-slot:trigger>
             <x-hovercards.wp-version :site="$site" />
         </x-ui.hovercard>
@@ -185,16 +199,16 @@
         {{-- 12. Reports --}}
         <x-ui.hovercard>
             <x-slot:trigger>
-                <svg class="h-5 w-5 {{ $reportsColor }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <svg class="h-5 w-5 {{ $reportsColor }}" role="img" aria-label="{{ $reportsTip }}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
             </x-slot:trigger>
             <x-hovercards.reports :site="$site" />
         </x-ui.hovercard>
     </div>
 
     {{-- Health Bar --}}
-    <x-ui.tooltip :text="'Health: ' . $healthScore . '/100'">
+    <x-ui.tooltip :text="__('Health: :score/100', ['score' => $healthScore])">
         <div class="hidden w-16 flex-shrink-0 sm:block">
-            <div class="h-2 w-full rounded-full bg-gray-200">
+            <div class="h-2 w-full rounded-full bg-gray-200" role="img" aria-label="{{ __('Health: :score/100', ['score' => $healthScore]) }}">
                 <div class="h-2 rounded-full {{ $healthBarColor }}" style="width: {{ $healthWidth }}%"></div>
             </div>
         </div>
@@ -212,28 +226,52 @@
         </x-slot:trigger>
 
         {{-- Navigation links --}}
-        <a href="{{ route('sites.overview', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Overview</a>
-        <a href="{{ route('sites.plugins', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Plugins</a>
-        <a href="{{ route('sites.backups', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Backups</a>
-        <a href="{{ route('sites.uptime', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Uptime</a>
-        <a href="{{ route('sites.performance', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Performance</a>
+        <a href="{{ route('sites.overview', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Overview') }}</a>
+        <a href="{{ route('sites.plugins', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Plugins') }}</a>
+        <a href="{{ route('sites.backups', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Backups') }}</a>
+        <a href="{{ route('sites.uptime', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Uptime') }}</a>
+        <a href="{{ route('sites.performance', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('Performance') }}</a>
         <div class="my-1 border-t border-gray-100"></div>
 
         {{-- Action buttons --}}
-        <button wire:click="runBackup({{ $site->id }})" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Run Backup</button>
-        <button wire:click="checkNow({{ $site->id }})" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Check Uptime</button>
-        <button wire:click="syncSite({{ $site->id }})" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Sync Site</button>
+        <button
+            wire:click="runBackup({{ $site->id }})"
+            wire:loading.attr="disabled"
+            wire:target="runBackup({{ $site->id }})"
+            class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+            <span wire:loading.remove wire:target="runBackup({{ $site->id }})">{{ __('Run backup') }}</span>
+            <span wire:loading wire:target="runBackup({{ $site->id }})">{{ __('Queuing…') }}</span>
+        </button>
+        <button
+            wire:click="checkNow({{ $site->id }})"
+            wire:loading.attr="disabled"
+            wire:target="checkNow({{ $site->id }})"
+            class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+            <span wire:loading.remove wire:target="checkNow({{ $site->id }})">{{ __('Check uptime') }}</span>
+            <span wire:loading wire:target="checkNow({{ $site->id }})">{{ __('Checking…') }}</span>
+        </button>
+        <button
+            wire:click="syncSite({{ $site->id }})"
+            wire:loading.attr="disabled"
+            wire:target="syncSite({{ $site->id }})"
+            class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+            <span wire:loading.remove wire:target="syncSite({{ $site->id }})">{{ __('Sync site') }}</span>
+            <span wire:loading wire:target="syncSite({{ $site->id }})">{{ __('Syncing…') }}</span>
+        </button>
 
         <div class="my-1 border-t border-gray-100"></div>
 
         {{-- Management actions --}}
-        <button wire:click="startRename({{ $site->id }}, '{{ addslashes($site->name) }}')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">Rename</button>
-        <a href="{{ route('sites.overview', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">View Overview</a>
+        <button wire:click="startRename({{ $site->id }}, '{{ addslashes($site->name) }}')" class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">{{ __('Rename') }}</button>
+        <a href="{{ route('sites.overview', $site) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">{{ __('View overview') }}</a>
 
         {{-- Status assignment --}}
         @if($siteStatuses->isNotEmpty())
             <div class="my-1 border-t border-gray-100"></div>
-            <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">Status</div>
+            <div class="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400">{{ __('Status') }}</div>
             @foreach($siteStatuses as $status)
                 <button wire:click="setSiteStatus({{ $site->id }}, {{ $status->id }})" class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50">
                     <span aria-hidden="true" class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
@@ -244,10 +282,10 @@
                     @endif
                 </button>
             @endforeach
-            <button wire:click="setSiteStatus({{ $site->id }}, null)" class="block w-full px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">Clear Status</button>
+            <button wire:click="setSiteStatus({{ $site->id }}, null)" class="block w-full px-4 py-2 text-left text-sm text-gray-500 hover:bg-gray-50">{{ __('Clear status') }}</button>
         @endif
 
         <div class="my-1 border-t border-gray-100"></div>
-        <button wire:click="confirmDelete({{ $site->id }}, '{{ addslashes($site->name) }}')" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">Delete Site</button>
+        <button wire:click="confirmDelete({{ $site->id }}, '{{ addslashes($site->name) }}')" class="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50">{{ __('Delete site') }}</button>
     </x-ui.dropdown>
 </div>

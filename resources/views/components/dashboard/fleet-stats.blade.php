@@ -109,19 +109,11 @@
                     <div class="min-w-0">
                         <div class="text-base font-semibold {{ $valueColor }}">{{ $storageLabel }}</div>
                         <div class="text-xs text-gray-500">{{ __('Backup Storage') }}</div>
-                        <div class="mt-0.5 flex items-center gap-1 text-xs {{ $backupAlert ? 'text-red-500 font-medium' : 'text-gray-400' }}">
-                            @if($backupAlert)
-                                @php
-                                    $parts = [];
-                                    if ($hasFailed) $parts[] = $stats['failed_backups'] . ' ' . __('failed');
-                                    if ($hasStale) $parts[] = $stats['stale_backups'] . ' ' . __('stale');
-                                @endphp
-                                {{ implode(', ', $parts) }}
-                            @else
-                                {{ __('all healthy') }}
-                            @endif
-                            {!! $trendArrow($trends['failed_backups']['direction'], true) !!}
-                        </div>
+                        {{-- The third line here used to repeat "N failed, M stale" — the same two
+                             numbers the Alerts card two along already breaks down, so the fleet's
+                             backup trouble was stated twice in one row of cards. A card about
+                             storage says how much storage, and stops. Anything that needs a person
+                             belongs on Alerts, which is where the eye should go. --}}
                     </div>
                 </div>
             </x-ui.card>

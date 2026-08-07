@@ -1,6 +1,6 @@
 @props([
     'data' => [],
-    'color' => '#7B68EE',
+    'color' => null,
     'height' => 36,
 ])
 
@@ -9,7 +9,7 @@
     x-data="{
         chart: null,
         data: @js($data),
-        color: @js($color),
+        color: @js($color) || window.chartAccent(),
         init() { this.$nextTick(() => this.render()); },
         destroy() {
             if (this.chart) {

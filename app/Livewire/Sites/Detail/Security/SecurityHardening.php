@@ -8,6 +8,7 @@ use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
+use App\Support\HumanError;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -166,7 +167,7 @@ class SecurityHardening extends Component
             $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
         } catch (\Exception $e) {
             \Log::error('Verify security settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
+            session()->flash('verify-error', __('Could not verify the change on the site: :error', ['error' => HumanError::from($e)]));
         }
 
         $this->loadCurrentState();

@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\MaintenancePlan;
 use App\Models\Site;
 use App\Models\SiteHealthState;
+use App\Support\HumanError;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -108,7 +109,7 @@ class CreateSiteWizard extends Component
             }
         } catch (\Exception $e) {
             $this->connectivityStatus = 'error';
-            $this->connectivityMessage = "Check failed: {$e->getMessage()}";
+            $this->connectivityMessage = __('The check failed: :error', ['error' => HumanError::from($e)]);
         }
     }
 

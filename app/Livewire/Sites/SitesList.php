@@ -18,6 +18,7 @@ use App\Operations\Operations\PurgeCloudflareCacheOperation;
 use App\Services\CanaryRolloutService;
 use App\Services\SettingsService;
 use App\Services\WordPressApiServiceFactory;
+use App\Support\HumanError;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Session;
 use Livewire\Attributes\Url;
@@ -104,7 +105,7 @@ class SitesList extends Component
         $this->viewMode = $mode;
     }
 
-    // ── Single-site row actions (⋮ menu in <x-site-row />) ───────────────────
+    // ── Single-site row actions (⋮ menu in <x-dashboard.site-row />) ─────────
 
     /**
      * Open wp-admin for a single site using the connector's one-time login URL
@@ -129,7 +130,7 @@ class SitesList extends Component
 
             $this->dispatch('notify', type: 'error', message: 'Could not generate login URL. No URL returned.');
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Could not generate login URL: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not generate the login link: :error', ['error' => HumanError::from($e)]));
         }
     }
 

@@ -1,7 +1,7 @@
 @props([
     'labels' => [],
     'data' => [],
-    'color' => '#7B68EE',
+    'color' => null,
     'height' => '300px',
     'horizontal' => true,
 ])

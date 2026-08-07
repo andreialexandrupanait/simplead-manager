@@ -7,6 +7,7 @@ namespace App\Livewire\Sites\Detail;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Models\Site;
 use App\Services\WordPressApiServiceFactory;
+use App\Support\HumanError;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -70,7 +71,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: 'Failed to load cron jobs: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not load the cron jobs: :error', ['error' => HumanError::from($e)]));
             $this->cronData = null;
         }
 
@@ -91,7 +92,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: 'Failed to run cron: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not run the cron job: :error', ['error' => HumanError::from($e)]));
         }
     }
 
@@ -108,7 +109,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: 'Failed to disable cron: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not disable the cron job: :error', ['error' => HumanError::from($e)]));
         }
     }
 
@@ -136,7 +137,7 @@ class SiteCron extends Component
                 'site_id' => $this->site->id,
                 'error' => $e->getMessage(),
             ]);
-            $this->dispatch('notify', type: 'error', message: 'Failed to enable cron: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not enable the cron job: :error', ['error' => HumanError::from($e)]));
         }
 
         $this->enablingHook = null;

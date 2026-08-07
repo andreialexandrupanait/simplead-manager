@@ -206,10 +206,10 @@
 
     @if(!$embedded)
     {{-- Tab switcher (full page only) --}}
-    <div class="mb-4 flex items-center gap-1 rounded-lg bg-gray-100 p-1 w-fit">
+    <div class="mb-4 flex w-fit items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
         <button
             wire:click="setTab('wordpress')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'wordpress' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'wordpress' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
         >
             WordPress
             @if($site->core_update_version)
@@ -218,14 +218,14 @@
         </button>
         <button
             wire:click="setTab('plugins')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'plugins' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'plugins' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
         >
             Plugins
             <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->pluginCounts['total'] }}</span>
         </button>
         <button
             wire:click="setTab('themes')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'themes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'themes' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
         >
             Themes
             <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->themeCounts['total'] }}</span>
@@ -236,7 +236,7 @@
              alerts on it — it just had nowhere to be looked at. --}}
         <button
             wire:click="setTab('licenses')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'licenses' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'licenses' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
         >
             {{ __('Licenses') }}
             @if($this->licensedPlugins->count())
@@ -245,14 +245,14 @@
         </button>
         <button
             wire:click="setTab('users')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'users' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'users' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
         >
             Users
             <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->userCount }}</span>
         </button>
         <button
             wire:click="setTab('history')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900' }}"
+            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'history' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
         >
             History
         </button>
@@ -277,7 +277,7 @@
                 <div class="flex items-center gap-0.5 rounded-md bg-gray-100 p-0.5">
                     <button
                         wire:click="setTab('wordpress')"
-                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'wordpress' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'wordpress' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-500 hover:text-gray-700' }}"
                     >
                         WP
                         @if($site->core_update_version)
@@ -286,13 +286,13 @@
                     </button>
                     <button
                         wire:click="setTab('plugins')"
-                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'plugins' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'plugins' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-500 hover:text-gray-700' }}"
                     >
                         Plugins
                     </button>
                     <button
                         wire:click="setTab('themes')"
-                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'themes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                        class="rounded px-2.5 py-1 text-xs font-medium transition {{ $tab === 'themes' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-500 hover:text-gray-700' }}"
                     >
                         Themes
                     </button>
@@ -405,7 +405,7 @@
                                 <button
                                     wire:click="setFilter('{{ $key }}')"
                                     class="rounded-md px-3 py-1 text-xs font-medium transition
-                                        {{ $filter === $key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700' }}"
+                                        {{ $filter === $key ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-500 hover:text-gray-700' }}"
                                 >
                                     {{ $label }}
                                 </button>
@@ -692,7 +692,7 @@
                         @endif
                         <div class="flex items-center gap-3 min-w-0 flex-1">
                             @if($theme->screenshot_url)
-                                <img src="{{ $theme->screenshot_url }}" alt="{{ $theme->name }} screenshot" loading="lazy" class="h-10 w-16 rounded object-cover ring-1 ring-gray-200">
+                                <img src="{{ $theme->screenshot_url }}" alt="{{ $theme->name }} screenshot" loading="lazy" width="64" height="40" class="h-10 w-16 rounded object-cover ring-1 ring-gray-200">
                             @else
                                 <div class="h-10 w-16 rounded bg-gray-100 flex items-center justify-center">
                                     <svg aria-hidden="true" class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -709,7 +709,7 @@
                                         {{ $theme->is_active ? __('Active') : __('Inactive') }}
                                     </x-ui.badge>
                                     @if($theme->is_child_theme)
-                                        <x-ui.badge variant="purple">Child</x-ui.badge>
+                                        <x-ui.badge variant="blue">Child</x-ui.badge>
                                     @endif
                                     <button
                                         wire:click="toggleAutoUpdate('theme', {{ $theme->id }})"
@@ -843,7 +843,7 @@
                         <div class="min-w-0 flex-1">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-medium text-gray-900">{{ $log->name }}</span>
-                                <x-ui.badge :variant="$log->type === 'plugin' ? 'blue' : 'purple'">{{ ucfirst($log->type) }}</x-ui.badge>
+                                <x-ui.badge :variant="$log->type === 'plugin' ? 'blue' : 'blue'">{{ ucfirst($log->type) }}</x-ui.badge>
                                 @if($log->success)
                                     <x-ui.badge variant="green">Success</x-ui.badge>
                                 @else
@@ -926,7 +926,7 @@
                 @forelse($this->users as $user)
                     <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-50">
                         <div class="flex items-center gap-3 min-w-0 flex-1">
-                            <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->display_name ?: $user->username }}" loading="lazy" class="h-10 w-10 rounded-full ring-1 ring-gray-200 bg-gray-100">
+                            <img src="{{ $user->avatar_url }}" alt="Avatar {{ $user->display_name ?: $user->username }}" loading="lazy" width="40" height="40" class="h-10 w-10 rounded-full ring-1 ring-gray-200 bg-gray-100">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <span class="text-sm font-medium text-gray-900">{{ $user->display_name ?: $user->username }}</span>

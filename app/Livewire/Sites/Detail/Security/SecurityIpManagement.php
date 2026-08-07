@@ -10,6 +10,7 @@ use App\Models\SecurityIpList;
 use App\Models\SecuritySetting;
 use App\Models\Site;
 use App\Services\SecuritySettingsService;
+use App\Support\HumanError;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -171,7 +172,7 @@ class SecurityIpManagement extends Component
                 ->make($this->site)
                 ->unbanIps([$banned->ip_address]);
         } catch (\Throwable $e) {
-            $this->dispatch('notify', type: 'error', message: 'Could not unban on the site: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not lift the ban on the site: :error', ['error' => HumanError::from($e)]));
 
             return;
         }
@@ -261,7 +262,7 @@ class SecurityIpManagement extends Component
             $this->site->update(['security_hardening_score' => $service->getSecurityScore($this->site)]);
         } catch (\Exception $e) {
             \Log::error('Verify IP management settings failed', ['site' => $this->site->id, 'error' => $e->getMessage()]);
-            session()->flash('verify-error', 'Verification failed: '.$e->getMessage());
+            session()->flash('verify-error', __('Could not verify the change on the site: :error', ['error' => HumanError::from($e)]));
         }
 
         $this->loadFirewallSettings();

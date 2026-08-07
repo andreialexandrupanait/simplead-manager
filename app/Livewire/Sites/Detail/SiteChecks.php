@@ -14,6 +14,7 @@ use App\Models\PhpErrorLog;
 use App\Models\Site;
 use App\Models\WooCheck;
 use App\Services\ContactFormChecker;
+use App\Support\HumanError;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -126,7 +127,7 @@ class SiteChecks extends Component
             $this->formResult = app(ContactFormChecker::class)->runGatedTest($this->site);
         } catch (\Throwable $e) {
             $this->formResult = null;
-            $this->formError = $e->getMessage();
+            $this->formError = HumanError::from($e);
         }
 
         unset($this->formCheck);

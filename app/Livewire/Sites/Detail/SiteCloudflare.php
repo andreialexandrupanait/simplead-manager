@@ -9,6 +9,7 @@ use App\Models\CloudflareConnection;
 use App\Models\Site;
 use App\Models\SiteCloudflare as SiteCloudflareModel;
 use App\Services\CloudflareService;
+use App\Support\HumanError;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -105,7 +106,7 @@ class SiteCloudflare extends Component
 
             return $service->listZones();
         } catch (\Exception $e) {
-            session()->flash('cf-error', 'Failed to fetch zones: '.$e->getMessage());
+            session()->flash('cf-error', __('Could not fetch the Cloudflare zones: :error', ['error' => HumanError::from($e)]));
 
             return [];
         }

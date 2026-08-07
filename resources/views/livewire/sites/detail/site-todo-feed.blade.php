@@ -21,7 +21,7 @@
     };
 @endphp
 
-<x-ui.module-card title="De rezolvat" icon="alert-triangle" :tone="$tone">
+<x-ui.module-card :title="__('To fix')" icon="alert-triangle" :tone="$tone">
     @if(count($todos) > 0)
         <x-slot:actions>
             <span class="ml-auto text-xs text-gray-400">{{ count($todos) }}</span>

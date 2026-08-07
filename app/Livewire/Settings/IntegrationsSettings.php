@@ -10,6 +10,7 @@ use App\Services\CloudflareService;
 use App\Services\OpenApiService;
 use App\Services\PostmarkService;
 use App\Services\SettingsService;
+use App\Support\HumanError;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -227,7 +228,7 @@ class IntegrationsSettings extends Component
                 $this->dispatch('notify', type: 'error', message: __('OpenAPI.ro connection test failed.'));
             }
         } catch (\RuntimeException $e) {
-            $this->dispatch('notify', type: 'error', message: $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: HumanError::from($e));
         }
     }
 

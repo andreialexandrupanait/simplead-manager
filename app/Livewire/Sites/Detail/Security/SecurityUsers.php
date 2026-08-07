@@ -14,6 +14,7 @@ use App\Services\ActivityLogger;
 use App\Services\JobTracker;
 use App\Services\SpamUserDetectionService;
 use App\Services\WordPressApiServiceFactory;
+use App\Support\HumanError;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -149,7 +150,7 @@ class SecurityUsers extends Component
             $this->clearComputedCaches();
             $this->syncUsers();
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not change the user on the site: :error', ['error' => HumanError::from($e)]));
         }
     }
 
@@ -190,7 +191,7 @@ class SecurityUsers extends Component
             $this->clearComputedCaches();
             $this->syncUsers();
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not change the user on the site: :error', ['error' => HumanError::from($e)]));
         }
     }
 
@@ -226,7 +227,7 @@ class SecurityUsers extends Component
             $this->clearComputedCaches();
             $this->resetPage();
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: $e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('Could not change the user on the site: :error', ['error' => HumanError::from($e)]));
         }
     }
 
@@ -264,7 +265,7 @@ class SecurityUsers extends Component
 
             $this->showSpamResults = true;
         } catch (\Exception $e) {
-            $this->dispatch('notify', type: 'error', message: 'Spam scan failed: '.$e->getMessage());
+            $this->dispatch('notify', type: 'error', message: __('The spam scan could not run: :error', ['error' => HumanError::from($e)]));
         }
     }
 

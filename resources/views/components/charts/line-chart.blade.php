@@ -35,8 +35,8 @@
             let chartDatasets = this.datasets.map(ds => ({
                 label: ds.label,
                 data: ds.data,
-                borderColor: ds.color || '#7B68EE',
-                backgroundColor: (ds.color || '#7B68EE') + (ds.fill === '-1' ? '26' : '1A'),
+                borderColor: ds.color || window.chartAccent(),
+                backgroundColor: (ds.color || window.chartAccent()) + (ds.fill === '-1' ? '26' : '1A'),
                 borderWidth: ds.borderWidth !== undefined ? ds.borderWidth : 2,
                 // ds.fill: '-1' fills to the PREVIOUS dataset (a band, e.g. avg→p95)
                 fill: ds.fill !== undefined ? ds.fill : (ds.pointRadius !== undefined ? false : true),

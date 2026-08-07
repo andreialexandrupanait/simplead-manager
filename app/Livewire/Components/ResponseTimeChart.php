@@ -54,7 +54,7 @@ class ResponseTimeChart extends Component
                 [
                     'label' => 'Response Time (ms)',
                     'data' => $checks->pluck('response_time')->toArray(),
-                    'color' => '#7B68EE',
+                    'color' => '#2271b1',
                 ],
             ],
         ];
@@ -130,7 +130,7 @@ class ResponseTimeChart extends Component
                 [
                     'label' => 'Avg (ms)',
                     'data' => $avg,
-                    'color' => '#7B68EE',
+                    'color' => '#2271b1',
                     'pointRadius' => 0,
                 ],
                 [

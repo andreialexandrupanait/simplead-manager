@@ -227,7 +227,7 @@
                         <div class="chart-wrap">
                             <x-charts.line-chart
                                 :labels="array_map(fn($r) => date('d M', strtotime($r['date'] ?? '')), $ut['response_time_chart'])"
-                                :datasets="[['label' => 'Response Time (ms)', 'data' => array_map(fn($r) => round((float)($r['avg_response_time'] ?? 0)), $ut['response_time_chart']), 'color' => '#7B68EE']]"
+                                :datasets="[['label' => 'Response Time (ms)', 'data' => array_map(fn($r) => round((float)($r['avg_response_time'] ?? 0)), $ut['response_time_chart']), 'color' => '#2271b1']]"
                                 height="200px"
                             />
                         </div>
@@ -532,7 +532,7 @@
                         <div class="chart-wrap">
                             <x-charts.line-chart
                                 :labels="array_map(fn($d) => date('d M', strtotime($d['date'] ?? '')), $an['daily_users'])"
-                                :datasets="[['label' => 'Users', 'data' => array_map(fn($d) => (int)($d['users'] ?? 0), $an['daily_users']), 'color' => '#7B68EE']]"
+                                :datasets="[['label' => 'Users', 'data' => array_map(fn($d) => (int)($d['users'] ?? 0), $an['daily_users']), 'color' => '#2271b1']]"
                                 height="200px"
                             />
                         </div>
@@ -547,7 +547,7 @@
                                 <x-charts.bar-chart
                                     :labels="array_map(fn($src) => $src['source'] ?? $src['channel'] ?? '', array_slice($an['traffic_sources'], 0, 6))"
                                     :data="array_map(fn($src) => (int)($src['users'] ?? 0), array_slice($an['traffic_sources'], 0, 6))"
-                                    color="#7B68EE"
+                                    color="#2271b1"
                                     :horizontal="true"
                                     height="200px"
                                 />
@@ -561,7 +561,7 @@
                                 <x-charts.donut-chart
                                     :labels="array_map(fn($d) => ucfirst($d['device'] ?? ''), $an['devices'])"
                                     :data="array_map(fn($d) => (int)($d['sessions'] ?? $d['users'] ?? 0), $an['devices'])"
-                                    :colors="['#7B68EE', '#06b6d4', '#f59e0b', '#ef4444', '#10b981']"
+                                    :colors="['#2271b1', '#06b6d4', '#f59e0b', '#ef4444', '#10b981']"
                                     height="200px"
                                 />
                             </div>
@@ -623,7 +623,7 @@
                             <x-charts.bar-chart
                                 :labels="array_map(fn($q) => \Illuminate\Support\Str::limit($q['query'] ?? '', 30), array_slice($sc['queries'], 0, 8))"
                                 :data="array_map(fn($q) => (int)($q['clicks'] ?? 0), array_slice($sc['queries'], 0, 8))"
-                                color="#7B68EE"
+                                color="#2271b1"
                                 :horizontal="true"
                                 height="240px"
                             />
@@ -954,7 +954,7 @@
                 @php $seo = $s['seo']; $sevColors = ['critical' => 'red', 'high' => 'orange', 'medium' => 'yellow', 'low' => 'blue', 'info' => 'gray']; @endphp
                 <section id="seo" class="rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 p-5">
                     <div class="flex items-center gap-2 mb-4">
-                        <x-icons.search class="h-4 w-4 text-purple-500" />
+                        <x-icons.search class="h-4 w-4 text-accent-500" />
                         <h3 class="text-base font-semibold text-gray-900">SEO Audit</h3>
                     </div>
                     <div class="flex items-center gap-6 mb-4">

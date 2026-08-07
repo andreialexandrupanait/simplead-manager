@@ -433,7 +433,11 @@ class PluginManagerService
                 'error' => $e->getMessage(),
             ]);
 
-            return ['success' => false, 'message' => "Core update failed: {$e->getMessage()}"];
+            // This was the one path that skipped cleanErrorMessage entirely, so a transport
+            // failure put its raw text on the screen next to the Update button.
+            return ['success' => false, 'message' => __('The WordPress update did not complete: :error', [
+                'error' => \App\Support\HumanError::from($e),
+            ])];
         }
     }
 

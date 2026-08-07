@@ -28,9 +28,12 @@
     @if($hasAdmins)
         <x-ui.dropdown align="right" width="56">
             <x-slot:trigger>
+                {{-- Icon-only, so it needs a name of its own: without one a screen reader
+                     announces "button" and leaves you to guess. --}}
                 <button type="button"
-                        class="inline-flex items-center rounded-r-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-2 text-gray-500 dark:text-gray-400 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        aria-label="{{ __('Choose which user to log in as') }}"
+                        class="inline-flex items-center rounded-r-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-2 text-gray-500 dark:text-gray-400 shadow-sm transition hover:bg-gray-50 dark:hover:bg-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:ring-offset-1">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                     </svg>
                 </button>

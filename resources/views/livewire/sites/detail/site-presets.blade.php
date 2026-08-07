@@ -51,9 +51,9 @@
     {{-- SPEC §13: the rest stay in the code, they just stop being the first thing
          you see. One link, deliberately understated. --}}
     <p class="mt-6 text-[13px] text-gray-500">
-        {{ __('Ai nevoie de o setare din afara pachetului?') }}
+        {{ __('Need a setting that is not in this set?') }}
         <a href="{{ route('sites.tweaks.performance', $site) }}" class="text-accent-700 underline">
-            {{ __('Vezi catalogul complet al conectorului') }}
+            {{ __('See the connector\'s full catalogue') }}
         </a>
     </p>
 </div>

@@ -1,19 +1,5 @@
-<!DOCTYPE html>
-<html lang="en" class="h-full">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Page Not Found - SimpleAd Manager</title>
-    @vite(['resources/css/app.css'])
-</head>
-<body class="h-full bg-sidebar">
-    <div class="flex min-h-full flex-col items-center justify-center px-4 py-12 text-center">
-        <p class="text-6xl font-bold text-accent-500">404</p>
-        <h1 class="mt-4 text-2xl font-semibold text-white">Page not found</h1>
-        <p class="mt-2 text-gray-400">Sorry, we couldn't find the page you're looking for.</p>
-        <a href="/" class="mt-8 inline-flex items-center gap-2 rounded-lg bg-accent-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-700 transition">
-            &larr; Back to Dashboard
-        </a>
-    </div>
-</body>
-</html>
+<x-errors.shell
+    code="404"
+    :heading="__('Page not found')"
+    :message="__('That page does not exist. It may have been renamed, or the link that brought you here is out of date.')"
+/>

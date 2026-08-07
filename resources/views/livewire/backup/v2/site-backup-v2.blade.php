@@ -1,4 +1,6 @@
-<div>
+{{-- Same reason as the detail screen: poll only while something on this site is still running, so
+     an idle console costs nothing. --}}
+<div @if($enabled && $this->history->contains(fn ($s) => $s->state->isActive())) wire:poll.4s @endif>
     @unless($enabled)
         <div class="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
             <p class="text-sm font-medium text-gray-600 dark:text-gray-300">{{ __('The Backup V2 console is not available.') }}</p>
@@ -92,33 +94,32 @@
                                 <td class="px-4 py-2"><a href="{{ route('backup-v2.detail', $s->id) }}" class="text-accent-600 hover:underline">#{{ $s->id }}</a></td>
                                 <td class="px-4 py-2">{{ $s->type }}@if($s->protected) <span class="ml-1 text-xs text-amber-600">🔒</span>@endif</td>
                                 <td class="px-4 py-2">
-                                    <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-medium
-                                        @if($s->state->value === 'completed') bg-green-100 text-green-700
-                                        @elseif(in_array($s->state->value, ['failed','corrupt','cancelled'])) bg-red-100 text-red-700
-                                        @elseif($s->state->value === 'paused') bg-amber-100 text-amber-700
-                                        @else bg-blue-100 text-blue-700 @endif">
-                                        {{ $s->state->value }}
-                                    </span>
+                                    <x-ui.badge :variant="$s->state->badgeVariant()">{{ $s->state->label() }}</x-ui.badge>
                                 </td>
                                 <td class="px-4 py-2 text-gray-500 text-xs">{{ $s->heartbeat_at?->diffForHumans() ?? '—' }}</td>
                                 <td class="px-4 py-2 text-gray-500">{{ $s->attempt }}</td>
+                                {{-- Actions carry the same weight here as they do everywhere else in
+                                     the app. They used to be bare text links, so the V2 console
+                                     read as a debug page next to the V1 screen it replaces. --}}
                                 <td class="px-4 py-2 text-right whitespace-nowrap">
-                                    @if($s->state->isActive() && $s->state->value !== 'paused')
-                                        <button wire:click="pauseSession({{ $s->id }})" class="text-xs text-amber-600 hover:underline">{{ __('Pause') }}</button>
-                                        <button wire:click="cancelSession({{ $s->id }})" class="ml-2 text-xs text-red-600 hover:underline">{{ __('Cancel') }}</button>
-                                    @endif
-                                    @if(in_array($s->state->value, ['paused','retry_wait']))
-                                        <button wire:click="resumeSession({{ $s->id }})" class="text-xs text-blue-600 hover:underline">{{ __('Resume') }}</button>
-                                    @endif
-                                    @if(in_array($s->state->value, ['failed','corrupt']))
-                                        <button wire:click="retrySession({{ $s->id }})" class="text-xs text-blue-600 hover:underline">{{ __('Retry') }}</button>
-                                    @endif
-                                    @if($s->state->value === 'completed')
-                                        <button wire:click="verifySession({{ $s->id }})" class="text-xs text-gray-600 hover:underline">{{ __('Verify') }}</button>
-                                        <button wire:click="restoreSession({{ $s->id }})" class="ml-2 text-xs text-purple-600 hover:underline">{{ __('Restore') }}</button>
-                                    @endif
-                                    <button wire:click="protectSession({{ $s->id }}, {{ $s->protected ? 'false' : 'true' }})" class="ml-2 text-xs text-gray-600 hover:underline">{{ $s->protected ? __('Unprotect') : __('Protect') }}</button>
-                                    <button wire:click="deleteSession({{ $s->id }})" wire:confirm="{{ __('Delete this backup?') }}" class="ml-2 text-xs text-red-600 hover:underline">{{ __('Delete') }}</button>
+                                    <div class="flex flex-wrap items-center justify-end gap-1.5">
+                                        @if($s->state->isActive() && $s->state->value !== 'paused')
+                                            <x-ui.button wire:click="pauseSession({{ $s->id }})" variant="secondary" size="xs">{{ __('Pause') }}</x-ui.button>
+                                            <x-ui.button wire:click="cancelSession({{ $s->id }})" variant="secondary" size="xs">{{ __('Cancel') }}</x-ui.button>
+                                        @endif
+                                        @if(in_array($s->state->value, ['paused','retry_wait']))
+                                            <x-ui.button wire:click="resumeSession({{ $s->id }})" variant="secondary" size="xs">{{ __('Resume') }}</x-ui.button>
+                                        @endif
+                                        @if(in_array($s->state->value, ['failed','corrupt']))
+                                            <x-ui.button wire:click="retrySession({{ $s->id }})" variant="secondary" size="xs">{{ __('Retry') }}</x-ui.button>
+                                        @endif
+                                        @if($s->state->value === 'completed')
+                                            <x-ui.button wire:click="verifySession({{ $s->id }})" variant="secondary" size="xs">{{ __('Verify') }}</x-ui.button>
+                                            <x-ui.button wire:click="restoreSession({{ $s->id }})" variant="secondary" size="xs">{{ __('Restore') }}</x-ui.button>
+                                        @endif
+                                        <x-ui.button wire:click="protectSession({{ $s->id }}, {{ $s->protected ? 'false' : 'true' }})" variant="ghost" size="xs">{{ $s->protected ? __('Unprotect') : __('Protect') }}</x-ui.button>
+                                        <x-ui.button wire:click="deleteSession({{ $s->id }})" wire:confirm="{{ __('Delete this backup?') }}" variant="danger" size="xs">{{ __('Delete') }}</x-ui.button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
