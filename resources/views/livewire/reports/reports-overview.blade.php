@@ -38,7 +38,7 @@
     {{-- Reports table --}}
     @if($reports->isEmpty())
         <x-ui.card>
-            <p class="py-8 text-center text-sm text-gray-500">No reports found.</p>
+            <x-ui.empty-state :title="__('No reports yet')" :description="__('Generate one for a site, or set up a schedule.')" icon="file-text" />
         </x-ui.card>
     @else
         <x-ui.card class="overflow-hidden !p-0">

@@ -317,7 +317,7 @@
                 </x-ui.card>
             @empty
                 <x-ui.card>
-                    <div class="py-12 text-center text-sm text-gray-500">{{ __('No DNS monitors configured.') }}</div>
+                    <x-ui.empty-state :title="__('No DNS monitors yet')" :description="__('Add one to be told when a record changes.')" icon="globe" />
                 </x-ui.card>
             @endforelse
         </div>
@@ -364,7 +364,7 @@
                     @endunless
                 </div>
             @empty
-                <div class="py-12 text-center text-sm text-gray-500">{{ __('No DNS updates detected yet.') }}</div>
+                <x-ui.empty-state :title="__('No record changes seen')" :description="__('Changes will appear here as they are detected.')" icon="globe" />
             @endforelse
         </x-ui.card>
         @if($changes instanceof \Illuminate\Pagination\LengthAwarePaginator && $changes->hasPages())

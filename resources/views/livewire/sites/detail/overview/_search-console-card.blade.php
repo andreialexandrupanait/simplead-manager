@@ -23,7 +23,7 @@
         <p class="mt-2 text-xs text-gray-400">Last 28 days</p>
         <a href="{{ route('sites.search-console', $site) }}" class="mact">View Details →</a>
     @elseif($isConnected)
-        <p class="py-3 text-center text-sm text-gray-500">No Search Console data yet</p>
+        <x-ui.empty-state compact :title="__('No Search Console data yet')" />
         <div class="text-center">
             <a href="{{ route('sites.search-console', $site) }}" class="text-xs text-accent-600 hover:text-accent-700">
                 View Details →

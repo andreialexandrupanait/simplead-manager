@@ -218,7 +218,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="7" class="py-6 text-center text-sm text-gray-500">{{ __('No sites match this filter.') }}</td></tr>
+                            <tr><td colspan="7"><x-ui.empty-state compact :title="__('No sites match this filter.')" /></td></tr>
                         @endforelse
                     </tbody>
                 </table>

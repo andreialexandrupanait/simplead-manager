@@ -162,7 +162,7 @@
             <h3 class="mb-4 text-sm font-medium text-gray-900">{{ __('Recent Incidents') }}</h3>
 
             @if($this->incidents->isEmpty())
-                <p class="py-6 text-center text-sm text-gray-500">{{ __('No incidents recorded.') }}</p>
+                <x-ui.empty-state compact :title="__('No incidents recorded.')" />
             @else
                 {{-- Mobile cards --}}
                 <div class="md:hidden space-y-2">

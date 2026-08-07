@@ -45,7 +45,7 @@
             </div>
         @endif
     @elseif(!$site->db_size_mb)
-        <p class="py-2 text-center text-sm text-gray-500">No database info available</p>
+        <x-ui.empty-state compact :title="__('No database info yet')" />
         <a href="{{ route('sites.database', $site) }}" class="mact">Configure Database Cleanup →</a>
     @endif
 </x-ui.module-card>

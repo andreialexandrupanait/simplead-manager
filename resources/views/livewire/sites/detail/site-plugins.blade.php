@@ -206,58 +206,30 @@
 
     @if(!$embedded)
     {{-- Tab switcher (full page only) --}}
-    <div class="mb-4 flex w-fit items-center gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
-        <button
-            wire:click="setTab('wordpress')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'wordpress' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
-        >
-            WordPress
-            @if($site->core_update_version)
-                <span class="ml-1 h-2 w-2 rounded-full bg-blue-500 inline-block"></span>
-            @endif
-        </button>
-        <button
-            wire:click="setTab('plugins')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'plugins' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
-        >
-            Plugins
-            <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->pluginCounts['total'] }}</span>
-        </button>
-        <button
-            wire:click="setTab('themes')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'themes' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
-        >
-            Themes
-            <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->themeCounts['total'] }}</span>
-        </button>
-        @if(!$embedded)
-        {{-- Licenţe premium (SPEC §3.2). The data was already synced from the
-             connector (site_plugins.license_*) and CheckLicenseExpiry already
-             alerts on it — it just had nowhere to be looked at. --}}
-        <button
-            wire:click="setTab('licenses')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'licenses' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
-        >
-            {{ __('Licenses') }}
-            @if($this->licensedPlugins->count())
-                <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->licensedPlugins->count() }}</span>
-            @endif
-        </button>
-        <button
-            wire:click="setTab('users')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'users' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
-        >
-            Users
-            <span class="ml-1 rounded-full bg-gray-200 px-2 py-0.5 text-xs">{{ $this->userCount }}</span>
-        </button>
-        <button
-            wire:click="setTab('history')"
-            class="rounded-md px-4 py-2 text-sm font-medium transition {{ $tab === 'history' ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-600 dark:text-white' : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white' }}"
-        >
-            History
-        </button>
-        @endif
-    </div>
+    {{-- Six hand-rolled buttons became the shared component. It was already the same
+         pill-in-a-grey-box shape as x-ui.filter-tabs — just rewritten, without the focus ring,
+         the role="tablist" or the aria-selected the component has. --}}
+    @php
+        $tabOptions = ['wordpress' => __('WordPress'), 'plugins' => __('Plugins'), 'themes' => __('Themes')];
+        $tabCounts = ['plugins' => $this->pluginCounts['total'], 'themes' => $this->themeCounts['total']];
+
+        if (! $embedded) {
+            $tabOptions += ['licenses' => __('Licenses'), 'users' => __('Users'), 'history' => __('History')];
+            if ($this->licensedPlugins->count()) {
+                $tabCounts['licenses'] = $this->licensedPlugins->count();
+            }
+            $tabCounts['users'] = $this->userCount;
+        }
+    @endphp
+    <x-ui.filter-tabs
+        class="mb-4"
+        :options="$tabOptions"
+        :counts="$tabCounts"
+        :markers="$site->core_update_version ? ['wordpress'] : []"
+        :selected="$tab"
+        method="setTab"
+        :groupLabel="__('Site sections')"
+    />
     @endif {{-- !$embedded tab switcher --}}
 
     <x-ui.card :padding="false">

@@ -138,7 +138,7 @@
                                     @if(count($fileTree) > 0)
                                         <x-backup.file-tree-node :nodes="$fileTree" />
                                     @else
-                                        <p class="text-sm text-gray-500 text-center py-4">{{ __('No files found in this backup') }}</p>
+                                        <x-ui.empty-state compact :title="__('No files found in this backup')" />
                                     @endif
                                 </div>
 

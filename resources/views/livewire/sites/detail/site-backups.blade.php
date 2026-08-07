@@ -475,7 +475,7 @@
         </div>
 
         @if($backupHistory->isEmpty())
-            <p class="text-sm text-gray-500 text-center py-8 px-5">{{ __('No backups yet. Create your first backup using the buttons above.') }}</p>
+            <x-ui.empty-state :title="__('No backups yet')" :description="__('Use the buttons above to make the first one.')" icon="hard-drive" />
         @else
             {{-- Mobile cards --}}
             <div class="md:hidden divide-y divide-gray-100 px-4 py-2">

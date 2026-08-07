@@ -39,7 +39,7 @@
                 <p class="text-sm font-medium text-gray-800 dark:text-gray-100">
                     {{ $group['client'] }}
                     <span class="text-[11px] font-normal text-gray-400">
-                        · {{ trans_choice(':n site|:n site-uri', count($group['sites']), ['n' => count($group['sites'])]) }}
+                        · {{ trans_choice('{1}:n site|[2,*]:n sites', count($group['sites']), ['n' => count($group['sites'])]) }}
                     </span>
                 </p>
                 <span class="shrink-0 rounded-full px-2 py-0.5 text-[11px]

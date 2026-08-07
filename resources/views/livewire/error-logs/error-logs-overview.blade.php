@@ -101,7 +101,7 @@
                 @endunless
             </div>
         @empty
-            <div class="py-12 text-center text-sm text-gray-500">{{ __('No errors found.') }}</div>
+            <x-ui.empty-state :title="__('No PHP errors')" :description="__('Nothing has been reported by the sites you can see.')" icon="alert-triangle" />
         @endforelse
     </x-ui.card>
 

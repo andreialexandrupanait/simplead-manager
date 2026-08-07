@@ -214,30 +214,59 @@
 /* ── REFERINTA-VIZUALA module cards (per-site "Prezentare" dashboard) ──────
    Faithful port of .mcard/.mhd/.mico/.mrow/.mbox/.mact so the site overview
    renders exactly like the reference: round colour-coded header icons, soft
-   label/value pill rows and stat boxes. Consumed by x-ui.module-card etc. */
-.mcard { background: #fff; border: 1px solid #e6e8eb; border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
+   label/value pill rows and stat boxes. Consumed by x-ui.module-card etc.
+
+   These are a SECOND card system beside x-ui.card, and that is deliberate rather
+   than accidental: .mcard is denser (16px padding against 24px) because the site
+   overview stacks sixteen of them, where x-ui.card is the app-wide default. The
+   difference is a decision; it just used to be an undocumented one, expressed as
+   twenty hardcoded hex values that no palette change could ever find.
+
+   The values now live in variables, so the dark adaptation overrides four of them
+   instead of restating every rule, and a retheme has one place to touch. The
+   sub-palette stays the reference's own (WordPress admin greys, slightly warmer
+   than the generic --surface/--text ramp) — that is the point of it. */
+:root {
+    --mcard-bg:           #fff;
+    --mcard-border:       #e6e8eb;
+    --mcard-title:        #1d2327;
+    --mcard-label:        #646970;
+    --mcard-muted:        #9ba1a8;
+    --mcard-soft:         #f6f7f8;   /* the label/value pill rows */
+    --mcard-value:        #1d2327;
+}
+
+.dark {
+    --mcard-bg:      var(--surface-card);
+    --mcard-border:  rgba(255, 255, 255, 0.08);
+    --mcard-title:   #e5e7eb;
+    --mcard-label:   #9ba1a8;
+    --mcard-muted:   #9ba1a8;
+    --mcard-soft:    rgba(255, 255, 255, 0.04);
+    --mcard-value:   #e5e7eb;
+}
+
+.mcard { background: var(--mcard-bg); border: 1px solid var(--mcard-border); border-radius: 12px; padding: 16px; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05); }
 .mhd { display: flex; align-items: center; gap: 11px; margin-bottom: 13px; }
-.mhd .mtitle { font-size: 15px; font-weight: 500; margin: 0; flex: 1; color: #1d2327; min-width: 0; }
-.mhd .mn { width: 16px; height: 16px; color: #9ba1a8; cursor: pointer; flex: none; stroke-width: 2; }
-.mhd .mn:hover { color: #646970; }
+.mhd .mtitle { font-size: 15px; font-weight: 500; margin: 0; flex: 1; color: var(--mcard-title); min-width: 0; }
+.mhd .mn { width: 16px; height: 16px; color: var(--mcard-muted); cursor: pointer; flex: none; stroke-width: 2; }
+.mhd .mn:hover { color: var(--mcard-label); }
 .mico { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; }
 .mico svg { width: 15px; height: 15px; stroke-width: 2.1; }
-.mi-dark { background: #2c3338; } .mi-ok { background: #00b62e; } .mi-warn { background: #e8a800; } .mi-bad { background: #e0393c; } .mi-accent { background: #2271b1; }
-.mrow { display: flex; justify-content: space-between; align-items: center; background: #f6f7f8; border-radius: 6px; padding: 11px 14px; margin-bottom: 4px; font-size: 13px; gap: 8px; color: #1d2327; }
-.mrow .lb { color: #646970; }
-.mbox { background: #f6f7f8; border-radius: 6px; padding: 11px 14px; margin-bottom: 4px; }
-.mbox .k { font-size: 12px; color: #646970; margin: 0; }
-.mbox .v { font-size: 18px; margin: 3px 0 0; color: #1d2327; }
-.mact { display: block; text-align: center; font-size: 13px; color: #2271b1; padding-top: 12px; cursor: pointer; background: none; border: 0; width: 100%; }
+/* Header icon fills: saturated on purpose, so they read on both themes unchanged. */
+.mi-dark { background: #2c3338; } .mi-ok { background: #00b62e; } .mi-warn { background: #e8a800; } .mi-bad { background: #e0393c; } .mi-accent { background: var(--accent-500); }
+.mrow { display: flex; justify-content: space-between; align-items: center; background: var(--mcard-soft); border-radius: 6px; padding: 11px 14px; margin-bottom: 4px; font-size: 13px; gap: 8px; color: var(--mcard-value); }
+.mrow .lb { color: var(--mcard-label); }
+.mbox { background: var(--mcard-soft); border-radius: 6px; padding: 11px 14px; margin-bottom: 4px; }
+.mbox .k { font-size: 12px; color: var(--mcard-label); margin: 0; }
+.mbox .v { font-size: 18px; margin: 3px 0 0; color: var(--mcard-value); }
+.mact { display: block; text-align: center; font-size: 13px; color: var(--accent-500); padding-top: 12px; cursor: pointer; background: none; border: 0; width: 100%; border-radius: 6px; }
 .mact:hover { text-decoration: underline; }
+.mact:focus-visible { outline: 2px solid var(--accent-500); outline-offset: 2px; text-decoration: none; }
 .mg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .mg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-.mval-ok { color: #0a8a2a; } .mval-warn { color: #b06a00; } .mval-bad { color: #c8262a; } .mval-accent { color: #2271b1; }
-/* dark adaptation (reference is light-only; keep the app usable in dark) */
-.dark .mcard { background: var(--surface-card, #1a1a1a); border-color: rgba(255, 255, 255, 0.08); }
-.dark .mhd .mtitle, .dark .mrow, .dark .mbox .v { color: #e5e7eb; }
-.dark .mrow, .dark .mbox { background: rgba(255, 255, 255, 0.04); }
-.dark .mrow .lb, .dark .mbox .k { color: #9ba1a8; }
+.mval-ok { color: #0a8a2a; } .mval-warn { color: #b06a00; } .mval-bad { color: #c8262a; } .mval-accent { color: var(--accent-500); }
+.dark .mval-ok { color: #4ade80; } .dark .mval-warn { color: #facc15; } .dark .mval-bad { color: #f87171; } .dark .mval-accent { color: #7cb3dd; }
 
 /* Suppress transitions during initial Alpine hydration */
 html.no-transitions *,

@@ -206,7 +206,7 @@
         </div>
 
         @if($backups->isEmpty())
-            <p class="text-sm text-gray-500 text-center py-8">{{ __('No backups found.') }}</p>
+            <x-ui.empty-state :title="__('No runs match this filter')" :description="__('Change the filter above, or wait for tonight\'s scheduled runs.')" icon="hard-drive" />
         @else
             {{-- Mobile cards --}}
             <div class="md:hidden divide-y divide-gray-200">

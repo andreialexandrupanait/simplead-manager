@@ -3,12 +3,17 @@
     'value',
     'sublabel' => null,
     'icon' => null,
-    'color' => 'purple',
+    // 'purple' remains as an alias because call sites use it, but it has rendered accent blue
+    // since the July retheme — a variant named after a colour it does not draw is a small lie the
+    // next person has to discover.
+    'color' => 'accent',
 ])
 
+{{-- WHICH ONE: use this for a standalone figure — icon, tinted background, label and value. For a
+     dense row inside an x-ui.module-card on the per-site overview, use x-ui.stat-box. --}}
 @php
 $bgColor = match($color) {
-    'purple' => 'bg-accent-50 dark:bg-accent-500/10',
+    'accent', 'purple' => 'bg-accent-50 dark:bg-accent-500/10',
     'green' => 'bg-green-50 dark:bg-green-500/10',
     'red' => 'bg-red-50 dark:bg-red-500/10',
     'yellow' => 'bg-yellow-50 dark:bg-yellow-500/10',
@@ -18,7 +23,7 @@ $bgColor = match($color) {
     default => 'bg-accent-50 dark:bg-accent-500/10',
 };
 $iconColor = match($color) {
-    'purple' => 'text-accent-600 dark:text-accent-400',
+    'accent', 'purple' => 'text-accent-600 dark:text-accent-400',
     'green' => 'text-green-600 dark:text-green-400',
     'red' => 'text-red-600 dark:text-red-400',
     'yellow' => 'text-yellow-600 dark:text-yellow-400',

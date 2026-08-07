@@ -80,7 +80,7 @@
                     {{ __('Fetching data for this period...') }}
                 </div>
             @elseif($site->analyticsConnection?->is_active)
-                <p class="py-3 text-center text-sm text-gray-500">{{ __('No analytics data for this period') }}</p>
+                <x-ui.empty-state compact :title="__('No analytics data for this period')" />
             @else
                 <div class="rounded-lg border border-dashed border-gray-200 p-4 text-center">
                     <p class="text-sm text-gray-500">Analytics not connected</p>
