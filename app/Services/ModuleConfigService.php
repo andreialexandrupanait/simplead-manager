@@ -337,11 +337,17 @@ class ModuleConfigService
                 $data['is_enabled'] = $enabled;
                 $data['frequency'] = 'daily';
                 $data['time'] = '03:00';
-                $data['timezone'] = 'UTC';
+                // The application's zone, not UTC. This default declared UTC while scheduling the
+                // first run on the app's clock, so the row disagreed with itself from the moment it
+                // was written — and the fleet inherited three sites whose configured hour and actual
+                // hour were three apart for that reason alone.
+                $data['timezone'] = config('app.timezone');
                 $data['type'] = 'full';
                 $data['retention_type'] = 'count';
                 $data['retention_value'] = 7;
-                $data['next_backup_at'] = now()->addDay()->setTime(3, 0)->addMinutes($jitter);
+                $data['next_backup_at'] = BackupConfig::asStoredRunTime(
+                    now($data['timezone'])->addDay()->setTime(3, 0)->addMinutes($jitter)
+                );
                 break;
 
             case 'performance':

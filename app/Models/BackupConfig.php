@@ -84,6 +84,26 @@ class BackupConfig extends Model
         'stale_alert_sent_at' => 'datetime',
     ];
 
+    /**
+     * A computed run time, expressed the way `next_backup_at` is stored.
+     *
+     * The column holds a wall clock, not an instant: Eloquent writes a Carbon in whatever timezone
+     * that Carbon happens to carry, and BackupDispatcher selects with `next_backup_at <= now()`,
+     * where `now()` is in config('app.timezone'). So the only value that means what it says is one
+     * expressed in the application's timezone — and the site's own timezone has to be folded in
+     * before that, not after, or a site scheduled in one zone fires on another's clock.
+     *
+     * Getting this wrong is invisible in the data and obvious only in the timestamps: writing the
+     * instant as UTC put every Europe/Bucharest site three hours early, so twenty sites configured
+     * for 03:00 had been backing up at 00:00 — the busiest hour they could have picked — while the
+     * three left on a UTC config were correct, which is exactly the pattern that hides a timezone
+     * bug from the person reading the config.
+     */
+    public static function asStoredRunTime(\DateTimeInterface $at): \Illuminate\Support\Carbon
+    {
+        return \Illuminate\Support\Carbon::instance($at)->setTimezone(config('app.timezone'));
+    }
+
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);

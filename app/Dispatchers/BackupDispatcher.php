@@ -156,7 +156,12 @@ class BackupDispatcher
     }
 
     /**
-     * Calculate the next run in the config's timezone, then store it in UTC.
+     * Calculate the next run in the config's timezone, then store it the way the column is read.
+     *
+     * This used to store `$next->utc()`, which is the one thing it must not do: the selection above
+     * compares the column against `now()` in the application's timezone, so a UTC wall clock was
+     * being read on a Europe/Bucharest one and every site in that zone ran three hours early. See
+     * {@see BackupConfig::asStoredRunTime()}.
      */
     protected function scheduleNextRun(BackupConfig $config): void
     {
@@ -173,7 +178,7 @@ class BackupDispatcher
             $next->setTime((int) $hour, (int) $minute);
         }
 
-        $config->update(['next_backup_at' => $next->utc()]);
+        $config->update(['next_backup_at' => BackupConfig::asStoredRunTime($next)]);
     }
 
     /**

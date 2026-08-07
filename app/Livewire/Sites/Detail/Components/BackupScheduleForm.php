@@ -103,7 +103,10 @@ class BackupScheduleForm extends Component
                 'backup_before_updates' => $this->backup_before_updates,
                 'incremental_frequency' => ($this->enable_incremental && $this->type === 'full') ? 'daily' : null,
                 'full_backup_day_of_week' => ($this->enable_incremental && $this->type === 'full') ? $this->full_backup_day_of_week : null,
-                'next_backup_at' => $this->is_enabled ? $nextBackupAt : null,
+                // Computed in the site's timezone above, stored in the application's — the column is
+                // a wall clock and the dispatcher reads it on the application's. See
+                // BackupConfig::asStoredRunTime().
+                'next_backup_at' => $this->is_enabled ? BackupConfig::asStoredRunTime($nextBackupAt) : null,
             ]
         );
 
