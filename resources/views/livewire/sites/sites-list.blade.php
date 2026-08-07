@@ -29,13 +29,14 @@
             wire="filter"
         />
         @if($this->availableTags->isNotEmpty())
-            <select wire:model.live="tagId"
-                class="rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500">
+            {{-- Was a bare <select> with its own border and focus classes, next to filter tabs
+                 and a search input that both come from the component set. --}}
+            <x-ui.select wire:model.live="tagId" class="w-auto" :aria-label="__('Filter by tag')">
                 <option value="">{{ __('All tags') }}</option>
                 @foreach($this->availableTags as $tag)
                     <option value="{{ $tag->id }}">{{ $tag->name }}</option>
                 @endforeach
-            </select>
+            </x-ui.select>
         @endif
         <x-ui.search-input
             wire:model.live.debounce.300ms="search"

@@ -145,57 +145,35 @@
                         $clientLabel = $selectedClient ? $selectedClient->name : __('Client');
                     }
                 @endphp
-                <x-ui.dropdown align="left" width="56">
-                    <x-slot:trigger>
-                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $clientActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                            <span class="max-w-[8rem] truncate">{{ $clientLabel }}</span>
-                            <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </button>
-                    </x-slot:trigger>
-
-                    <button wire:click="setClientFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$clientActive ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                {{-- Four filter pills, previously ~110 lines with the trigger classes written out
+                     four times and the same chevron SVG copied four times. --}}
+                <x-ui.filter-dropdown :label="$clientLabel" icon="users" :active="$clientActive" width="56">
+                    <x-ui.filter-option wire:click="setClientFilter(null)" :selected="! $clientActive">
                         {{ __('All Clients') }}
-                        @if(!$clientActive)
-                            <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                        @endif
-                    </button>
+                    </x-ui.filter-option>
                     @foreach($this->clients as $client)
-                        <button wire:click="setClientFilter({{ $client->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->clientFilter === $client->id ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
-                            {{ $client->name }} ({{ $client->sites_count }})
-                            @if($this->clientFilter === $client->id)
-                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            @endif
-                        </button>
+                        <x-ui.filter-option wire:click="setClientFilter({{ $client->id }})" :selected="$this->clientFilter === $client->id">
+                            <span class="truncate">{{ $client->name }}</span>
+                            <span class="text-gray-400">({{ $client->sites_count }})</span>
+                        </x-ui.filter-option>
                     @endforeach
-                </x-ui.dropdown>
+                </x-ui.filter-dropdown>
 
-                {{-- Health Pill --}}
+                {{-- Health --}}
                 @php
                     $healthActive = $this->filter !== 'all';
                     $healthLabels = ['all' => __('Health'), 'healthy' => __('Healthy'), 'warning' => __('Warning'), 'critical' => __('Critical')];
                     $healthLabel = $healthLabels[$this->filter] ?? __('Health');
                 @endphp
-                <x-ui.dropdown align="left" width="48">
-                    <x-slot:trigger>
-                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $healthActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-                            {{ $healthLabel }}
-                            <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </button>
-                    </x-slot:trigger>
-
+                <x-ui.filter-dropdown :label="$healthLabel" icon="heart" :active="$healthActive" width="48">
                     @foreach(['all' => __('All Health'), 'healthy' => __('Healthy'), 'warning' => __('Warning'), 'critical' => __('Critical')] as $value => $label)
-                        <button wire:click="setFilter('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->filter === $value ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                        <x-ui.filter-option wire:click="setFilter('{{ $value }}')" :selected="$this->filter === $value">
                             {{ $label }}
-                            @if($this->filter === $value)
-                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            @endif
-                        </button>
+                        </x-ui.filter-option>
                     @endforeach
-                </x-ui.dropdown>
+                </x-ui.filter-dropdown>
 
-                {{-- Status Pill --}}
+                {{-- Status --}}
                 @if($this->siteStatuses->isNotEmpty())
                     @php
                         $statusActive = $this->statusFilter !== null;
@@ -205,61 +183,33 @@
                             $statusLabel = $selectedStatus ? $selectedStatus->name : __('Status');
                         }
                     @endphp
-                    <x-ui.dropdown align="left" width="56">
-                        <x-slot:trigger>
-                            <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $statusActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
-                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
-                                <span class="max-w-[8rem] truncate">{{ $statusLabel }}</span>
-                                <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                            </button>
-                        </x-slot:trigger>
-
-                        <button wire:click="setStatusFilter(null)" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ !$statusActive ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                    <x-ui.filter-dropdown :label="$statusLabel" icon="clipboard" :active="$statusActive" width="56">
+                        <x-ui.filter-option wire:click="setStatusFilter(null)" :selected="! $statusActive">
                             {{ __('All Statuses') }}
-                            @if(!$statusActive)
-                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            @endif
-                        </button>
+                        </x-ui.filter-option>
                         @foreach($this->siteStatuses as $status)
-                            <button wire:click="setStatusFilter({{ $status->id }})" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->statusFilter === $status->id ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
-                                <span class="flex items-center gap-2">
-                                    <span aria-hidden="true" class="h-2 w-2 rounded-full shrink-0" style="background-color: {{ $status->color }}"></span>
-                                    {{ $status->name }} ({{ $status->sites_count }})
-                                </span>
-                                @if($this->statusFilter === $status->id)
-                                    <svg aria-hidden="true" class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                    <span class="sr-only">{{ __('(active filter)') }}</span>
-                                @endif
-                            </button>
+                            <x-ui.filter-option wire:click="setStatusFilter({{ $status->id }})" :selected="$this->statusFilter === $status->id">
+                                <span aria-hidden="true" class="h-2 w-2 shrink-0 rounded-full" style="background-color: {{ $status->color }}"></span>
+                                <span class="truncate">{{ $status->name }}</span>
+                                <span class="text-gray-400">({{ $status->sites_count }})</span>
+                            </x-ui.filter-option>
                         @endforeach
-                    </x-ui.dropdown>
+                    </x-ui.filter-dropdown>
                 @endif
 
-                {{-- Sort Pill --}}
+                {{-- Sort --}}
                 @php
                     $sortActive = $this->sort !== 'manual';
-                    $sortLabels = ['manual' => __('Manual'), 'health-asc' => __('Health') . ' ↑', 'health-desc' => __('Health') . ' ↓', 'name-asc' => __('Name A-Z'), 'name-desc' => __('Name Z-A')];
+                    $sortLabels = ['manual' => __('Manual'), 'health-asc' => __('Health').' ↑', 'health-desc' => __('Health').' ↓', 'name-asc' => __('Name A-Z'), 'name-desc' => __('Name Z-A')];
                     $sortLabel = $sortLabels[$this->sort] ?? __('Sort');
-                    $isManualSort = $this->sort === 'manual';
                 @endphp
-                <x-ui.dropdown align="left" width="48">
-                    <x-slot:trigger>
-                        <button type="button" class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition {{ $sortActive ? 'border-accent-300 bg-accent-50 text-accent-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50' }}">
-                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/></svg>
-                            {{ $sortLabel }}
-                            <svg class="h-3 w-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                        </button>
-                    </x-slot:trigger>
-
-                    @foreach(['manual' => __('Manual'), 'name-asc' => __('Name A-Z'), 'name-desc' => __('Name Z-A'), 'health-asc' => __('Health') . ' ↑', 'health-desc' => __('Health') . ' ↓'] as $value => $label)
-                        <button wire:click="setSort('{{ $value }}')" class="flex w-full items-center justify-between px-4 py-2 text-left text-sm {{ $this->sort === $value ? 'bg-accent-50 text-accent-700' : 'text-gray-700 hover:bg-gray-50' }}">
+                <x-ui.filter-dropdown :label="$sortLabel" icon="arrow-up-down" :active="$sortActive" width="48">
+                    @foreach(['manual' => __('Manual'), 'name-asc' => __('Name A-Z'), 'name-desc' => __('Name Z-A'), 'health-asc' => __('Health').' ↑', 'health-desc' => __('Health').' ↓'] as $value => $label)
+                        <x-ui.filter-option wire:click="setSort('{{ $value }}')" :selected="$this->sort === $value">
                             {{ $label }}
-                            @if($this->sort === $value)
-                                <svg class="h-4 w-4 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                            @endif
-                        </button>
+                        </x-ui.filter-option>
                     @endforeach
-                </x-ui.dropdown>
+                </x-ui.filter-dropdown>
 
                 {{-- Reorder Button --}}
                 <button
