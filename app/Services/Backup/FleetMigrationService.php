@@ -172,14 +172,50 @@ class FleetMigrationService
     /**
      * Move one site between engines.
      *
-     * Writes the column and nothing else: schedules, history and retention stay exactly as they
-     * were, so going back is the same single write in the other direction. That is the whole safety
-     * net for a same-day migration — if tonight goes badly on a site, it returns to the old engine
-     * at the next minute, with no deploy and no database surgery.
+     * For a site that already has a config this writes the column and nothing else: schedules,
+     * history and retention stay exactly as they were, so going back is the same single write in the
+     * other direction. That is the whole safety net for a same-day migration — if tonight goes badly
+     * on a site, it returns to the old engine at the next minute, with no deploy and no database
+     * surgery.
      */
     public function setEngine(Site $site, BackupEngine $engine): void
     {
-        $config = $site->backupConfig ?? BackupConfig::firstOrCreate(['site_id' => $site->id]);
+        $config = $site->backupConfig ?? $this->makeConfigForSite($site);
         $config->forceFill(['backup_engine' => $engine])->save();
+    }
+
+    /**
+     * The config row for a site that never got one, on the fleet's defaults rather than the schema's.
+     *
+     * `backup_configs` is only ever created automatically by MaintenancePlanService, and only for a
+     * site whose plan carries an enabled backup module. A site with no plan therefore has no row at
+     * all — which is why its onboarding silently skips the first backup and why engineFor() reads it
+     * as V1 (no row, no intent). Creating it here on the schema defaults would leave `UTC` for the
+     * timezone, a retention of 10 rather than the fleet's 30, and no destination: a config that
+     * exists, looks configured, and is wrong in three places nobody would think to check.
+     *
+     * `is_enabled` deliberately stays false. Starting a nightly schedule spends storage on a client's
+     * behalf, so it remains an explicit decision made on the site's own screen. What this fixes is
+     * that when someone does make it, the rest is already right.
+     *
+     * The timezone is the application's rather than the site's: `sites` has no timezone column, and
+     * the fleet's existing rows are almost all Europe/Bucharest, which is what config('app.timezone')
+     * holds. Better a right-by-default than a UTC that silently shifts a 03:00 window by three hours.
+     */
+    private function makeConfigForSite(Site $site): BackupConfig
+    {
+        $destination = StorageDestination::resolveForSite($site);
+
+        return BackupConfig::create([
+            'site_id' => $site->id,
+            'is_enabled' => false,
+            'frequency' => 'daily',
+            'time' => '03:00',
+            'timezone' => config('app.timezone'),
+            'type' => 'full',
+            'retention_type' => 'count',
+            'retention_value' => 30,
+            'storage_destination_id' => $destination?->id,
+        ]);
     }
 }

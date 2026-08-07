@@ -298,6 +298,18 @@ Schedule::command('dns:backfill-monitors')
     ->withoutOverlapping()
     ->onOneServer();
 
+// The same safety net for the backup engine. Installing it was only ever possible
+// by hand from a console nothing linked to, so a site connected after the fleet
+// migration stayed on the old engine silently — which is how m1-beauty.ro came to
+// take its first backup on V1 weeks after the fleet had left it. Idempotent: it
+// only touches connected sites that are ready and still missing the engine, and it
+// neither pushes the connector nor starts a schedule on its own.
+Schedule::command('backup:backfill-engine')
+    ->dailyAt('04:15')
+    ->name('backup-engine-backfill')
+    ->withoutOverlapping()
+    ->onOneServer();
+
 // Validate external connections (Google, Cloudflare, Dropbox, WordPress)
 Schedule::job(new \App\Jobs\ValidateExternalConnections)
     ->dailyAt('06:00')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Backups;
 
+use App\Backup\V2\Support\BackupV2Access;
 use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSorting;
@@ -83,6 +84,25 @@ class BackupsOverview extends Component
         }
 
         return $scores;
+    }
+
+    /**
+     * The fleet console for the backup engine, when the viewer can actually reach it.
+     *
+     * The console is where a site gets the engine installed, and until now nothing in the
+     * application linked to it — the only way in was to know and type /backup-v2/fleet. A screen
+     * nobody can find is a screen whose work does not get done, which is how a newly connected site
+     * came to take its first backup on the old engine.
+     *
+     * Gated on the exact condition EnsureBackupV2Ui enforces on the route, so the link can never
+     * point at a 404: UI flag on, viewer an admin.
+     */
+    #[Computed]
+    public function backupV2FleetUrl(): ?string
+    {
+        return BackupV2Access::allows(auth()->user())
+            ? route('backup-v2.fleet')
+            : null;
     }
 
     /**
