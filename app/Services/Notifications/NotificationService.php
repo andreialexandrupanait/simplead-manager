@@ -89,10 +89,19 @@ class NotificationService
                 continue;
             }
 
+            // Aggregation is right for a chat channel and wrong for email. The
+            // grouped message ProcessNotificationBatch builds carries no mailable,
+            // so an email channel's send failed outright with "No mailable class
+            // provided" — during a multi-site outage, the one moment alerting
+            // matters most, email went silent. And even delivered, one "20x Down"
+            // line cannot carry twenty distinct causes, timestamps and links.
+            // Email therefore keeps one message per site.
+            $bufferable = $channel->type !== 'email' || $mailableClass === null;
+
             if ($deferChannels) {
                 // Quiet hours — hold the channel send until they end (P1-21).
                 static::defer($channel, $site, $event, $title, $message, $fields, $severity, $webhookPayload, $mailableClass, $mailableArgs);
-            } elseif ($severity === 'info' || static::shouldAggregate($event)) {
+            } elseif ($bufferable && ($severity === 'info' || static::shouldAggregate($event))) {
                 // Buffer info notifications, and — when alert-storm aggregation is on
                 // (C-11) — site_down/site_recovered too, so ProcessNotificationBatch
                 // coalesces a cross-site burst into one "Nx" message per channel

@@ -510,8 +510,16 @@ class CheckUptime implements ShouldBeUnique, ShouldQueue
 
     protected function sanitizeErrorMessage(string $message): string
     {
-        // Remove file paths and sensitive info from error messages
-        $message = preg_replace('/\/[^\s]+/', '[path]', $message);
+        // Strip absolute filesystem paths, which leak the deploy layout. The
+        // previous pattern matched anything starting with "/", so it also ate the
+        // URL out of every Guzzle error — "(see https://curl.haxx.se/libcurl/...)"
+        // arrived as "(see https:[path])" — and the reason reached the alert email
+        // unreadable. Anchoring on the real root directories keeps URLs intact.
+        $message = preg_replace(
+            '#(?<![\w:/])/(?:var|opt|home|tmp|usr|etc|root|srv|app)(?:/[^\s"\']*)?#i',
+            '[path]',
+            $message
+        );
 
         return \Illuminate\Support\Str::limit($message, 250);
     }

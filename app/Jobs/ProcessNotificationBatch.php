@@ -90,8 +90,15 @@ class ProcessNotificationBatch implements ShouldQueue
             // Hand off to the durable queue BEFORE acking. If dispatch throws (queue
             // unavailable), the exception propagates and the still-claimed items are
             // recovered on the next run — never silently lost.
-            if (count($groupData) === 1) {
-                $this->dispatchSingle($channel, $first);
+            // Email is never grouped: a consolidated message carries no mailable,
+            // so the send would fail with "No mailable class provided". New sends
+            // no longer reach the buffer on an email channel (see
+            // NotificationService), but items already buffered at deploy time do,
+            // and they must still be delivered.
+            if (count($groupData) === 1 || $channel->type === 'email') {
+                foreach ($groupData as $item) {
+                    $this->dispatchSingle($channel, $item);
+                }
             } else {
                 $this->dispatchGrouped($channel, $groupData);
             }
