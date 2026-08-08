@@ -80,6 +80,46 @@ class SiteBackups extends Component
         return $this->site->latestProvenRestore()->first();
     }
 
+    /**
+     * Whether this site can actually be backed up, and what is missing if not.
+     *
+     * Installing the engine on a site lived on a separate console behind a
+     * feature flag and an admin check — a screen nobody could find, for the one
+     * step a newly connected site needs before it is protected at all. A site
+     * would sit here looking like a backup screen and quietly do nothing.
+     *
+     * Only consulted for the banner: a site that is fine shows nothing.
+     */
+    #[Computed]
+    public function engineStatus(): ?array
+    {
+        $status = app(\App\Services\Backup\FleetMigrationService::class)->status($this->site);
+
+        if ($status['plugin_ok'] && $status['answering'] && ! $status['engine_silent']) {
+            return null;
+        }
+
+        return $status;
+    }
+
+    /**
+     * Put the engine on this site.
+     *
+     * Pushes the connector if it is too old, installs the backup plugin, probes
+     * it, and records the result — all of which the job already did for the fleet
+     * console. What changes is that a person looking at an unprotected site can
+     * reach it.
+     */
+    public function installEngine(): void
+    {
+        $this->authorizeSiteModification($this->site);
+
+        \App\Jobs\MigrateSiteToBackupV2::dispatch($this->site, (string) \Illuminate\Support\Str::uuid());
+
+        unset($this->engineStatus);
+        session()->flash('backup-success', __('Installing the backup engine on this site — this takes a minute.'));
+    }
+
     #[Computed]
     public function storageUsage()
     {

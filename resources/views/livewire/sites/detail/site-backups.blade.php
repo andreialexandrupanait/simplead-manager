@@ -5,6 +5,30 @@
     <x-ui.flash-alert type="success" key="backup-success" />
     <x-ui.flash-alert type="error" key="backup-error" />
 
+    {{-- The site cannot be backed up yet, and this is the one screen where that
+         should be said. Installing the engine used to live on a console behind a
+         feature flag and an admin check — the one step a newly connected site
+         needs, on a page nobody could find. --}}
+    @if($this->engineStatus)
+        @php $engine = $this->engineStatus; @endphp
+        <div class="mb-4 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="text-sm text-gray-800">
+                    <span class="font-medium">{{ __('The backup engine is not running on this site yet.') }}</span>
+                    <span class="mt-0.5 block text-xs text-gray-600">
+                        {{ $engine['blocked'] ?? $engine['engine_error'] ?? __('It has not been installed, or it is not answering.') }}
+                    </span>
+                </div>
+                @unless($engine['blocked'] ?? null)
+                    <x-ui.button size="sm" wire:click="installEngine" wire:loading.attr="disabled" wire:target="installEngine">
+                        <span wire:loading.remove wire:target="installEngine">{{ __('Install it') }}</span>
+                        <span wire:loading wire:target="installEngine">{{ __('Installing…') }}</span>
+                    </x-ui.button>
+                @endunless
+            </div>
+        </div>
+    @endif
+
     {{-- Storage Quota Warning --}}
     @if($this->storageQuotaInfo && $this->storageQuotaInfo['level'] !== 'ok')
         <div class="mb-4 rounded-lg p-3 {{ $this->storageQuotaInfo['level'] === 'error' ? 'bg-red-50 border border-red-200' : 'bg-yellow-50 border border-yellow-200' }}">
@@ -501,6 +525,12 @@
                                         @endif
                                     </x-ui.button>
                                 @endif
+                                @if($backup->status !== \App\Enums\BackupStatus::Completed && $this->canRetry($backup))
+                                    <x-ui.button size="xs" variant="secondary" wire:click="retryBackup({{ $backup->id }})">
+                                        <x-icons.play class="h-3.5 w-3.5" aria-hidden="true" />
+                                        {{ __('Resume') }}
+                                    </x-ui.button>
+                                @endif
                                 <x-ui.button size="xs" variant="danger"
                                     wire:click="deleteBackup({{ $backup->id }})"
                                     wire:confirm="{{ __('Are you sure you want to delete this backup? This cannot be undone.') }}">
@@ -637,6 +667,9 @@
                                             <x-ui.icon-button icon="download" :label="__('Download')" wire:click="downloadBackup({{ $backup->id }})" />
                                             <x-ui.icon-button icon="refresh-cw" :label="__('Restore')" wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })" />
                                             <x-ui.icon-button :icon="$backup->is_locked ? 'lock' : 'unlock'" :label="$backup->is_locked ? __('Unlock') : __('Lock')" wire:click="toggleLock({{ $backup->id }})" />
+                                        @endif
+                                        @if($backup->status !== \App\Enums\BackupStatus::Completed && $this->canRetry($backup))
+                                            <x-ui.icon-button icon="play" :label="__('Pick up where it stopped')" wire:click="retryBackup({{ $backup->id }})" />
                                         @endif
                                         <x-ui.icon-button icon="trash" tone="danger" :label="__('Delete')" wire:click="deleteBackup({{ $backup->id }})" wire:confirm="{{ __('Are you sure you want to delete this backup? This cannot be undone.') }}" />
                                     </div>

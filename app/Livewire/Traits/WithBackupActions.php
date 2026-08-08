@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Livewire\Traits;
 
+use App\Backup\V2\Enums\BackupSessionState;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Orchestration\SessionActions;
 use App\Enums\BackupEngine;
@@ -71,6 +72,53 @@ trait WithBackupActions
 
         $this->trackingBackupId = $backup->id;
         unset($this->activeBackup);
+    }
+
+    /**
+     * Pick up a backup that stopped part-way.
+     *
+     * The engine checkpoints as it goes, so a run killed mid-upload — a worker
+     * OOM, a deploy, a site that went away — resumes from the last confirmed
+     * object rather than starting the site's four hundred megabytes again. That
+     * has always been true and was reachable only from a console behind a feature
+     * flag and an admin check, which is a recovery path most people could not
+     * take.
+     *
+     * One button for two verbs on purpose: `resume` and `retry` differ in what
+     * the engine does with the checkpoint, not in what the person wants, which is
+     * for the backup to carry on.
+     */
+    public function retryBackup(int $backupId): void
+    {
+        $this->authorizeSiteModification($this->site);
+
+        /** @var Backup $backup */
+        $backup = $this->site->backups()->findOrFail($backupId);
+
+        $session = BackupSession::where('backup_id', $backup->id)->first();
+        if (! $session instanceof BackupSession) {
+            session()->flash('backup-error', __('This backup has no session to resume.'));
+
+            return;
+        }
+
+        app(SessionActions::class)->retry($session);
+
+        $this->trackingBackupId = $backup->id;
+        unset($this->activeBackup);
+        session()->flash('backup-success', __('Picking the backup up from where it stopped.'));
+    }
+
+    /**
+     * Is there anything to pick up? A completed backup has nothing to resume, and
+     * offering the button anyway is how a person learns to distrust the buttons.
+     */
+    public function canRetry(Backup $backup): bool
+    {
+        $session = BackupSession::where('backup_id', $backup->id)->first();
+
+        return $session instanceof BackupSession
+            && ! in_array($session->state, [BackupSessionState::Completed, BackupSessionState::Cancelling], true);
     }
 
     public function toggleLock(int $backupId): void

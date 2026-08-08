@@ -226,22 +226,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | UI Manager (P5) — Livewire V2 backup console gating
-    |--------------------------------------------------------------------------
-    | The V2 manager UI (App\Livewire\Backup\V2\*) lives under its OWN route
-    | prefix (/backup-v2) behind this flag AND an admin role check. With the
-    | default FALSE, the routes 404 for everyone and the console is invisible in
-    | production — the V1 UI is the only backup UI users can reach. It defaults
-    | to the master 'enabled' flag so turning V2 on also exposes its console,
-    | while still allowing the UI to be dark-launched independently.
-    */
-    'ui_enabled' => (bool) env(
-        'BACKUP_ENGINE_V2_UI_ENABLED',
-        (bool) env('BACKUP_ENGINE_V2_ENABLED', false),
-    ),
-
-    /*
-    |--------------------------------------------------------------------------
     | Storage quotas (P5)
     |--------------------------------------------------------------------------
     | Enforced on a StorageDestination's RECONCILED used_bytes (the truth job in

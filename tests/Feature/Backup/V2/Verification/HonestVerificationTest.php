@@ -10,14 +10,10 @@ use App\Backup\V2\Models\BackupVerification;
 use App\Backup\V2\Orchestration\SessionActions;
 use App\Backup\V2\Storage\ObjectLayout;
 use App\Backup\V2\Verification\BackupVerifier;
-use App\Enums\UserRole;
-use App\Livewire\Backup\V2\SiteBackupV2;
 use App\Models\Site;
-use App\Models\User;
 use Aws\S3\S3Client;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
-use Livewire\Livewire;
 use Tests\Feature\Backup\V2\Ui\MakesV2Sessions;
 use Tests\TestCase;
 
@@ -58,16 +54,22 @@ class HonestVerificationTest extends TestCase
         Queue::assertPushed(VerifyBackupSessionJob::class);
     }
 
-    public function test_the_button_in_the_console_queues_the_same_job(): void
+    /**
+     * Asking for a verification queues one; it does not stamp anything.
+     *
+     * This used to go through the V2 console's button. The console is gone and
+     * the assertion is not about a screen — it is that requesting a check and
+     * passing a check are different events, and only the second may write
+     * verified_at.
+     */
+    public function test_requesting_a_verification_queues_it_without_stamping(): void
     {
         Queue::fake();
 
         $site = $this->pilotSite();
         $session = $this->makeBackupSession($site, ['state' => BackupSessionState::Completed]);
 
-        Livewire::actingAs(User::factory()->create(['role' => UserRole::Admin]))
-            ->test(SiteBackupV2::class, ['site' => $site])
-            ->call('verifySession', $session->id);
+        app(\App\Backup\V2\Orchestration\SessionActions::class)->requestVerification($session);
 
         Queue::assertPushed(
             VerifyBackupSessionJob::class,
