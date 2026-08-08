@@ -6,14 +6,6 @@
             subtitle="{{ __('Every site, and how recently it could be restored') }}"
         />
         <div class="flex flex-wrap items-center gap-2">
-            {{-- The way in to the engine's fleet console. It had no link anywhere in the
-                 application, so installing the engine on a new site depended on someone
-                 remembering the URL. --}}
-            @if($this->backupV2FleetUrl)
-                <x-ui.button :href="$this->backupV2FleetUrl" variant="ghost">
-                    {{ __('Backup engine') }}
-                </x-ui.button>
-            @endif
             <x-ui.button wire:click="backupAllSites" wire:loading.attr="disabled" wire:confirm="{{ __('This will queue backups for all connected sites with an active backup configuration. Continue?') }}">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" /></svg>
                 <span wire:loading.remove wire:target="backupAllSites">{{ __('Backup All Sites') }}</span>
@@ -103,11 +95,6 @@
                                     <a href="{{ route('sites.backups', $site) }}" class="truncate text-sm font-medium text-gray-900 hover:text-accent-600">
                                         {{ $site->name }}
                                     </a>
-                                    {{-- The engine badge appears only for the exception. Labelling
-                                         every row "V2" would be labelling the norm. --}}
-                                    @if($row['engine'] === \App\Enums\BackupEngine::V1)
-                                        <x-ui.badge variant="gray">{{ __('Legacy engine') }}</x-ui.badge>
-                                    @endif
                                 </div>
                                 <p class="truncate text-xs text-gray-500">{{ $site->url }}</p>
                             </div>
