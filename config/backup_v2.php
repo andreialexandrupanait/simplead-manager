@@ -182,7 +182,13 @@ return [
     'format_version' => 'simplead-backup/2',
 
     // S3 object layout root (per TARGET-ARCHITECTURE.md). Tenant-isolated.
-    'object_prefix' => 'clients/{client_id}/sites/{site_id}/backups/{backup_id}',
+    // Where a backup's objects live in the bucket. Placeholders: {site_domain},
+    // {date}, {time}, {type}, {trigger}, {client_id}, {site_id}, {backup_id}.
+    //
+    // Changing this only decides where the NEXT backup is written — every
+    // existing session froze its expanded prefix on first use and is read back
+    // verbatim, so nothing already in storage moves or is orphaned.
+    'object_prefix' => 'mentenanta/{site_domain}/{date}/{time}-{type}-{trigger}',
 
     /*
     |--------------------------------------------------------------------------

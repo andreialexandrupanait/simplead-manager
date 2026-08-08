@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Backup\V2\Storage;
 
 /**
- * Builds the tenant-isolated S3 object keys for a single V2 backup, derived from
+ * Builds the S3 object keys for a single backup, derived from
  * config('backup_v2.object_prefix').
  *
  * The prefix template (default:
- * `clients/{client_id}/sites/{site_id}/backups/{backup_id}`) is expanded once and
- * every artifact key hangs off it, matching the S3 object layout in
- * docs/backup/TARGET-ARCHITECTURE.md:
+ * `mentenanta/{site_domain}/{date}/{time}-{type}-{trigger}`) is expanded once and
+ * every artifact key hangs off it:
  *
- *   clients/{c}/sites/{s}/backups/{b}/
+ *   mentenanta/feaagalati.ro/2026-08-08/03-12-05-full-scheduled/
  *     database/            # full logical dump chunks
  *     files/               # file payload chunks
  *     manifest.json        # inventory + hashes + chain ref
@@ -22,12 +21,35 @@ namespace App\Backup\V2\Storage;
  *     restore.json         # restore hints
  *     _COMPLETE            # completion marker (written last)
  *
+ * The layout used to be `clients/{client_id}/sites/{site_id}/backups/{backup_id}`,
+ * which is addressable but unreadable: finding one site's backups meant knowing
+ * two numeric ids, and a bucket listing showed `clients/3/sites/17/backups/…`
+ * rather than a domain and a date. Numbers are how the database refers to a site;
+ * they are not how a person looks for one.
+ *
+ * The day is a folder and each run is a leaf inside it, so a site that backs up
+ * more than once in a day — a manual run on a night that already ran its
+ * scheduled one — reads as two named entries under one date rather than as two
+ * things that need telling apart. The leaf says what it was: the time it started,
+ * what it covered, and who asked for it.
+ *
+ * Uniqueness is not decoration here. Two sessions resolving to the same prefix
+ * means an overwritten manifest, interleaved chunks, and retention deleting
+ * objects belonging to the other backup. The time carries seconds for exactly
+ * that reason: minutes alone would collide for a site backed up twice inside one
+ * minute, and the per-site lock makes the same second unreachable.
+ *
+ * Changing this template is safe for existing backups: {@see SessionLayoutResolver}
+ * freezes the expanded prefix on the session at first use and reads it verbatim
+ * thereafter, so a template change moves nothing and orphans nothing — it only
+ * decides where the NEXT backup is written.
+ *
  * Pure value object — no I/O. Reads config only through the static factory so it
  * honours the "read via config('backup_v2.*') only" contract.
  */
 final class ObjectLayout
 {
-    private const DEFAULT_PREFIX = 'clients/{client_id}/sites/{site_id}/backups/{backup_id}';
+    private const DEFAULT_PREFIX = 'mentenanta/{site_domain}/{date}/{time}-{type}-{trigger}';
 
     private readonly string $prefix;
 
@@ -36,6 +58,11 @@ final class ObjectLayout
         int|string $siteId,
         int|string $backupId,
         ?string $template = null,
+        string $siteDomain = '',
+        string $date = '',
+        string $time = '',
+        string $type = '',
+        string $trigger = '',
     ) {
         $template ??= self::DEFAULT_PREFIX;
 
@@ -43,20 +70,82 @@ final class ObjectLayout
             '{client_id}' => (string) $clientId,
             '{site_id}' => (string) $siteId,
             '{backup_id}' => (string) $backupId,
+            '{site_domain}' => self::slugDomain($siteDomain, $siteId),
+            '{date}' => $date !== '' ? $date : now()->format('Y-m-d'),
+            '{time}' => $time !== '' ? $time : now()->format('H-i-s'),
+            '{type}' => self::slugSegment($type, 'backup'),
+            '{trigger}' => self::slugSegment($trigger, 'run'),
         ]), '/');
     }
 
     /**
      * Build a layout using the configured object_prefix template.
      */
-    public static function forBackup(int|string $clientId, int|string $siteId, int|string $backupId): self
-    {
+    public static function forBackup(
+        int|string $clientId,
+        int|string $siteId,
+        int|string $backupId,
+        string $siteDomain = '',
+        string $date = '',
+        string $time = '',
+        string $type = '',
+        string $trigger = '',
+    ): self {
         return new self(
             $clientId,
             $siteId,
             $backupId,
             (string) config('backup_v2.object_prefix', self::DEFAULT_PREFIX),
+            $siteDomain,
+            $date,
+            $time,
+            $type,
+            $trigger,
         );
+    }
+
+    /**
+     * One key segment, reduced to what is safe and readable in an object key.
+     *
+     * Falls back to a caller-supplied word rather than to an empty string: an
+     * empty segment would collapse `…/03-12-05--scheduled` and, worse, could make
+     * two different backups resolve to the same prefix.
+     */
+    private static function slugSegment(string $value, string $fallback): string
+    {
+        $slug = strtolower(trim($value));
+        $slug = (string) preg_replace('/[^a-z0-9]+/', '-', $slug);
+        $slug = trim($slug, '-');
+
+        return $slug !== '' ? $slug : $fallback;
+    }
+
+    /**
+     * A site's URL reduced to something safe to put in an object key.
+     *
+     * Takes the host out of `https://feaagalati.ro/` and drops a leading `www.`,
+     * so the same site cannot end up under two different folders depending on how
+     * its URL happens to be written. Anything left outside [a-z0-9.-] becomes a
+     * dash rather than being dropped, so two distinct hosts cannot collapse onto
+     * one prefix.
+     *
+     * Falls back to `site-{id}` rather than to an empty segment: a site with an
+     * unparseable URL must still get its own root, not share `mentenanta//…` with
+     * every other broken one.
+     */
+    private static function slugDomain(string $url, int|string $siteId): string
+    {
+        $host = strtolower(trim($url));
+
+        if ($host !== '' && str_contains($host, '//')) {
+            $host = (string) (parse_url($host, PHP_URL_HOST) ?: '');
+        }
+
+        $host = preg_replace('/^www\./', '', trim($host, '/'));
+        $host = (string) preg_replace('/[^a-z0-9.-]+/', '-', (string) $host);
+        $host = trim($host, '-.');
+
+        return $host !== '' ? $host : 'site-'.$siteId;
     }
 
     /**

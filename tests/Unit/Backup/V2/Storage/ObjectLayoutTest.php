@@ -28,9 +28,14 @@ class ObjectLayoutTest extends TestCase
         $this->assertSame('clients/7/sites/42/backups/1001/_COMPLETE', $layout->completeMarker());
     }
 
+    /**
+     * These two are about how a key is assembled from a prefix, not about which prefix the fleet
+     * happens to use, so they pin the template explicitly rather than inheriting the default. Left
+     * implicit, they would fail every time the layout is changed while testing nothing about it.
+     */
     public function test_directory_helpers_without_argument_return_the_folder_prefix(): void
     {
-        $layout = new ObjectLayout(1, 2, 3);
+        $layout = new ObjectLayout(1, 2, 3, 'clients/{client_id}/sites/{site_id}/backups/{backup_id}');
 
         $this->assertSame('clients/1/sites/2/backups/3/database/', $layout->database());
         $this->assertSame('clients/1/sites/2/backups/3/files/', $layout->files());
@@ -38,7 +43,7 @@ class ObjectLayoutTest extends TestCase
 
     public function test_key_normalises_leading_slashes(): void
     {
-        $layout = new ObjectLayout(1, 2, 3);
+        $layout = new ObjectLayout(1, 2, 3, 'clients/{client_id}/sites/{site_id}/backups/{backup_id}');
 
         $this->assertSame('clients/1/sites/2/backups/3/logs/run.log', $layout->key('/logs/run.log'));
     }

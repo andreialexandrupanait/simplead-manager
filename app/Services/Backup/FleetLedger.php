@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
-use App\Enums\BackupEngine;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
@@ -112,9 +111,6 @@ final class FleetLedger
             'last_full_at' => $lastFull[$site->id] ?? null,
             'age_days' => $ageDays,
             'stored_bytes' => $stored[$site->id] ?? 0,
-            // A site with no config at all has never been told which engine to use; V1 is what it
-            // would get, so that is what the row should say.
-            'engine' => $config instanceof BackupConfig ? $config->backup_engine : BackupEngine::V1,
             'next_run_at' => $config instanceof BackupConfig && $scheduled ? $config->next_backup_at : null,
             'scheduled' => $scheduled,
             'problem' => $this->problem($site, $validAt, $lastFailure[$site->id] ?? null),

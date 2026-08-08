@@ -8,7 +8,6 @@ use App\Backup\V2\Enums\BackupSessionState;
 use App\Backup\V2\Jobs\RunBackupSessionJob;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Orchestration\SessionActions;
-use App\Enums\BackupEngine;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
@@ -50,7 +49,6 @@ class BackupQueueRoutingTest extends TestCase
         ]);
         BackupConfig::factory()->create([
             'site_id' => $site->id,
-            'backup_engine' => BackupEngine::V2,
             'storage_destination_id' => $destination->id,
         ]);
 

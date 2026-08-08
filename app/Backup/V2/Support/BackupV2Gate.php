@@ -4,18 +4,14 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Support;
 
-use App\Enums\BackupEngine;
-use App\Models\BackupConfig;
-use App\Models\Site;
 use App\Services\Backup\BackupV2Settings;
 
 /**
- * Single source of truth for whether the V2 backup ENGINE (not the UI — that is
- * BackupV2Access) may run against a specific site.
+ * Whether the backup engine may run against a specific site.
  *
  * Two independent conditions must BOTH hold:
  *   1. the master kill-switch config('backup_v2.enabled') is true, AND
- *   2. the site is eligible — either fleet enrolment is on (a setting, changed from the console),
+ *   2. the site is eligible — either fleet enrolment is on (a setting, changed from a screen),
  *      or the site id appears in the config('backup_v2.site_ids') allowlist.
  *
  * Both are fail-closed. Fleet enrolment defaults to false and an EMPTY allowlist means "no site is
@@ -23,9 +19,14 @@ use App\Services\Backup\BackupV2Settings;
  * written, empty site_ids — allowsSite() is false for every site and no engine code path can touch
  * a real site.
  *
- * Eligibility is permission, not intent: it says a site MAY run the new engine, and the
- * `backup_configs.backup_engine` column says whether it does. The column can only ever narrow what
- * this grants, which is what makes turning the fleet back a single write per site.
+ * What is left here is a kill switch, not an engine chooser. There used to be a third condition —
+ * engineFor(), reading a `backup_configs.backup_engine` roster that said which of two engines ran a
+ * site. With one engine there is no choice to express, and the roster had become a trap: it defaults
+ * to 'v1', the plugin installer filtered on it, so a newly connected site would have been skipped in
+ * silence and shown a backup screen that never backed anything up.
+ *
+ * The kill switch stays, and is worth keeping: `BACKUP_ENGINE_V2_ENABLED=false` is the one lever
+ * that stops every backup on the fleet without a deploy or a database write.
  */
 final class BackupV2Gate
 {
@@ -48,8 +49,6 @@ final class BackupV2Gate
      *
      * The kill switch is untouched. `BACKUP_ENGINE_V2_ENABLED=false` still stops everything, and
      * putting a concrete list back still narrows the fleet to it — both without a database write.
-     * With `*`, enrolment is the `backup_configs.backup_engine` column alone, which the console can
-     * change per site and undo per site.
      */
     public static function siteAllowed(int $siteId): bool
     {
@@ -81,32 +80,5 @@ final class BackupV2Gate
     public static function allowsSite(int $siteId): bool
     {
         return self::enabled() && self::siteAllowed($siteId);
-    }
-
-    /**
-     * Which engine actually runs this site's next backup.
-     *
-     * Two switches, and the order between them is the whole design: the column
-     * on backup_configs declares the intent, this gate grants the permission,
-     * and permission is checked last. So flipping the column for a site that is
-     * not on the env allowlist does nothing, and removing a site from the
-     * allowlist returns it to the old engine at the next minute regardless of
-     * what the column says. That is the rollback a pilot needs — one line, no
-     * database write, no deploy.
-     *
-     * Not two sources of truth: the column can only ever narrow what the gate
-     * already permits.
-     */
-    public static function engineFor(Site $site, ?BackupConfig $config = null): BackupEngine
-    {
-        if (! self::allowsSite((int) $site->id)) {
-            return BackupEngine::V1;
-        }
-
-        $config ??= $site->backupConfig;
-
-        return $config?->backup_engine === BackupEngine::V2
-            ? BackupEngine::V2
-            : BackupEngine::V1;
     }
 }

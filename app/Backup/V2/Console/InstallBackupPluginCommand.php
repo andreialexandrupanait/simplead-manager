@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Console;
 
-use App\Enums\BackupEngine;
 use App\Models\Site;
 use App\Services\Backup\BackupPluginInstaller;
 use Illuminate\Console\Command;
@@ -101,7 +100,7 @@ class InstallBackupPluginCommand extends Command
 
         /** @var Collection<int, Site> $sites */
         $sites = Site::query()
-            ->whereHas('backupConfig', fn ($q) => $q->where('backup_engine', BackupEngine::V2->value))
+            ->whereHas('backupConfig')
             ->orderBy('id')
             ->get();
 

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Backup\V2;
 
-use App\Enums\BackupEngine;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
 use App\Livewire\Sites\Detail\SiteBackups;
@@ -42,7 +41,6 @@ class ManualBackupRoutingTest extends TestCase
         BackupConfig::factory()->create([
             'site_id' => $site->id,
             'storage_destination_id' => $destination->id,
-            'backup_engine' => BackupEngine::V2,
         ]);
 
         Config::set('backup_v2.enabled', true);

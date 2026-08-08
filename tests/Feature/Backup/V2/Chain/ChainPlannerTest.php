@@ -9,7 +9,6 @@ use App\Backup\V2\Enums\BackupSessionState as S;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Orchestration\SessionActions;
 use App\Dispatchers\BackupDispatcher;
-use App\Enums\BackupEngine;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
 use App\Models\BackupConfig;
@@ -212,7 +211,6 @@ class ChainPlannerTest extends TestCase
         Config::set('backup_v2.enabled', true);
         Config::set('backup_v2.site_ids', [(string) $site->id]);
         $site->backupConfig->update([
-            'backup_engine' => BackupEngine::V2,
             'next_backup_at' => now()->subMinute(),
         ]);
 

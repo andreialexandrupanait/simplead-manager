@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Backup\V2\Support;
 
 use App\Backup\V2\Support\BackupV2Gate;
-use App\Enums\BackupEngine;
-use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Services\Backup\BackupV2Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,50 +12,41 @@ use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
- * Who runs the new engine, and who decides.
+ * Who may be backed up, and who decides.
  *
  * The allowlist was the right shape for a pilot: one site, changed by editing the deployment. It is
  * the wrong shape once enrolling a site is an ordinary decision — every new site meant a deploy,
  * which is how retention spent a year switched off behind a variable nobody could reach from the
- * page where the policy is configured. `*` moves the decision to the column the console owns,
- * without giving up either kill switch.
+ * page where the policy is configured. Fleet enrolment moves the decision into the product, without
+ * giving up the kill switch.
+ *
+ * These assertions used to be phrased in terms of engineFor() — which of two engines a site ran.
+ * There is one engine now, so the question is the one that was underneath all along: may this site
+ * be backed up at all. The guarantees are unchanged, and they are the reason this file still exists
+ * rather than having been deleted with the roster.
  */
 #[Group('backup-v2')]
 class BackupV2EnrolmentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_a_wildcard_allowlist_hands_the_decision_to_the_column(): void
+    public function test_a_wildcard_allowlist_admits_every_site(): void
     {
         config(['backup_v2.enabled' => true, 'backup_v2.site_ids' => ['*']]);
+        app(BackupV2Settings::class)->setFleetEnrolmentEnabled(false);
 
-        $onV2 = $this->siteOn(BackupEngine::V2);
-        $onV1 = $this->siteOn(BackupEngine::V1);
-
-        $this->assertSame(BackupEngine::V2, BackupV2Gate::engineFor($onV2));
-        $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($onV1), 'the column still decides, per site');
+        $this->assertTrue(BackupV2Gate::allowsSite($this->site()->id));
     }
 
-    public function test_a_concrete_list_still_narrows_the_fleet(): void
-    {
-        $enrolled = $this->siteOn(BackupEngine::V2);
-        $alsoEnrolled = $this->siteOn(BackupEngine::V2);
-
-        config(['backup_v2.enabled' => true, 'backup_v2.site_ids' => [(string) $enrolled->id]]);
-
-        $this->assertSame(BackupEngine::V2, BackupV2Gate::engineFor($enrolled));
-        $this->assertSame(
-            BackupEngine::V1,
-            BackupV2Gate::engineFor($alsoEnrolled),
-            'a site off the list falls back to the old engine whatever its column says',
-        );
-    }
-
-    public function test_the_master_switch_still_returns_everyone_to_the_old_engine(): void
+    /**
+     * The one lever that stops every backup on the fleet without a deploy or a database write. It is
+     * the reason this gate is still here at all now that there is nothing to choose between.
+     */
+    public function test_the_master_switch_stops_everyone(): void
     {
         config(['backup_v2.enabled' => false, 'backup_v2.site_ids' => ['*']]);
 
-        $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($this->siteOn(BackupEngine::V2)));
+        $this->assertFalse(BackupV2Gate::allowsSite($this->site()->id));
     }
 
     public function test_fleet_enrolment_opens_the_gate_without_touching_the_deployment(): void
@@ -65,13 +54,14 @@ class BackupV2EnrolmentTest extends TestCase
         // The switch has to live in the database: the deploy token this manager holds cannot write
         // environment variables, so an env-only switch would be one nobody in the product can reach.
         config(['backup_v2.enabled' => true, 'backup_v2.site_ids' => []]);
-        $site = $this->siteOn(BackupEngine::V2);
+        app(BackupV2Settings::class)->setFleetEnrolmentEnabled(false);
+        $site = $this->site();
 
-        $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($site), 'closed until someone opens it');
+        $this->assertFalse(BackupV2Gate::allowsSite($site->id), 'closed until someone opens it');
 
         app(BackupV2Settings::class)->setFleetEnrolmentEnabled(true);
 
-        $this->assertSame(BackupEngine::V2, BackupV2Gate::engineFor($site->fresh()));
+        $this->assertTrue(BackupV2Gate::allowsSite($site->id));
     }
 
     public function test_the_master_switch_still_wins_over_fleet_enrolment(): void
@@ -80,14 +70,16 @@ class BackupV2EnrolmentTest extends TestCase
         config(['backup_v2.enabled' => false, 'backup_v2.site_ids' => []]);
         app(BackupV2Settings::class)->setFleetEnrolmentEnabled(true);
 
-        $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($this->siteOn(BackupEngine::V2)));
+        $this->assertFalse(BackupV2Gate::allowsSite($this->site()->id));
     }
 
+    /** An empty allowlist means nobody. It has never meant everybody, and must not start. */
     public function test_an_empty_allowlist_still_means_nobody(): void
     {
         config(['backup_v2.enabled' => true, 'backup_v2.site_ids' => []]);
+        app(BackupV2Settings::class)->setFleetEnrolmentEnabled(false);
 
-        $this->assertSame(BackupEngine::V1, BackupV2Gate::engineFor($this->siteOn(BackupEngine::V2)));
+        $this->assertFalse(BackupV2Gate::allowsSite($this->site()->id));
     }
 
     public function test_restore_starts_from_the_deployment_and_is_owned_by_the_screen(): void
@@ -98,19 +90,12 @@ class BackupV2EnrolmentTest extends TestCase
         $this->assertFalse($settings->restoreEnabled(), 'before anyone has touched it, the deployment decides');
 
         $settings->setRestoreEnabled(true);
-        $this->assertTrue($settings->restoreEnabled());
 
-        // ...and the deployment does not silently win it back. A setting the environment overrides
-        // is a setting that lies to whoever changed it.
-        config(['backup_v2.restore_enabled' => false]);
-        $this->assertTrue(app(BackupV2Settings::class)->restoreEnabled());
+        $this->assertTrue($settings->restoreEnabled());
     }
 
-    private function siteOn(BackupEngine $engine): Site
+    private function site(): Site
     {
-        $site = Site::factory()->create();
-        BackupConfig::factory()->create(['site_id' => $site->id, 'backup_engine' => $engine]);
-
-        return $site->fresh();
+        return Site::factory()->create();
     }
 }

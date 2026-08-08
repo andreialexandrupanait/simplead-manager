@@ -10,32 +10,24 @@ $scrollIntoViewJsSnippet = ($scrollTo !== false)
     : '';
 @endphp
 
+{{--
+    Pagination sits at the end of the list, in the flow of the page.
+
+    It used to be a `fixed bottom-0` bar pinned to the viewport, which meant it
+    hovered over the content on every screen that paginates — and, because a
+    fixed element is positioned against the viewport rather than its container,
+    it needed an Alpine block measuring #main-content on resize just to line up
+    with the column it belonged to, plus an h-14 spacer so the last row was not
+    hidden underneath it. All of that was scaffolding for the floating; none of
+    it is needed once the bar is where it reads: after the last row.
+
+    No margin, border or background of its own: every one of the nineteen call
+    sites already wraps this in the spacing its page wants — a card foot with a
+    divider, or an mt-4 below the card. Chrome here would double theirs.
+--}}
 <div>
     @if ($paginator->hasPages())
-        {{-- Spacer to prevent content from hiding behind the fixed pagination bar --}}
-        <div class="h-14"></div>
-
-        <div x-data="{
-                left: 0,
-                width: 0,
-                update() {
-                    const main = document.getElementById('main-content');
-                    if (main) {
-                        const rect = main.getBoundingClientRect();
-                        this.left = rect.left;
-                        this.width = rect.width;
-                    }
-                }
-             }"
-             x-init="
-                update();
-                window.addEventListener('resize', () => update());
-                if (document.querySelector('[data-main]')) {
-                    new ResizeObserver(() => update()).observe(document.querySelector('[data-main]'));
-                }
-             "
-             :style="`left: ${left}px; width: ${width}px`"
-             class="fixed bottom-0 z-10 px-6 lg:px-8 pt-3 pb-2 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.04)]">
+        <div>
             <div class="mx-auto max-w-7xl">
                 <nav role="navigation" aria-label="Pagination" class="flex items-center justify-between">
                     {{-- Mobile: simple previous/next --}}

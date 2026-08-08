@@ -91,27 +91,30 @@ class SessionLayoutResolverTest extends TestCase
     }
 
     /**
-     * The client id belongs to the site, not to whoever happens to be asking —
-     * a command-line default of 1 is what sent deep-verify to the wrong prefix.
+     * The prefix is built from the SITE, not from whoever happens to be asking — a command-line
+     * default of 1 for the client id is what sent deep-verify looking in the wrong place.
+     *
+     * The layout no longer carries a client id at all (it is `mentenanta/{domain}/{date}/…`), so the
+     * guarantee is asserted where it now lives: the site's own domain, and nobody else's.
      */
-    public function test_the_client_id_comes_from_the_site(): void
+    public function test_the_prefix_is_built_from_the_site_being_backed_up(): void
     {
         $client = Client::factory()->create();
-        $site = Site::factory()->create(['client_id' => $client->id]);
+        $site = Site::factory()->create(['client_id' => $client->id, 'url' => 'https://feaagalati.ro']);
         $session = $this->makeBackupSession($site);
 
         $this->assertStringStartsWith(
-            "clients/{$client->id}/sites/{$site->id}/",
+            'mentenanta/feaagalati.ro/',
             SessionLayoutResolver::for($session, $site)->prefix(),
         );
     }
 
     public function test_a_site_without_a_client_still_resolves(): void
     {
-        $site = Site::factory()->create(['client_id' => null]);
+        $site = Site::factory()->create(['client_id' => null, 'url' => 'https://m1-beauty.hu']);
         $session = $this->makeBackupSession($site);
 
-        $this->assertStringStartsWith("clients/0/sites/{$site->id}/", SessionLayoutResolver::for($session, $site)->prefix());
+        $this->assertStringStartsWith('mentenanta/m1-beauty.hu/', SessionLayoutResolver::for($session, $site)->prefix());
     }
 
     public function test_freezing_the_prefix_is_not_recorded_as_activity(): void

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Backup\V2\Storage;
 
 use App\Backup\V2\Models\BackupSession;
+use App\Models\Backup;
 use App\Models\Site;
 
 /**
@@ -37,11 +38,27 @@ final class SessionLayoutResolver
         }
 
         $site ??= $session->site;
+        $backup = $session->backup;
 
         $layout = ObjectLayout::forBackup(
             clientId: $site?->getAttribute('client_id') ?? 0,
             siteId: (int) $session->site_id,
             backupId: (int) ($session->backup_id ?? $session->id),
+            siteDomain: (string) ($site?->getAttribute('url') ?? ''),
+            // The session's own start time, not the clock's. A run that begins at
+            // 23:58 and finishes after midnight belongs to the night it started,
+            // and — more to the point — re-resolving mid-run must answer the same
+            // prefix every time, or the second half of a backup is written
+            // somewhere the first half is not.
+            date: ($session->created_at ?? now())->format('Y-m-d'),
+            time: ($session->created_at ?? now())->format('H-i-s'),
+            type: (string) ($session->type ?? ''),
+            // Who asked for it lives on the backup row, not the session. By the
+            // time a prefix is frozen the envelope has already created that row,
+            // so this is normally present; when it is not, the segment falls back
+            // to a neutral word rather than guessing "manual" and labelling a
+            // scheduled backup with something untrue.
+            trigger: $backup instanceof Backup ? (string) $backup->trigger : '',
         );
 
         // Written without touching timestamps or firing events: this records

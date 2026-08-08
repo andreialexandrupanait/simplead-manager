@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
-use App\Backup\V2\Support\BackupV2Gate;
-use App\Enums\BackupEngine;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
@@ -13,16 +11,20 @@ use App\Support\PluginPackage;
 use App\Support\Semver;
 
 /**
- * What each site needs before it can run the new backup engine, and the three steps that get it
- * there.
+ * What a site needs before it can be backed up at all, and the steps that get it there.
  *
- * Moving a site is not one action: the connector has to be new enough to install plugins at all
- * (2.25.0), the backup engine has to be present and current, and only then does flipping the engine
- * mean anything. Done by hand that is three commands and a version comparison per site, twenty-nine
- * times — which is how a migration ends up half-finished with nobody sure which half.
+ * Preparing a site is not one action: the connector has to be new enough to install plugins at all
+ * (2.25.0), the backup engine has to be present, current and answering, and the site needs a config
+ * row to carry its schedule. Done by hand that is several commands and a version comparison per site,
+ * thirty times — which is how a rollout ends up half-finished with nobody sure which half.
  *
  * So the readiness question gets a single answer per site, with the reason attached. A row that says
  * "not ready" and nothing else is just a question nobody can act on.
+ *
+ * There used to be a fourth step: flipping a `backup_configs.backup_engine` roster that chose between
+ * two engines. With one engine there is nothing to choose, and the roster had become a trap — it
+ * defaults to 'v1' and the plugin installer filtered on it, so a newly connected site would have been
+ * skipped in silence and then shown a backup screen that never backed anything up.
  */
 class FleetMigrationService
 {
@@ -42,8 +44,6 @@ class FleetMigrationService
      *     connector_ok: bool,
      *     plugin: ?string,
      *     plugin_ok: bool,
-     *     engine: BackupEngine,
-     *     effective_engine: BackupEngine,
      *     destination: ?string,
      *     scheduled: bool,
      *     answering: bool,
@@ -58,7 +58,6 @@ class FleetMigrationService
     public function status(Site $site): array
     {
         $config = $site->backupConfig;
-        $engine = $config instanceof BackupConfig ? $config->backup_engine : BackupEngine::V1;
         $destination = StorageDestination::resolveForSite($site);
 
         $connector = $site->connector_version;
@@ -89,15 +88,16 @@ class FleetMigrationService
             if (! $pluginOk) {
                 $steps[] = 'plugin';
             }
-            if ($engine !== BackupEngine::V2) {
-                $steps[] = 'engine';
-            }
         }
 
-        // A site whose column says V2 while its engine says nothing is not done, however green the
-        // row would otherwise look. Reported as its own state so it cannot be mistaken for either
-        // "still on V1" or "migrated".
-        $engineSilent = $engine === BackupEngine::V2 && ! $answering;
+        // A site we have asked, and which said nothing back.
+        //
+        // Kept as its own state rather than folded into `plugin_ok`, because "we put it there" and
+        // "it answers" are different claims — treating the first as the second is how thirteen sites
+        // came to be recorded as migrated while answering 401 to every request. It cannot be derived
+        // from `plugin_ok`, which already requires `answering`: that pairing is always false, which
+        // is what the check below would have quietly become.
+        $engineSilent = $site->backup_plugin_checked_at !== null && ! $answering;
 
         return [
             'site' => $site,
@@ -109,11 +109,6 @@ class FleetMigrationService
             'engine_silent' => $engineSilent,
             'engine_error' => $site->backup_plugin_error,
             'checked_at' => $site->backup_plugin_checked_at,
-            'engine' => $engine,
-            // What the site would ACTUALLY run tonight — the column narrowed by the gate. The two
-            // can disagree, and when they do it is the gate that decides, so showing only the column
-            // would be showing an intention as though it were a fact.
-            'effective_engine' => BackupV2Gate::engineFor($site, $config),
             'destination' => $destination?->name,
             'scheduled' => (bool) $config?->is_enabled,
             'ready' => $blocked === null,
@@ -157,31 +152,20 @@ class FleetMigrationService
             }
         }
 
-        if (in_array('engine', $status['steps'], true)) {
-            $this->setEngine($site, BackupEngine::V2);
-            $done['engine'] = 'v1 -> v2';
+        // A site with no config row at all gets one here. `backup_configs` is only ever created by
+        // MaintenancePlanService, and only for a site whose plan carries an enabled backup module, so
+        // a site without a plan has no row — and a site with no row has no schedule, no retention and
+        // no destination, however installed its engine is.
+        if ($site->backupConfig === null) {
+            $this->makeConfigForSite($site);
+            $done['config'] = __('Backup settings created.');
         }
 
         return [
             'ok' => true,
-            'message' => $done === [] ? __('Already on V2.') : implode(' · ', $done),
+            'message' => $done === [] ? __('Already set up.') : implode(' · ', $done),
             'steps' => $done,
         ];
-    }
-
-    /**
-     * Move one site between engines.
-     *
-     * For a site that already has a config this writes the column and nothing else: schedules,
-     * history and retention stay exactly as they were, so going back is the same single write in the
-     * other direction. That is the whole safety net for a same-day migration — if tonight goes badly
-     * on a site, it returns to the old engine at the next minute, with no deploy and no database
-     * surgery.
-     */
-    public function setEngine(Site $site, BackupEngine $engine): void
-    {
-        $config = $site->backupConfig ?? $this->makeConfigForSite($site);
-        $config->forceFill(['backup_engine' => $engine])->save();
     }
 
     /**
@@ -189,10 +173,10 @@ class FleetMigrationService
      *
      * `backup_configs` is only ever created automatically by MaintenancePlanService, and only for a
      * site whose plan carries an enabled backup module. A site with no plan therefore has no row at
-     * all — which is why its onboarding silently skips the first backup and why engineFor() reads it
-     * as V1 (no row, no intent). Creating it here on the schema defaults would leave `UTC` for the
-     * timezone, a retention of 10 rather than the fleet's 30, and no destination: a config that
-     * exists, looks configured, and is wrong in three places nobody would think to check.
+     * all — which is why its onboarding silently skips the first backup. Creating it here on the
+     * schema defaults would leave `UTC` for the timezone, a retention of 10 rather than the fleet's
+     * 30, and no destination: a config that exists, looks configured, and is wrong in three places
+     * nobody would think to check.
      *
      * `is_enabled` deliberately stays false. Starting a nightly schedule spends storage on a client's
      * behalf, so it remains an explicit decision made on the site's own screen. What this fixes is
