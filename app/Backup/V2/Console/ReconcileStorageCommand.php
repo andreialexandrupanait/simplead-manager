@@ -31,13 +31,20 @@ class ReconcileStorageCommand extends Command
     protected $signature = 'backup:reconcile-storage '
         .'{--site= : Restrict to a single site id} '
         .'{--destination= : Restrict to a single StorageDestination id} '
-        .'{--json : Emit a machine-readable JSON report instead of a table}';
+        .'{--json : Emit a machine-readable JSON report instead of a table} '
+        .'{--fix-used-bytes : Correct each destination\'s used_bytes to the storage total}';
 
-    protected $description = 'Read-only drift report: DB-recorded backups vs actual storage contents (used_bytes truth).';
+    protected $description = 'Drift report: DB-recorded backups vs actual storage contents (used_bytes truth).';
 
     public function handle(): int
     {
-        $writesEnabled = (bool) config('backup_v2.reconciliation_writes_enabled', false);
+        // Two ways to permit the one write this command can make. The env flag is the standing
+        // default for anything automated; the option is for a person deciding to repair the counter
+        // now, without a deploy — which matters because correcting it is exactly the sort of thing
+        // noticed while looking at the report, and a fix that requires redeploying to apply is a fix
+        // that waits.
+        $writesEnabled = (bool) config('backup_v2.reconciliation_writes_enabled', false)
+            || (bool) $this->option('fix-used-bytes');
         $logger = (new BackupLogger)->forSession('reconcile', null, null);
 
         $destinations = $this->resolveDestinations();
@@ -187,6 +194,21 @@ class ReconcileStorageCommand extends Command
                     'summed_used_bytes' => $summedBytes,
                     'delta_bytes' => $summedBytes - $recorded,
                 ];
+
+                // The one correction this command is allowed to make, and until now it made none:
+                // `$writesEnabled` was threaded through every signature and then read by nothing, so
+                // the switch named a repair it did not perform.
+                //
+                // Only used_bytes, and only from a readable destination. It is a derived counter —
+                // the sum of what is in the bucket — so recomputing it cannot lose anything, unlike
+                // every other drift on this report, which describes objects and rows and wants a
+                // person's judgement. Left drifting it is the number the quota check reads, and this
+                // fleet's copy was 215 GB light after a year of retention never running: a quota that
+                // has stopped counting is a quota that has stopped protecting.
+                if ($writesEnabled) {
+                    $destination->forceFill(['used_bytes' => $summedBytes])->save();
+                    $usedBytesInconsistent['corrected'] = true;
+                }
             }
         }
 
