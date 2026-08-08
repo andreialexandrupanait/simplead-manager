@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail;
 
+use App\Backup\V2\Enums\BackupSessionState;
+use App\Backup\V2\Models\BackupSession;
 use App\Enums\BackupStatus;
 use App\Livewire\Traits\WithBackupActions;
 use App\Livewire\Traits\WithBackupProgress;
@@ -270,22 +272,30 @@ class SiteBackups extends Component
     /**
      * Can an incremental actually be built right now?
      *
-     * This asked whether any completed backup had a `manifest_path`. That column
-     * belongs to the retired engine, which wrote its manifest into the database;
-     * this one writes it into storage and leaves the column null. So on every
-     * site running the current engine the answer was permanently no, the
-     * Incremental button never appeared, and the screen explained that
-     * incrementals "become available after the first full one" underneath a table
-     * of two dozen completed full backups.
+     * Two wrong answers before this one, and they failed in opposite directions.
      *
-     * ChainPlanner is the thing that actually decides, and it is what the button
-     * ends up calling — so asking it is both correct and the same answer the
-     * click will get.
+     * It first asked whether any completed backup had a `manifest_path` — a
+     * column belonging to the retired engine, which kept its manifest in the
+     * database. This one writes the manifest into storage and leaves the column
+     * null, so the answer was permanently no and the button never appeared.
+     *
+     * Then it asked ChainPlanner, which answers a different question: what a
+     * SCHEDULED run would produce. That is governed by the site's
+     * incremental_frequency, so a site with a perfectly good full backup and no
+     * incremental schedule still got no button — the person is not asking what
+     * the schedule would do, they are asking to make one now.
+     *
+     * The question this button is actually asking is whether there is a completed
+     * full backup to build on. That is all a manual incremental needs.
      */
     #[Computed]
     public function hasFullBackupWithManifest(): bool
     {
-        return (new \App\Backup\V2\Chain\ChainPlanner)->planFor($this->site)['type'] === 'incremental';
+        return BackupSession::query()
+            ->where('site_id', $this->site->id)
+            ->where('type', 'full')
+            ->where('state', BackupSessionState::Completed->value)
+            ->exists();
     }
 
     public function getBackupHistoryProperty()
