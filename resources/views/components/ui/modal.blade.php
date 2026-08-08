@@ -8,11 +8,6 @@ $maxWidthClass = match($maxWidth) {
     'xl' => 'max-w-xl',
     '2xl' => 'max-w-2xl',
     '3xl' => 'max-w-3xl',
-    // Wider than a reading column on purpose: a form that lays its controls out
-    // side by side needs the room, and the alternative is a modal that scrolls
-    // past its own Save button.
-    '4xl' => 'max-w-4xl',
-    '5xl' => 'max-w-5xl',
 };
 $titleId = 'modal-' . $name . '-title';
 @endphp

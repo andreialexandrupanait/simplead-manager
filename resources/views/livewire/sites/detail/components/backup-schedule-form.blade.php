@@ -1,4 +1,4 @@
-<x-ui.modal name="schedule-form" maxWidth="5xl">
+<x-ui.modal name="schedule-form" maxWidth="3xl">
     <form wire:submit="save">
         <h2 class="text-lg font-semibold text-gray-900">{{ __('Backup Schedule') }}</h2>
         <p class="mt-1 text-sm text-gray-500">{{ __('Configure automated backups for this site.') }}</p>
@@ -16,11 +16,7 @@
         {{-- Two columns, because the alternative is a column of eleven controls
              that scrolls past its own Save button. Left is when and where the
              backup runs; right is what goes into it and how long it is kept. --}}
-        {{-- Three columns: the schedule on the left, then what is left out of
-             the files, then what is left out of the database. The two exclusion
-             pickers are the tall things on this form and they sit side by side
-             rather than stacked, which is what kept the whole modal scrolling. --}}
-        <div class="mt-6 grid grid-cols-1 gap-x-6 gap-y-4 lg:grid-cols-3">
+        <div class="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 lg:grid-cols-2">
             <div class="space-y-4">
             {{-- Enable toggle --}}
             <label class="flex items-center gap-2">
@@ -110,55 +106,6 @@
 
             </div>
 
-            {{-- Retention --}}
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Retention Type') }}</label>
-                    <x-ui.select wire:model="retention_type" class="mt-1">
-                        <option value="count">{{ __('Keep N backups') }}</option>
-                        <option value="days">{{ __('Keep for N days') }}</option>
-                    </x-ui.select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">{{ __('Retention Value') }}</label>
-                    <x-ui.input wire:model="retention_value" type="number" min="1" max="365" class="mt-1" />
-                </div>
-            </div>
-
-            {{-- Incremental Backups (only for full type) --}}
-            @if($type === 'full')
-                <div class="rounded-lg border border-gray-200 p-4 space-y-3">
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" wire:model.live="enable_incremental" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
-                        <span class="text-sm font-medium text-gray-700">{{ __('Enable Incremental Backups') }}</span>
-                    </label>
-                    <p class="text-xs text-gray-500">{{ __('When enabled, daily backups will be incremental (only changed files), with a full backup on the selected day.') }}</p>
-
-                    @if($enable_incremental)
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">{{ __('Full Backup Day') }}</label>
-                            <x-ui.select wire:model="full_backup_day_of_week" class="mt-1">
-                                <option value="0">{{ __('Sunday') }}</option>
-                                <option value="1">{{ __('Monday') }}</option>
-                                <option value="2">{{ __('Tuesday') }}</option>
-                                <option value="3">{{ __('Wednesday') }}</option>
-                                <option value="4">{{ __('Thursday') }}</option>
-                                <option value="5">{{ __('Friday') }}</option>
-                                <option value="6">{{ __('Saturday') }}</option>
-                            </x-ui.select>
-                            <p class="mt-1 text-xs text-gray-400">{{ __('Other days will run incremental backups (only changed files + full database).') }}</p>
-                        </div>
-                    @endif
-                </div>
-            @endif
-
-            {{-- Backup before updates --}}
-            <label class="flex items-center gap-2">
-                <input type="checkbox" wire:model="backup_before_updates" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
-                <span class="text-sm text-gray-700">{{ __('Create backup before applying updates') }}</span>
-            </label>
-            </div>
-
             <div class="space-y-4">
             {{-- What never gets backed up.
                  Chips rather than a textarea: an exclusion list is a set of
@@ -242,9 +189,6 @@
                 @endif
             </div>
 
-            </div>
-
-            <div class="space-y-4">
             {{-- Database tables --}}
             <div>
                 <label class="block text-sm font-medium text-gray-700">{{ __('Skip these database tables') }}</label>
@@ -302,6 +246,55 @@
                         @endif
                     </div>
                 @endif
+            </div>
+
+            {{-- Retention --}}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Retention Type') }}</label>
+                    <x-ui.select wire:model="retention_type" class="mt-1">
+                        <option value="count">{{ __('Keep N backups') }}</option>
+                        <option value="days">{{ __('Keep for N days') }}</option>
+                    </x-ui.select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">{{ __('Retention Value') }}</label>
+                    <x-ui.input wire:model="retention_value" type="number" min="1" max="365" class="mt-1" />
+                </div>
+            </div>
+
+            {{-- Incremental Backups (only for full type) --}}
+            @if($type === 'full')
+                <div class="rounded-lg border border-gray-200 p-4 space-y-3">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" wire:model.live="enable_incremental" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
+                        <span class="text-sm font-medium text-gray-700">{{ __('Enable Incremental Backups') }}</span>
+                    </label>
+                    <p class="text-xs text-gray-500">{{ __('When enabled, daily backups will be incremental (only changed files), with a full backup on the selected day.') }}</p>
+
+                    @if($enable_incremental)
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">{{ __('Full Backup Day') }}</label>
+                            <x-ui.select wire:model="full_backup_day_of_week" class="mt-1">
+                                <option value="0">{{ __('Sunday') }}</option>
+                                <option value="1">{{ __('Monday') }}</option>
+                                <option value="2">{{ __('Tuesday') }}</option>
+                                <option value="3">{{ __('Wednesday') }}</option>
+                                <option value="4">{{ __('Thursday') }}</option>
+                                <option value="5">{{ __('Friday') }}</option>
+                                <option value="6">{{ __('Saturday') }}</option>
+                            </x-ui.select>
+                            <p class="mt-1 text-xs text-gray-400">{{ __('Other days will run incremental backups (only changed files + full database).') }}</p>
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            {{-- Backup before updates --}}
+            <label class="flex items-center gap-2">
+                <input type="checkbox" wire:model="backup_before_updates" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
+                <span class="text-sm text-gray-700">{{ __('Create backup before applying updates') }}</span>
+            </label>
             </div>
         </div>
 
