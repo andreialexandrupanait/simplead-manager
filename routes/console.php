@@ -183,29 +183,18 @@ Schedule::command('app:backup-cleanup')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Weekly Level B backup verification — sample N recent backups, full integrity
-// re-check. Sample size is config-driven (backups.level_b_sample_size) inside the
-// command so it can scale with the fleet (P2-33).
-//
-// V1 only: the command's candidate query filters `engine = v1`. It is left in
-// place for as long as there are V1 archives, and dies with them.
-Schedule::command('backup:verify-restore')
-    ->weeklyOn(0, '03:00')
-    ->name('backup-verify-restore-weekly')
-    ->withoutOverlapping()
-    ->onOneServer()
-    ->onFailure($criticalFailureAlert('backup-verify-restore-weekly'));
-
-// The same sweep for the engine that now writes every backup on the fleet.
+// Weekly Level B verification — a sample of recent backups, pulled out of storage
+// and actually opened: full re-hash, file chunks opened as zips, DB segments
+// parsed as SQL. The create-time check is HEAD-only, so this is the one that can
+// tell a good backup from a well-recorded absence.
 //
 // It existed and was registered as a command, and was scheduled nowhere — so
-// while the whole fleet moved to V2, the only verification any of those backups
-// received was the HEAD-only check at creation. Nothing had opened an archive or
-// parsed a dump on a schedule since the migration.
+// while the whole fleet moved to this engine, the only verification any of those
+// backups received was that HEAD check. Nothing had opened an archive or parsed a
+// dump on a schedule since the migration.
 //
-// 05:30: after the nightly window (03:00–~07:30 is the dispatch spread, but the
-// last site starts around 04:10 and a full runs under half an hour), and clear of
-// the two V1 sweeps above.
+// 05:30: after the nightly window. Dispatch spreads from 03:00 and the last site
+// starts around 04:10, with a full running under half an hour.
 Schedule::command('backup:v2-deep-verify')
     ->weeklyOn(0, '05:30')
     ->name('backup-v2-deep-verify-weekly')
@@ -213,21 +202,7 @@ Schedule::command('backup:v2-deep-verify')
     ->onOneServer()
     ->onFailure($criticalFailureAlert('backup-v2-deep-verify-weekly'));
 
-// C-08: proven restore — actually restore a pilot site's latest backup into the
-// isolated sandbox WP and health-check it (stronger than the offline integrity
-// verify above). Staggered after it so the two heavy jobs don't collide.
-//
-// V1: RunProvenRestore takes the site's latest backup regardless of engine and
-// hands it to SandboxRestoreService, which downloads `file_path` as a key — on a
-// V2 row that is a prefix. It is the V2 command below that covers this fleet.
-Schedule::job(new \App\Jobs\RunProvenRestore)
-    ->weeklyOn(0, '04:30')
-    ->name('proven-restore-weekly')
-    ->withoutOverlapping()
-    ->onOneServer()
-    ->onFailure($criticalFailureAlert('proven-restore-weekly'));
-
-// The strongest check there is: restore an actual backup into a throwaway
+// C-08: proven restore — actually restore a backup into a throwaway
 // WordPress and ask the site whether it came back. Opt-in per site, so this is a
 // no-op until a sandbox site is registered — which is why scheduling it now costs
 // nothing and means it starts working the moment one is.
@@ -432,20 +407,10 @@ Schedule::command('security:maintenance recalculate-scores')
     ->name('security-score-recalculation')
     ->onOneServer();
 
-// Recover restores whose worker died without cleanup (audit E-23) — the
-// heartbeat threshold exceeds RestoreBackup's 3600s timeout, so anything it
-// catches is genuinely dead, not slow.
-Schedule::command('backups:recover-stuck-restores')
-    ->everyFifteenMinutes()
-    ->name('recover-stuck-restores')
-    ->onOneServer();
-
-// The same job for backup sessions, plus the attendant for parked ones. Kept
-// separate from the V1 stuck sweep on purpose: that one "recovers" a backup by
-// dispatching CreateBackup, which on a site running the new engine would put the
-// old one on top of a live session. A session parked in retry_wait is only
-// honest if something comes back for it — without this, retry_wait is the same
-// silent stall as a session frozen at `uploading`, with a nicer name.
+// Sessions whose worker died without cleanup, plus the attendant for parked ones.
+// A session parked in retry_wait is only honest if something comes back for it —
+// without this, retry_wait is the same silent stall as a session frozen at
+// `uploading`, with a nicer name.
 Schedule::command('backups:recover-stuck-sessions')
     ->everyFifteenMinutes()
     ->name('recover-stuck-backup-sessions')

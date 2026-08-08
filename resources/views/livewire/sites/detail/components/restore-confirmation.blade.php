@@ -1,6 +1,6 @@
 <x-ui.modal name="restore-confirmation" maxWidth="3xl">
     @if($backup)
-        <div @if($preRestoreBackupId && $preRestoreStatus && !in_array($preRestoreStatus, ['completed', 'failed'])) wire:poll.2s="checkPreRestoreStatus" @endif>
+        <div>
             <div class="flex items-center gap-3 mb-4">
                 <div class="flex-shrink-0 w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
                     <svg aria-hidden="true" class="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,43 +188,6 @@
                 <span class="text-sm text-gray-700">{{ __('I understand this will overwrite the current site data and cannot be undone.') }}</span>
             </label>
 
-            {{-- Pre-restore backup progress --}}
-            @if($preRestoreBackupId && $preRestoreStatus)
-                <div class="rounded-lg bg-accent-50 border border-accent-200 p-3 mb-4">
-                    @if(in_array($preRestoreStatus, ['pending', 'in_progress']))
-                        <div class="flex items-center gap-2">
-                            <x-ui.spinner size="sm" class="text-accent-600" />
-                            <span class="text-sm text-accent-700">{{ __('Creating safety backup before restore...') }}</span>
-                        </div>
-                    @elseif($preRestoreStatus === 'failed')
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <svg aria-hidden="true" class="h-4 w-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                                <span class="text-sm font-medium text-red-700">{{ __('The safety backup failed.') }}</span>
-                            </div>
-                            <p class="mt-2 text-xs text-red-700">
-                                {{ __('Restoring without a safety backup means a failed restore CANNOT be undone. Fix the backup problem and retry, or — only if you accept losing the current site state — type the site domain below to force the restore.') }}
-                            </p>
-                            <div class="mt-2 flex items-center gap-2">
-                                <input type="text" wire:model.live="confirmDangerText"
-                                    placeholder="{{ $site->domain }}"
-                                    class="flex-1 rounded border-red-300 text-sm focus:border-red-500 focus:ring-red-500" />
-                                <button wire:click="restoreAnyway"
-                                    @if(trim($confirmDangerText) !== $site->domain) disabled @endif
-                                    class="text-xs font-medium text-red-600 hover:text-red-800 underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed">
-                                    {{ __('Restore WITHOUT safety backup') }}
-                                </button>
-                            </div>
-                            @error('confirmDangerText')
-                                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-                    @endif
-                </div>
-            @endif
-
             {{-- Actions --}}
             <div class="flex items-center justify-end gap-3">
                 <x-ui.button type="button" variant="secondary" x-on:click="$dispatch('close-modal-restore-confirmation')">
@@ -234,11 +197,9 @@
                     type="button"
                     variant="danger"
                     wire:click="restore"
-                    :disabled="!$confirmed || ($preRestoreBackupId && $preRestoreStatus && !in_array($preRestoreStatus, ['completed', 'failed']))"
+                    :disabled="!$confirmed"
                 >
-                    @if($preRestoreBackupId && in_array($preRestoreStatus, ['pending', 'in_progress']))
-                        {{ __('Waiting for backup...') }}
-                    @elseif($restoreMode === 'selective')
+                    @if($restoreMode === 'selective')
                         {{ __('Restore Selected') }}
                     @else
                         {{ __('Restore Backup') }}

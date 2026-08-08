@@ -313,7 +313,14 @@ class SiteOverview extends Component
             return;
         }
 
-        dispatch(new \App\Jobs\CreateBackup($this->site, 'full', 'manual'));
+        try {
+            app(\App\Services\Backup\BackupLauncher::class)->launch($this->site, 'full', 'manual');
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
         $this->dispatch('notify', type: 'success', message: 'Backup started');
     }
 

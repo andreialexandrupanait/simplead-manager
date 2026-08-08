@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Updates;
 
 use App\Enums\UpdateRoute;
-use App\Jobs\CreateBackup;
 use App\Jobs\RunSafeUpdate;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSmartUpdateRouting;
@@ -529,7 +528,14 @@ class UpdatesOverview extends Component
             // Synchronous so the backup completes BEFORE the inline update runs —
             // dispatching async raced the update and could snapshot post-update
             // state, giving a useless "pre-update" restore point (P1-18).
-            CreateBackup::dispatchSync($site, 'database', 'pre_update', $config->storage_destination_id);
+            //
+            // Full, not database-only: an update changes FILES, so a dump alone is
+            // no rollback point for the thing being changed.
+            try {
+                app(\App\Services\Backup\BackupLauncher::class)->launchSync($site, 'full', 'pre_update');
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
     }
 

@@ -70,8 +70,8 @@ class SyncWordPressSiteOnboardingTest extends TestCase
 
         (new SyncWordPressSite($site))->handle();
 
-        Queue::assertPushed(CreateBackup::class, 1);
-        Queue::assertPushed(fn (CreateBackup $b) => $b->site->id === $site->id && $b->trigger === 'onboarding');
+        $this->assertDatabaseHas('backup_sessions', ['site_id' => $site->id]);
+        $this->assertDatabaseHas('backups', ['site_id' => $site->id, 'trigger' => 'onboarding']);
     }
 
     public function test_a_later_sync_does_not_repeat_the_onboarding(): void

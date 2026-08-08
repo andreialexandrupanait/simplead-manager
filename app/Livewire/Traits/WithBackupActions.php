@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Livewire\Traits;
 
+use App\Backup\V2\Models\BackupSession;
+use App\Backup\V2\Orchestration\SessionActions;
 use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
-use App\Jobs\CreateBackup;
-use App\Jobs\CreateIncrementalBackup;
 use App\Models\Backup;
 use App\Services\Backup\BackupLauncher;
 use App\Services\Backup\Storage\StorageFactory;
@@ -261,17 +261,27 @@ trait WithBackupActions
         /** @var Backup|null $backup */
         $backup = $this->site->backups()->find($this->trackingBackupId);
         if ($backup && in_array($backup->status, [BackupStatus::Pending, BackupStatus::InProgress])) {
-            $backup->update([
-                'status' => BackupStatus::Cancelled,
-                'stage' => 'cancelled',
-                'progress_message' => 'Backup cancelled by user',
-                'completed_at' => now(),
-                'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
-            ]);
+            // Ask the engine to stop, rather than marking the row cancelled and
+            // hoping. This used to flip the row and release the OLD engine's
+            // uniqueness locks — on a V2 backup that meant the screen said
+            // "cancelled" while the session carried on uploading, which is the
+            // one thing a cancel button must never do. The runner finalises the
+            // row itself when it reaches the cancelling state.
+            $session = BackupSession::where('backup_id', $backup->id)->first();
 
-            // Release the uniqueness lock so a new backup can be started
-            CreateBackup::releaseUniqueLock($this->site->id);
-            CreateIncrementalBackup::releaseUniqueLock($this->site->id);
+            if ($session instanceof BackupSession) {
+                app(SessionActions::class)->cancel($session);
+            } else {
+                // No session: nothing is running, so the row is the only thing to
+                // put straight.
+                $backup->update([
+                    'status' => BackupStatus::Cancelled,
+                    'stage' => 'cancelled',
+                    'progress_message' => 'Backup cancelled by user',
+                    'completed_at' => now(),
+                    'duration_seconds' => $backup->started_at ? (int) $backup->started_at->diffInSeconds(now()) : null,
+                ]);
+            }
         }
 
         $this->trackingBackupId = null;

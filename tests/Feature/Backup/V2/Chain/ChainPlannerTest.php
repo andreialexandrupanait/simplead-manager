@@ -224,36 +224,4 @@ class ChainPlannerTest extends TestCase
         // The schedule is still the user's: the next run must be booked either way.
         $this->assertTrue($site->backupConfig->fresh()->next_backup_at->isFuture());
     }
-
-    public function test_a_site_on_the_old_engine_is_untouched(): void
-    {
-        $site = $this->site();
-        $site->backupConfig->update(['next_backup_at' => now()->subMinute()]);
-
-        (new BackupDispatcher)();
-
-        Queue::assertPushed(CreateBackup::class);
-        $this->assertDatabaseCount('backup_sessions', 0);
-    }
-
-    /**
-     * The column declares intent; the gate grants permission; permission is
-     * checked last. So removing a site from the env allowlist returns it to the
-     * old engine at the next minute regardless of what the column says — the
-     * one-line rollback, with no database write and no deploy.
-     */
-    public function test_the_gate_overrules_the_column(): void
-    {
-        $site = $this->site();
-        Config::set('backup_v2.enabled', false);
-        $site->backupConfig->update([
-            'backup_engine' => BackupEngine::V2,
-            'next_backup_at' => now()->subMinute(),
-        ]);
-
-        (new BackupDispatcher)();
-
-        Queue::assertPushed(CreateBackup::class);
-        $this->assertDatabaseCount('backup_sessions', 0);
-    }
 }

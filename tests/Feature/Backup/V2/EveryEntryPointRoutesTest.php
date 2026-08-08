@@ -134,37 +134,17 @@ class EveryEntryPointRoutesTest extends TestCase
     }
 
     /**
-     * A site deliberately held on the old engine still gets it. The per-site
-     * rollback is a documented lever and it stays real until the engine concept
-     * is removed — what this suite forbids is reaching the old engine by
-     * accident, not on purpose.
+     * The old engine replayed an incremental against a manifest it wrote, and the
+     * guard for "there is no base yet" lived on one screen. The planner now
+     * answers that question for every caller: asked for an incremental with
+     * nothing to build on, it returns a full rather than a failure.
      */
-    public function test_a_site_left_on_the_old_engine_still_gets_it(): void
+    public function test_an_incremental_with_no_base_becomes_a_full(): void
     {
-        $site = Site::factory()->create(['is_connected' => true]);
-        StorageDestination::factory()->create(['type' => 'local', 'is_active' => true, 'is_default' => true]);
-        BackupConfig::factory()->create(['site_id' => $site->id, 'is_enabled' => true]);
+        $site = $this->siteOnNewEngine();
 
-        app(BackupLauncher::class)->launch($site->fresh(), 'full', 'manual');
+        app(BackupLauncher::class)->launch($site, 'incremental', 'manual');
 
-        Queue::assertPushed(CreateBackup::class);
-        $this->assertDatabaseCount('backup_sessions', 0);
-    }
-
-    /**
-     * The old engine replays an incremental against a manifest it wrote. Asking
-     * for one with no manifest anywhere used to be caught by a guard on the
-     * Backups page and nowhere else, so the same request from the fleet page
-     * queued a job that could not do the work.
-     */
-    public function test_an_incremental_with_no_base_is_refused_on_the_old_engine(): void
-    {
-        $site = Site::factory()->create(['is_connected' => true]);
-        StorageDestination::factory()->create(['type' => 'local', 'is_active' => true, 'is_default' => true]);
-        BackupConfig::factory()->create(['site_id' => $site->id, 'is_enabled' => true]);
-
-        $this->expectExceptionMessage('No full backup with manifest found.');
-
-        app(BackupLauncher::class)->launch($site->fresh(), 'incremental', 'manual');
+        $this->assertDatabaseHas('backup_sessions', ['site_id' => $site->id, 'type' => 'full']);
     }
 }

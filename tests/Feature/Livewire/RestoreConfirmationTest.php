@@ -11,8 +11,6 @@ use App\Backup\V2\Models\RestoreSession;
 use App\Enums\BackupEngine;
 use App\Enums\BackupStatus;
 use App\Enums\UserRole;
-use App\Jobs\CreateBackup;
-use App\Jobs\RestoreBackup;
 use App\Livewire\Sites\Detail\Components\RestoreConfirmation;
 use App\Models\Backup;
 use App\Models\Site;
@@ -58,107 +56,27 @@ class RestoreConfirmationTest extends TestCase
             ->call('openModal', $this->backup->id);
     }
 
-    public function test_full_restore_creates_a_full_safety_backup_not_db_only(): void
-    {
-        $this->restoreComponent()
-            ->set('confirmed', true)
-            ->call('restore');
-
-        $safety = Backup::where('trigger', 'pre_restore')->latest('id')->first();
-
-        $this->assertNotNull($safety);
-        $this->assertSame('full', $safety->type);
-        $this->assertTrue((bool) $safety->includes_files);
-        Queue::assertPushed(CreateBackup::class, fn ($job) => $job->type === 'full');
-        // The restore itself must NOT be dispatched yet.
-        Queue::assertNotPushed(RestoreBackup::class);
-    }
-
-    public function test_db_only_selective_restore_gets_db_safety_backup(): void
-    {
-        $this->restoreComponent()
-            ->set('confirmed', true)
-            ->set('restoreMode', 'selective')
-            ->set('restoreDatabase', true)
-            ->set('restoreFiles', false)
-            ->call('restore');
-
-        $safety = Backup::where('trigger', 'pre_restore')->latest('id')->first();
-
-        $this->assertSame('database', $safety->type);
-        $this->assertFalse((bool) $safety->includes_files);
-    }
-
-    public function test_safety_backup_cannot_be_skipped_by_unchecking_the_old_toggle(): void
-    {
-        $this->restoreComponent()
-            ->set('confirmed', true)
-            ->set('backupBeforeRestore', false)
-            ->call('restore');
-
-        // Even with the legacy flag off, a safety backup is created first.
-        $this->assertDatabaseHas('backups', ['trigger' => 'pre_restore']);
-        Queue::assertNotPushed(RestoreBackup::class);
-    }
-
-    public function test_restore_anyway_is_forbidden_unless_safety_backup_failed(): void
-    {
-        $this->restoreComponent()
-            ->set('confirmed', true)
-            ->set('confirmDangerText', $this->site->domain)
-            ->call('restoreAnyway')
-            ->assertForbidden();
-
-        Queue::assertNotPushed(RestoreBackup::class);
-    }
-
-    public function test_restore_anyway_requires_typed_domain(): void
-    {
-        $this->restoreComponent()
-            ->set('confirmed', true)
-            ->set('preRestoreBackupId', 123)
-            ->set('preRestoreStatus', 'failed')
-            ->set('confirmDangerText', 'wrong-domain.com')
-            ->call('restoreAnyway')
-            ->assertHasErrors('confirmDangerText');
-
-        Queue::assertNotPushed(RestoreBackup::class);
-    }
-
-    public function test_restore_anyway_with_typed_domain_dispatches_flagged_restore(): void
-    {
-        $this->restoreComponent()
-            ->set('confirmed', true)
-            ->set('preRestoreBackupId', 123)
-            ->set('preRestoreStatus', 'failed')
-            ->set('confirmDangerText', $this->site->domain)
-            ->call('restoreAnyway');
-
-        Queue::assertPushed(RestoreBackup::class, fn ($job) => $job->safetyBackupSkipped === true);
-        $this->assertDatabaseHas('activity_logs', [
-            'site_id' => $this->site->id,
-            'severity' => 'critical',
-        ]);
-    }
-
-    public function test_failed_safety_backup_blocks_the_normal_restore_path(): void
-    {
-        $this->restoreComponent()
-            ->set('confirmed', true)
-            ->set('preRestoreBackupId', 123)
-            ->set('preRestoreStatus', 'failed')
-            ->call('restore');
-
-        Queue::assertNotPushed(RestoreBackup::class);
-    }
-
     /**
-     * The backup buttons on this page route by engine; this modal did not, and dispatched the V1
-     * job for every restore point on the site. Both engines write rows into `backups`, so the day a
-     * site moves to V2 its restore points appear in this very list — and "Restore" would have
-     * pointed the old engine at storage written by the new one, on a live site.
+     * The safety copy moved inside the engine.
+     *
+     * This screen used to take one itself and then wait for it: the modal called
+     * CreateBackup, polled the row, and only dispatched the restore on the second
+     * pass. That produced a duplicate full backup in the retired engine's format,
+     * and — because it was taken outside the site's operation lock — it could race
+     * the very thing it protected against. PreRestoreSafetyBackup now runs inside
+     * the restore session, under that lock, in the format the restore reads.
      */
-    public function test_a_v2_restore_point_never_goes_to_the_v1_job(): void
+    /**
+     * The safety copy moved inside the engine.
+     *
+     * This screen used to take one itself and then wait for it: it called
+     * CreateBackup, polled the row, and dispatched the restore only on a second
+     * pass. That produced a duplicate full backup in the retired engine's format
+     * and — being taken outside the site's operation lock — could race the very
+     * thing it protected against. PreRestoreSafetyBackup now runs inside the
+     * restore session, under that lock, in the format the restore reads.
+     */
+    public function test_the_restore_starts_without_this_screen_taking_its_own_backup(): void
     {
         [$backup, $session] = $this->v2RestorePoint();
 
@@ -168,40 +86,29 @@ class RestoreConfirmationTest extends TestCase
             ->set('confirmed', true)
             ->call('restore');
 
-        Queue::assertNotPushed(RestoreBackup::class);
         Queue::assertPushed(RunRestoreSessionJob::class);
-
         $this->assertDatabaseHas('restore_sessions', [
             'site_id' => $this->site->id,
             'backup_session_id' => $session->id,
         ]);
+
+        // No second full backup taken by this screen on the way.
+        $this->assertDatabaseMissing('backups', ['trigger' => 'pre_restore']);
     }
 
-    public function test_a_v2_restore_does_not_take_a_v1_safety_backup_first(): void
+    /**
+     * An archive from the retired engine has no session behind it. Refusing is
+     * the honest answer — and the message says what can still be done with the
+     * file, because the file itself is perfectly intact.
+     */
+    public function test_an_archive_from_the_retired_engine_is_refused_by_name(): void
     {
-        // The V2 runner takes its own safety copy, through the engine it is about to restore with.
-        // Running the old one first would leave a V1-format net under a site that no longer uses
-        // that engine — and cost the site a duplicate full backup on the way.
-        [$backup] = $this->v2RestorePoint();
-
-        Livewire::actingAs($this->admin)
-            ->test(RestoreConfirmation::class, ['site' => $this->site])
-            ->call('openModal', $backup->id)
-            ->set('confirmed', true)
-            ->call('restore');
-
-        Queue::assertNotPushed(CreateBackup::class);
-    }
-
-    public function test_a_v1_restore_point_still_takes_the_old_path(): void
-    {
-        // A migrated site keeps its old restore points, and each one has to go back through the
-        // engine that produced it.
         $this->restoreComponent()
             ->set('confirmed', true)
-            ->call('restore');
+            ->call('restore')
+            ->assertDispatched('close-modal-restore-confirmation');
 
-        Queue::assertPushed(CreateBackup::class);
+        $this->assertDatabaseCount('restore_sessions', 0);
         Queue::assertNotPushed(RunRestoreSessionJob::class);
     }
 

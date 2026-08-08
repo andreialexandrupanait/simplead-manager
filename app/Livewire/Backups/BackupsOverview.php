@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Backups;
 
 use App\Backup\V2\Support\BackupV2Access;
-use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithSiteAuthorization;
 use App\Livewire\Traits\WithSorting;
 use App\Livewire\Traits\WithTableFilters;
@@ -193,7 +192,14 @@ class BackupsOverview extends Component
             'completed_at' => now(),
         ]);
 
-        CreateBackup::releaseUniqueLock($backup->site_id);
+        // Ask the engine to stop rather than only marking the row: the runner
+        // finalises it when it reaches the cancelling state. Flipping the row and
+        // releasing the old engine's uniqueness lock left a live session running
+        // under a screen that said "cancelled".
+        $session = \App\Backup\V2\Models\BackupSession::where('backup_id', $backup->id)->first();
+        if ($session instanceof \App\Backup\V2\Models\BackupSession) {
+            app(\App\Backup\V2\Orchestration\SessionActions::class)->cancel($session);
+        }
 
         session()->flash('backup-success', "Backup #{$backup->id} cancelled.");
     }

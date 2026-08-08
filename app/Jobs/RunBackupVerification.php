@@ -9,11 +9,9 @@ use App\Backup\V2\Models\BackupVerification;
 use App\Backup\V2\Storage\S3ClientFactory;
 use App\Backup\V2\Storage\SessionLayoutResolver;
 use App\Backup\V2\Verification\DeepVerifyService;
-use App\Enums\BackupEngine;
 use App\Models\Backup;
 use App\Models\Site;
 use App\Models\StorageDestination;
-use App\Services\Backup\BackupVerifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -45,15 +43,9 @@ class RunBackupVerification implements ShouldBeUnique, ShouldQueue
         return 'verify-backup-'.$this->backup->id;
     }
 
-    public function handle(BackupVerifier $verifier): void
+    public function handle(): void
     {
-        if ($this->backup->engine === BackupEngine::V2) {
-            $this->deepVerifyV2();
-
-            return;
-        }
-
-        $verifier->verify($this->backup);
+        $this->deepVerify();
     }
 
     /**
@@ -72,7 +64,7 @@ class RunBackupVerification implements ShouldBeUnique, ShouldQueue
      * segments as SQL. It is what backup:v2-deep-verify runs, on demand for one
      * backup instead of a nightly sample.
      */
-    private function deepVerifyV2(): void
+    private function deepVerify(): void
     {
         $session = BackupSession::where('backup_id', $this->backup->id)->first();
         $site = $this->backup->site;

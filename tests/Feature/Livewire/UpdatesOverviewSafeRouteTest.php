@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Livewire;
 
+use App\Backup\V2\Jobs\RunBackupSessionJob;
 use App\Enums\UserRole;
-use App\Jobs\CreateBackup;
 use App\Jobs\RunSafeUpdate;
 use App\Livewire\Updates\UpdatesOverview;
 use App\Models\BackupConfig;
@@ -99,10 +99,15 @@ class UpdatesOverviewSafeRouteTest extends TestCase
             ->call('updateSingle', 'plugin', $plugin->id);
 
         Bus::assertNotDispatched(RunSafeUpdate::class);
-        Bus::assertDispatchedSync(
-            CreateBackup::class,
-            fn ($job) => $job->trigger === 'pre_update' && $job->site->id === $site->id,
-        );
+
+        // The pre-update copy is a backup SESSION now, run inline by the engine —
+        // there is no job class left to assert against, so assert the thing that
+        // matters: a rollback point exists for this site, taken before the update.
+        Bus::assertDispatchedSync(RunBackupSessionJob::class);
+        $this->assertDatabaseHas('backups', [
+            'site_id' => $site->id,
+            'trigger' => 'pre_update',
+        ]);
     }
 
     public function test_update_all_for_site_queues_safe_updates_for_safe_site(): void

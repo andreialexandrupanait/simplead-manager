@@ -500,12 +500,15 @@ class SafeUpdateServiceTest extends TestCase
             // expected: no Backup row produced under Bus::fake → hard abort
         }
 
-        Bus::assertDispatchedSync(
-            \App\Jobs\CreateBackup::class,
-            fn ($job) => $job->type === 'full'
-                && $job->trigger === 'pre_update'
-                && $job->site->id === $this->site->id,
-        );
+        // Full, and taken inline: an update changes files, so a dump alone is no
+        // rollback point for the thing being changed, and a queued one would be
+        // waiting on the lock this caller is holding.
+        Bus::assertDispatchedSync(\App\Backup\V2\Jobs\RunBackupSessionJob::class);
+        $this->assertDatabaseHas('backups', [
+            'site_id' => $this->site->id,
+            'trigger' => 'pre_update',
+            'type' => 'full',
+        ]);
     }
 
     public function test_health_check_failure_notifies_operator(): void

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Operations;
 
-use App\Jobs\CreateBackup;
 use App\Jobs\QueueSiteSafeUpdatesJob;
 use App\Models\BackupConfig;
 use App\Models\SecuritySetting;
@@ -100,7 +99,7 @@ class FleetOperationsTest extends TestCase
         $this->assertTrue($op->prepare($this->context($site))->isSuccess());
         $this->assertTrue($op->execute($this->context($site))->isSuccess());
 
-        Queue::assertPushed(CreateBackup::class, 1);
+        $this->assertDatabaseHas('backup_sessions', ['site_id' => $site->id]);
     }
 
     public function test_preset_verify_fails_when_the_essential_setting_is_absent(): void

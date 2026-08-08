@@ -43,35 +43,10 @@ class WordPressApiService implements WordPressApiServiceInterface
 
     public WordPressHttpClient $http;
 
-    private ?WordPressBackupDownloader $backupDownloaderInstance = null;
-
     public function __construct(
         protected Site $site,
     ) {
         $this->http = new WordPressHttpClient($site);
-    }
-
-    // ── Backup downloader ─────────────────────────────────────────────
-
-    public function backupDownloader(): WordPressBackupDownloader
-    {
-        if ($this->backupDownloaderInstance === null) {
-            $this->backupDownloaderInstance = new WordPressBackupDownloader($this, $this->http);
-        }
-
-        return $this->backupDownloaderInstance;
-    }
-
-    // ── Delegated backup methods (interface contract, callers unchanged) ──
-
-    public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null, ?callable $onCheckCancelled = null): void
-    {
-        $this->backupDownloader()->chunkedDownload($type, $saveTo, $onProgress, $onCheckCancelled);
-    }
-
-    public function chunkedDownloadFilesAsChunks(string $saveTo, ?callable $onProgress = null): array
-    {
-        return $this->backupDownloader()->chunkedDownloadFilesAsChunks($saveTo, $onProgress);
     }
 
     // ── Delegated HTTP methods (traits use these) ─────────────────────

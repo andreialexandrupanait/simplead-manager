@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Traits;
 
 use App\Enums\UpdateRoute;
-use App\Jobs\CreateBackup;
 use App\Models\SitePlugin;
 use App\Models\UpdateLog;
 use App\Services\PluginManagerService;
@@ -267,7 +266,16 @@ trait WithPluginManagement
             // update touches the site. Dispatching it async raced the update and
             // could capture post-update state (or run after it), defeating the
             // point of a pre-update restore point (P1-18).
-            CreateBackup::dispatchSync($this->site, 'database', 'pre_update', $config->storage_destination_id);
+            //
+            // Full, not database-only: an update changes FILES, so a dump alone is
+            // not a rollback point for the thing being changed — the same reason
+            // SafeUpdateService takes a full one.
+            try {
+                app(\App\Services\Backup\BackupLauncher::class)
+                    ->launchSync($this->site, 'full', 'pre_update');
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
     }
 }

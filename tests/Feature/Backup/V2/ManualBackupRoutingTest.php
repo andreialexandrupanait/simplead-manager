@@ -97,18 +97,27 @@ class ManualBackupRoutingTest extends TestCase
         $this->assertFalse($session->scope['files'], 'the files are not');
     }
 
-    public function test_a_site_on_the_old_engine_still_uses_it(): void
+    /**
+     * A site with no engine column set at all still gets a backup.
+     *
+     * The column used to declare which engine ran the site and the gate granted
+     * permission; both are gone with the engine they chose between. What must not
+     * come back is a site quietly getting nothing because a flag somewhere was
+     * unset — so this asks for a backup on a site with a bare config.
+     */
+    public function test_a_site_with_no_engine_column_still_gets_a_backup(): void
     {
         $site = Site::factory()->create(['is_connected' => true]);
         BackupConfig::factory()->create([
             'site_id' => $site->id,
-            'storage_destination_id' => StorageDestination::factory()->create(['type' => 'local'])->id,
+            'storage_destination_id' => StorageDestination::factory()->create([
+                'type' => 's3', 'is_active' => true, 'is_default' => true,
+            ])->id,
         ]);
 
         Livewire::test(SiteBackups::class, ['site' => $site->fresh()])->call('backupFull');
 
-        Queue::assertPushed(CreateBackup::class);
-        $this->assertDatabaseCount('backup_sessions', 0);
+        $this->assertDatabaseHas('backup_sessions', ['site_id' => $site->id, 'type' => 'full']);
     }
 
     public function test_an_incremental_from_the_ui_is_routed_too(): void

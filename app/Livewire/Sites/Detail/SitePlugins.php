@@ -432,7 +432,18 @@ class SitePlugins extends Component
             return;
         }
 
-        $this->dispatchTrackedJob('backup', new \App\Jobs\CreateBackup($this->site, 'full', 'manual'), 'Creating backup...');
+        // Not dispatchTrackedJob: that helper queues a job instance it is handed,
+        // and starting a backup is no longer "make a job". The engine opens its own
+        // row and reports its own progress, which the Backups page already reads.
+        try {
+            app(\App\Services\Backup\BackupLauncher::class)->launch($this->site, 'full', 'manual');
+        } catch (\Throwable $e) {
+            session()->flash('update-error', $e->getMessage());
+
+            return;
+        }
+
+        session()->flash('update-success', 'Backup started.');
     }
 
     protected function onJobFinished(string $jobName, array $data): void

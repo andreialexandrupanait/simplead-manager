@@ -8,13 +8,8 @@ use App\Backup\V2\Enums\RestoreMode;
 use App\Backup\V2\Models\BackupSession;
 use App\Backup\V2\Orchestration\SessionActions;
 use App\Enums\BackupEngine;
-use App\Enums\BackupStatus;
-use App\Jobs\CreateBackup;
-use App\Jobs\RestoreBackup;
 use App\Models\Backup;
 use App\Models\Site;
-use App\Models\StorageDestination;
-use App\Services\ActivityLogger;
 use App\Services\Backup\BackupBrowserService;
 use App\Support\HumanError;
 use Livewire\Attributes\On;
@@ -27,20 +22,6 @@ class RestoreConfirmation extends Component
     public ?Backup $backup = null;
 
     public bool $confirmed = false;
-
-    /**
-     * Kept for wire compatibility but no longer user-controllable: a safety
-     * backup ALWAYS runs before a restore. The only bypass is restoreAnyway()
-     * after a FAILED safety backup, gated by typed confirmation.
-     */
-    public bool $backupBeforeRestore = true;
-
-    /** Must match the site domain to enable restoreAnyway(). */
-    public string $confirmDangerText = '';
-
-    public ?int $preRestoreBackupId = null;
-
-    public ?string $preRestoreStatus = null;
 
     // Selective restore properties
     public string $restoreMode = 'full'; // 'full' | 'selective'
@@ -73,10 +54,6 @@ class RestoreConfirmation extends Component
         $this->backup = Backup::with(['site', 'storageDestination'])->findOrFail($backupId);
         $this->authorizeRestore();
         $this->confirmed = false;
-        $this->backupBeforeRestore = true;
-        $this->confirmDangerText = '';
-        $this->preRestoreBackupId = null;
-        $this->preRestoreStatus = null;
 
         // Reset selective restore state
         $this->restoreMode = 'full';
@@ -241,133 +218,17 @@ class RestoreConfirmation extends Component
             return;
         }
 
-        // A V2 restore takes its own safety copy, inside the restore session, through the same
-        // engine it is about to restore with ({@see \App\Backup\V2\Restore\PreRestoreSafetyBackup}
-        // — mandatory for MIRROR, and the backstop the guaranteed rollback falls back to). Running
-        // the V1 safety backup first would produce a V1-format copy of a site that no longer uses
-        // that engine: a safety net in the wrong shape, plus a duplicate full backup.
-        if ($this->usesNewEngine()) {
-            $this->dispatchRestore();
-
-            return;
-        }
-
-        // The safety backup is mandatory — the checkbox no longer bypasses it.
-        if (! $this->preRestoreBackupId) {
-            $this->startPreRestoreBackup();
-
-            return;
-        }
-
-        // If pre-restore backup is still running, don't proceed
-        if ($this->preRestoreStatus && ! in_array($this->preRestoreStatus, ['completed', 'failed'])) {
-            return;
-        }
-
-        if ($this->preRestoreStatus === 'failed') {
-            // A failed safety backup never falls through to a silent restore —
-            // that path is restoreAnyway(), with its own typed confirmation.
-            return;
-        }
-
+        // The safety copy is taken inside the restore session now, by the engine
+        // that is about to do the restoring — {@see
+        // \App\Backup\V2\Restore\PreRestoreSafetyBackup}, mandatory for MIRROR and
+        // the backstop the guaranteed rollback falls back to.
+        //
+        // This screen used to take one first, itself, and then wait for it: two
+        // round trips through the modal, a duplicate full backup, and a safety net
+        // in the retired engine's format. The engine holds the site's lock for the
+        // whole restore, so its copy is also the only one that cannot race the
+        // thing it is protecting against.
         $this->dispatchRestore();
-    }
-
-    /**
-     * Explicit, typed-confirmation bypass — ONLY reachable after a safety
-     * backup was attempted and failed. Restoring a live site with no safety
-     * net is the most dangerous action in the product; make it deliberate.
-     */
-    public function restoreAnyway(): void
-    {
-        if (! $this->confirmed || ! $this->backup) {
-            return;
-        }
-
-        $this->authorizeRestore();
-
-        if ($this->preRestoreStatus !== 'failed') {
-            abort(403, 'Restore-anyway is only available after a failed safety backup.');
-        }
-
-        $expected = $this->site->domain;
-        if ($expected === '' || ! hash_equals($expected, trim($this->confirmDangerText))) {
-            $this->addError('confirmDangerText', __('Type the site domain exactly to confirm restoring without a safety backup.'));
-
-            return;
-        }
-
-        ActivityLogger::log(
-            type: 'backup',
-            severity: 'critical',
-            title: "SAFETY BACKUP SKIPPED — restore forced on {$this->site->name}",
-            description: 'User bypassed a failed pre-restore safety backup with typed confirmation.',
-            site: $this->site,
-            metadata: ['backup_id' => $this->backup->id, 'pre_restore_backup_id' => $this->preRestoreBackupId],
-            icon: 'alert-triangle',
-        );
-
-        $this->dispatchRestore(safetyBackupSkipped: true);
-    }
-
-    public function checkPreRestoreStatus(): void
-    {
-        if (! $this->preRestoreBackupId) {
-            return;
-        }
-
-        $preBackup = Backup::find($this->preRestoreBackupId);
-        if (! $preBackup) {
-            return;
-        }
-
-        $this->preRestoreStatus = $preBackup->status->value;
-
-        if ($preBackup->status === BackupStatus::Completed) {
-            // Auto-dispatch restore now
-            $this->dispatchRestore();
-        }
-    }
-
-    protected function startPreRestoreBackup(): void
-    {
-        $this->authorizeRestore();
-
-        $destination = $this->resolveDestination();
-        if (! $destination) {
-            session()->flash('backup-error', 'No storage destination configured.');
-            $this->dispatch('close-modal-restore-confirmation');
-
-            return;
-        }
-
-        // A restore that touches files gets a FULL safety backup — a DB-only
-        // snapshot cannot undo overwritten themes/plugins/uploads (B-P0-2).
-        $includesFiles = $this->restoreMode === 'full' || $this->restoreFiles;
-        $safetyType = $includesFiles ? 'full' : 'database';
-
-        $preBackup = Backup::create([
-            'site_id' => $this->site->id,
-            'storage_destination_id' => $destination->id,
-            'type' => $safetyType,
-            'trigger' => 'pre_restore',
-            'status' => 'pending',
-            'stage' => 'queued',
-            'progress_percent' => 0,
-            'progress_message' => 'Creating safety backup before restore...',
-            'includes_database' => true,
-            'includes_files' => $includesFiles,
-            'wp_version' => $this->site->wp_version,
-            'php_version' => $this->site->php_version,
-            'is_locked' => true,
-            'lock_reason' => 'pre-restore',
-            'started_at' => now(),
-        ]);
-
-        CreateBackup::dispatch($this->site, $safetyType, 'pre_restore', $destination->id, $preBackup->id);
-
-        $this->preRestoreBackupId = $preBackup->id;
-        $this->preRestoreStatus = 'pending';
     }
 
     protected function dispatchRestore(bool $safetyBackupSkipped = false): void
@@ -384,27 +245,12 @@ class RestoreConfirmation extends Component
             ? $this->selectedFiles
             : [];
 
-        if ($this->usesNewEngine()) {
-            $this->dispatchNewEngineRestore($restoreDb, $restoreFiles, $selectedFiles);
-
-            return;
-        }
-
-        $this->backup->update([
-            'restore_status' => 'pending',
-            'restore_stage' => 'queued',
-            'restore_progress_percent' => 0,
-            'restore_progress_message' => 'Restore queued, waiting to start...',
-            'restore_error_message' => null,
-        ]);
-
-        RestoreBackup::dispatch($this->backup, $restoreDb, $restoreFiles, $selectedFiles, $safetyBackupSkipped);
-
-        $this->dispatch('restore-dispatched', backupId: $this->backup->id);
-        $this->dispatch('close-modal-restore-confirmation');
-
-        $mode = $this->restoreMode === 'selective' ? 'Selective restore' : 'Full restore';
-        session()->flash('backup-success', "{$mode} has been queued. The site will be restored from this backup.");
+        // One engine, so one path. A restore point written by the old engine has
+        // no session behind it and is refused below by name — which is the honest
+        // answer now that the job able to read those archives is gone. They remain
+        // ordinary zips in storage (`files/` + `database.sql.gz`) and can be
+        // restored by hand.
+        $this->dispatchNewEngineRestore($restoreDb, $restoreFiles, $selectedFiles);
     }
 
     /**
@@ -417,10 +263,10 @@ class RestoreConfirmation extends Component
         $session = BackupSession::where('backup_id', $this->backup?->id)->first();
 
         if (! $session instanceof BackupSession) {
-            // The row says V2 but there is no session behind it. Refusing is the only safe answer:
-            // handing it to the V1 job — which is what used to happen to every V2 row — would point
-            // the old engine at storage written by the new one.
-            session()->flash('backup-error', __('This restore point has no V2 session behind it and cannot be restored.'));
+            // Almost always an archive from the retired engine. Say so plainly and
+            // say what can still be done with it, rather than reporting a generic
+            // failure on a file that is perfectly intact.
+            session()->flash('backup-error', __('This backup was written by the retired engine and cannot be restored from here. The archive is an ordinary zip and can still be restored by hand.'));
             $this->dispatch('close-modal-restore-confirmation');
 
             return;
@@ -449,11 +295,6 @@ class RestoreConfirmation extends Component
         $this->dispatch('close-modal-restore-confirmation');
 
         session()->flash('backup-success', __('Restore queued (session #:id). A safety backup is taken first, and the site is put back exactly as it was if anything fails.', ['id' => $restore->id]));
-    }
-
-    protected function resolveDestination(): ?StorageDestination
-    {
-        return StorageDestination::resolveForSite($this->site);
     }
 
     public function render()
