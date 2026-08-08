@@ -42,7 +42,6 @@ class SAM_Info_Endpoint extends SAM_Endpoint_Base {
 
         // Check endpoint file health for diagnostics
         $endpoint_files = [
-            'class-backup-endpoint.php'     => SAM_PLUGIN_DIR . 'includes/endpoints/class-backup-endpoint.php',
             'class-info-endpoint.php'       => SAM_PLUGIN_DIR . 'includes/endpoints/class-info-endpoint.php',
             'class-plugins-endpoint.php'    => SAM_PLUGIN_DIR . 'includes/endpoints/class-plugins-endpoint.php',
             'class-self-update-endpoint.php'=> SAM_PLUGIN_DIR . 'includes/endpoints/class-self-update-endpoint.php',
@@ -78,7 +77,6 @@ class SAM_Info_Endpoint extends SAM_Endpoint_Base {
             'endpoint_files'        => $file_health,
             'plugin_dir'            => SAM_PLUGIN_DIR,
             'loaded_classes'        => [
-                'SAM_Backup_Endpoint' => class_exists('SAM_Backup_Endpoint', false),
             ],
         ];
 

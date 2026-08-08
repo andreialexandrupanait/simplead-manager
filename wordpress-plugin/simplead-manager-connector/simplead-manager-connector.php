@@ -3,7 +3,7 @@
  * Plugin Name: SAD Mentenanta
  * Plugin URI: https://simplead.io
  * Description: Connects this WordPress site to SimpleAd Manager for remote management, monitoring, and security.
- * Version: 2.27.0
+ * Version: 2.28.0
  * Requires at least: 5.6
  * Requires PHP: 7.4
  * Author: SimpleAd
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('SAM_VERSION', '2.27.0');
+define('SAM_VERSION', '2.28.0');
 define('SAM_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('SAM_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('SAM_PLUGIN_FILE', __FILE__);
@@ -65,7 +65,6 @@ spl_autoload_register(function ($class) {
         'SAM_Security_Settings_Endpoint' => 'endpoints/class-security-settings-endpoint.php',
         'SAM_Security_Htaccess'     => 'class-security-htaccess.php',
         'SAM_MU_Plugin_Manager'     => 'class-mu-plugin-manager.php',
-        'SAM_Backup_Endpoint'       => 'endpoints/class-backup-endpoint.php',
         'SAM_Rollback_Endpoint'     => 'endpoints/class-rollback-endpoint.php',
         'SAM_Database_Endpoint'     => 'endpoints/class-database-endpoint.php',
         'SAM_Cron_Endpoint'         => 'endpoints/class-cron-endpoint.php',
@@ -153,24 +152,6 @@ final class SimpleAd_Manager_Connector {
             add_action('admin_init', [$this, 'maybe_upgrade']);
             add_action('admin_init', [$admin, 'register_settings']);
         }
-
-        // Async backup preparation via WP-Cron fallback
-        add_action('sam_async_backup_prepare', [$this, 'run_async_backup_prepare'], 10, 2);
-
-        // C-09: async restore via WP-Cron fallback (when loopback is unavailable).
-        add_action('sam_async_restore_execute', [$this, 'run_async_restore_execute'], 10, 1);
-
-        // Single-shot cleanup of restore staging/trash directories that the
-        // staged file restore could not delete within its time budget
-        add_action('sam_cleanup_restore_trash', [$this, 'cleanup_restore_trash']);
-
-        // Daily cleanup of stale backup temp files
-        add_action('sam_cleanup_backup_temp', [$this, 'cleanup_backup_temp']);
-        add_action('init', function () {
-            if (!wp_next_scheduled('sam_cleanup_backup_temp')) {
-                wp_schedule_event(time(), 'daily', 'sam_cleanup_backup_temp');
-            }
-        });
 
         // Hook into various WP actions for audit logging
         SAM_Audit_Logger::register_hooks();
@@ -295,7 +276,10 @@ final class SimpleAd_Manager_Connector {
     }
 
     public function deactivate(): void {
-        // Remove scheduled events
+        // The retired backup engine's daily temp sweep. Unscheduled here rather
+        // than simply dropped: a site that ran an older connector still has the
+        // event in its cron table, and an event whose handler no longer exists
+        // fires forever against nothing.
         $timestamp = wp_next_scheduled('sam_cleanup_backup_temp');
         if ($timestamp) {
             wp_unschedule_event($timestamp, 'sam_cleanup_backup_temp');
@@ -356,100 +340,9 @@ final class SimpleAd_Manager_Connector {
         $handler->maybe_handle_login();
     }
 
-    /**
-     * WP-Cron fallback for async backup preparation.
-     */
-    public function run_async_backup_prepare(string $token, string $type): void {
-        ignore_user_abort(true);
-        @set_time_limit(3600);
 
-        $endpoint = new SAM_Backup_Endpoint();
-        $request = new WP_REST_Request('POST');
-        $request->set_param('token', $token);
-        $request->set_param('type', $type);
-        $endpoint->prepare_execute($request);
-    }
 
-    /**
-     * C-09: WP-Cron fallback runner for async restore. Reads the restore
-     * parameters from the task transient (via restore_execute) and runs the
-     * restore detached.
-     */
-    public function run_async_restore_execute(string $token): void {
-        ignore_user_abort(true);
-        @set_time_limit(3600);
 
-        $endpoint = new SAM_Backup_Endpoint();
-        $request = new WP_REST_Request('POST');
-        $request->set_param('token', $token);
-        $endpoint->restore_execute($request);
-    }
-
-    /**
-     * Remove restore staging/trash directories older than 1 hour.
-     *
-     * Scheduled as a single-shot event when the post-restore cleanup could
-     * not finish within its time budget. Recent directories are kept: a
-     * fresh sam-trash-* dir may hold the only copy of the pre-restore files
-     * after a crashed swap.
-     */
-    public function cleanup_restore_trash(): void {
-        $abspath = rtrim(ABSPATH, '/');
-        $cutoff = time() - 3600;
-
-        $dirs = array_merge(
-            glob($abspath . '/sam-trash-*', GLOB_ONLYDIR) ?: [],
-            glob($abspath . '/sam-staging-*', GLOB_ONLYDIR) ?: []
-        );
-
-        foreach ($dirs as $dir) {
-            $mtime = @filemtime($dir);
-            if ($mtime !== false && $mtime >= $cutoff) {
-                continue;
-            }
-
-            $files = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS),
-                \RecursiveIteratorIterator::CHILD_FIRST
-            );
-            foreach ($files as $file) {
-                $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
-            }
-            @rmdir($dir);
-        }
-    }
-
-    /**
-     * Clean up stale backup temp files older than 4 hours.
-     */
-    public function cleanup_backup_temp(): void {
-        $token_dir = sys_get_temp_dir() . '/sam_prepared';
-        if (!is_dir($token_dir)) {
-            return;
-        }
-
-        $cutoff = time() - 14400; // 4 hours
-        $items = new \DirectoryIterator($token_dir);
-        foreach ($items as $item) {
-            if ($item->isDot()) continue;
-            if ($item->getMTime() < $cutoff) {
-                $path = $item->getPathname();
-                if ($item->isDir()) {
-                    // Work directories
-                    $files = new \RecursiveIteratorIterator(
-                        new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS),
-                        \RecursiveIteratorIterator::CHILD_FIRST
-                    );
-                    foreach ($files as $file) {
-                        $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
-                    }
-                    @rmdir($path);
-                } else {
-                    @unlink($path);
-                }
-            }
-        }
-    }
 }
 
 // Boot the plugin

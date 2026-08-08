@@ -14,11 +14,8 @@ interface WordPressApiServiceInterface
     public function requestRaw(string $method, string $endpoint, array $data = [], int $timeout = 30): Response;
 
     // Backup & download methods
-    public function setBackupMode(bool $enabled): void;
 
     public function resetThrottle(): void;
-
-    public function getBackupCapabilities(): ?array;
 
     public function streamDownloadTo(string $endpoint, array $data, string $saveTo, int $maxRetries = 5): void;
 

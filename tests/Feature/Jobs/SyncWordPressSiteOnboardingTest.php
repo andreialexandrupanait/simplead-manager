@@ -42,7 +42,6 @@ class SyncWordPressSiteOnboardingTest extends TestCase
         $api->method('getThemes')->willReturn(['themes' => []]);
         $api->method('getUsers')->willReturn(['users' => []]);
         $api->method('getDbCleanupStats')->willReturn([]);
-        $api->method('getBackupCapabilities')->willReturn(null);
         $api->method('request')->willReturn(new Response(new Psr7Response(200, [], json_encode([]))));
 
         $this->app->instance(WordPressApiServiceFactory::class, $this->createMockApiFactory($api));

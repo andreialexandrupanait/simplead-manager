@@ -167,29 +167,9 @@ class FakeWordPressApiService implements WordPressApiServiceInterface
 
     // Backup & download methods
 
-    public function setBackupMode(bool $enabled): void
-    {
-        $this->respond('setBackupMode', func_get_args());
-    }
-
     public function resetThrottle(): void
     {
         $this->respond('resetThrottle', func_get_args());
-    }
-
-    public function getBackupCapabilities(): ?array
-    {
-        return $this->respond('getBackupCapabilities', func_get_args());
-    }
-
-    public function chunkedDownloadFilesAsChunks(string $saveTo, ?callable $onProgress = null): array
-    {
-        return $this->respond('chunkedDownloadFilesAsChunks', func_get_args());
-    }
-
-    public function chunkedDownload(string $type, string $saveTo, ?callable $onProgress = null, ?callable $onCheckCancelled = null): void
-    {
-        $this->respond('chunkedDownload', func_get_args());
     }
 
     public function streamDownloadTo(string $endpoint, array $data, string $saveTo, int $maxRetries = 5): void

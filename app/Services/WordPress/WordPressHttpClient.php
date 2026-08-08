@@ -29,12 +29,6 @@ class WordPressHttpClient
 
     // ── Throttle management ─────────────────────────────────────────
 
-    public function setBackupMode(bool $enabled): void
-    {
-        $this->baseRequestInterval = $enabled ? 0.5 : 1.5;
-        $this->minRequestInterval = $this->baseRequestInterval;
-    }
-
     public function resetThrottle(): void
     {
         $this->minRequestInterval = $this->baseRequestInterval;

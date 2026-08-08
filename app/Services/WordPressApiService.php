@@ -51,11 +51,6 @@ class WordPressApiService implements WordPressApiServiceInterface
 
     // ── Delegated HTTP methods (traits use these) ─────────────────────
 
-    public function setBackupMode(bool $enabled): void
-    {
-        $this->http->setBackupMode($enabled);
-    }
-
     public function resetThrottle(): void
     {
         $this->http->resetThrottle();
@@ -74,24 +69,6 @@ class WordPressApiService implements WordPressApiServiceInterface
     public function requestRaw(string $method, string $endpoint, array $data = [], int $timeout = 30): Response
     {
         return $this->http->requestRaw($method, $endpoint, $data, $timeout);
-    }
-
-    /**
-     * Get backup capabilities from the WP plugin.
-     */
-    public function getBackupCapabilities(): ?array
-    {
-        try {
-            $response = $this->request('POST', '/backup/capabilities', [], [], 10);
-            if (! $response->successful()) {
-                return null;
-            }
-            $data = $response->json();
-
-            return $data['success'] ?? false ? $data : null;
-        } catch (\Illuminate\Http\Client\RequestException|\RuntimeException) {
-            return null;
-        }
     }
 
     public function streamDownloadTo(string $endpoint, array $data, string $saveTo, int $maxRetries = 5): void

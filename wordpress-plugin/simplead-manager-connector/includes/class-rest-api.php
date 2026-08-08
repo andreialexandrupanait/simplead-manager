@@ -21,7 +21,6 @@ class SAM_REST_API {
             'SAM_Health_Endpoint',
             'SAM_Security_Endpoint',
             'SAM_Security_Settings_Endpoint',
-            'SAM_Backup_Endpoint',
             'SAM_Rollback_Endpoint',
             'SAM_Database_Endpoint',
             'SAM_Cron_Endpoint',
