@@ -67,8 +67,52 @@ final class BackupLauncher
         return $this->launchV1($site, $type, $trigger, $delaySeconds);
     }
 
-    private function launchV2(Site $site, string $type, string $trigger, int $delaySeconds): Backup
+    /**
+     * Take a backup NOW, on this process, and do not return until it is over.
+     *
+     * A safe update is the one caller that cannot queue. It holds the site's
+     * operation lock for the whole operation, takes a rollback point inside it,
+     * and refuses to touch the site unless that point reached `completed` —
+     * which is the entire value of the feature. Queueing would mean handing the
+     * work to a worker that would then wait for the lock the caller is holding.
+     *
+     * So the session runs inline, borrowing the caller's lock rather than asking
+     * for one. The returned row is refreshed from the database: the caller has to
+     * be able to read the real outcome, not the row as it looked before the work
+     * started.
+     *
+     * @param  string|null  $heldLockToken  the caller's lock, which stays the caller's
+     */
+    public function launchSync(Site $site, string $type, string $trigger, ?string $heldLockToken = null): Backup
     {
+        if (BackupV2Gate::engineFor($site) !== BackupEngine::V2) {
+            CreateBackup::dispatchSync($site, $type, $trigger, StorageDestination::resolveForSite($site)?->id, null, false, $heldLockToken);
+
+            $backup = Backup::where('site_id', $site->id)
+                ->where('trigger', $trigger)
+                ->orderByDesc('id')
+                ->first();
+
+            if (! $backup instanceof Backup) {
+                throw new RuntimeException('The backup ran but left no row to check.');
+            }
+
+            return $backup;
+        }
+
+        $backup = $this->launchV2($site, $type, $trigger, delaySeconds: 0, sync: true, heldLockToken: $heldLockToken);
+
+        return $backup->refresh();
+    }
+
+    private function launchV2(
+        Site $site,
+        string $type,
+        string $trigger,
+        int $delaySeconds,
+        bool $sync = false,
+        ?string $heldLockToken = null,
+    ): Backup {
         // A person who clicked "Incremental" has already decided; the planner is
         // asked only for the chain base, and only when it agrees an incremental is
         // possible. Every other type is passed through untouched — including
@@ -87,6 +131,8 @@ final class BackupLauncher
             'delay_seconds' => $delaySeconds,
             'full_base_id' => $useChain ? $plan['full_base_id'] : null,
             'chain_position' => $useChain ? $plan['chain_position'] : null,
+            'sync' => $sync,
+            'held_lock_token' => $heldLockToken,
         ]);
 
         $backup = $session->backup;

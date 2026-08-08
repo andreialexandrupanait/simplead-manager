@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\BackupStatus;
-use App\Jobs\CreateBackup;
 use App\Jobs\SyncWordPressSite;
 use App\Models\Backup;
 use App\Models\SafeUpdate;
 use App\Models\Site;
 use App\Models\UpdateLog;
+use App\Services\Backup\BackupLauncher;
 use App\Services\Notifications\NotificationService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Log;
@@ -379,7 +379,7 @@ class SafeUpdateService
      * caller can verify it actually completed before touching the site.
      *
      * Extracted + protected so the hard-abort path (P0-07) is unit-testable
-     * without driving the full CreateBackup pipeline against a live connector.
+     * without driving the full backup pipeline against a live connector.
      */
     protected function runPreUpdateBackup(Site $site, \App\Models\BackupConfig $config, ?string $heldLockToken): ?Backup
     {
@@ -387,20 +387,25 @@ class SafeUpdateService
         // not a rollback point for the thing being changed — a file-corrupting
         // update would be unrecoverable. Take a FULL (files + database) backup so
         // the safety net actually covers the update (P1-17).
-        CreateBackup::dispatchSync(
-            $site,
-            'full',
-            'pre_update',
-            $config->storage_destination_id,
-            null,
-            false,
-            $heldLockToken,
-        );
+        //
+        // Through the launcher, so this runs on the engine the site is actually
+        // on. It went straight to the old engine, which meant the one backup
+        // whose completion is a hard precondition for touching a client's site
+        // was taken by an engine the site had stopped using — and the caller
+        // then looked for its row by `trigger`, which is how it would have found
+        // somebody else's.
+        try {
+            return app(BackupLauncher::class)->launchSync($site, 'full', 'pre_update', $heldLockToken);
+        } catch (\Throwable $e) {
+            Log::warning('pre-update safety backup could not be started', [
+                'site_id' => $site->id,
+                'error' => $e->getMessage(),
+            ]);
 
-        return Backup::where('site_id', $site->id)
-            ->where('trigger', 'pre_update')
-            ->orderByDesc('id')
-            ->first();
+            // The caller treats null as "no rollback point" and aborts the
+            // update, which is the correct answer to every failure here.
+            return null;
+        }
     }
 
     /**

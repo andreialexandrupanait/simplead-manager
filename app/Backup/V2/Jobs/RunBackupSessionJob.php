@@ -66,8 +66,13 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
     /** @var array<int, int> seconds between attempts */
     public array $backoff = [120, 600];
 
-    public function __construct(public readonly int $backupSessionId)
-    {
+    /**
+     * @param  string|null  $heldLockToken  the caller's site-operation lock, when it already holds one
+     */
+    public function __construct(
+        public readonly int $backupSessionId,
+        public readonly ?string $heldLockToken = null,
+    ) {
         // The queue that was tuned for this work, not the general one.
         //
         // Declaring no queue put every V2 backup on `default`, which Horizon serves from
@@ -142,11 +147,22 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
         //
         // The ref format is the convention BackupJobTrait::failed() matches on,
         // so V1 can never force-release a V2 lock and vice versa.
-        $token = SiteOperationLock::acquire(
-            (int) $session->site_id,
-            SiteOperationLock::OPERATION_BACKUP,
-            self::class.':'.$session->id,
-        );
+        // A safe update holds this site's lock for the whole operation and takes
+        // its rollback point inside it, so asking for the lock again is asking
+        // the caller to wait for itself. When the caller hands over a token it
+        // still owns, that token is used and — crucially — NOT released here:
+        // the update is not finished, and dropping its lock mid-flight would let
+        // a scheduled backup start on top of a site being updated.
+        $borrowedLock = $this->heldLockToken !== null
+            && SiteOperationLock::isOwnedBy((int) $session->site_id, $this->heldLockToken);
+
+        $token = $borrowedLock
+            ? $this->heldLockToken
+            : SiteOperationLock::acquire(
+                (int) $session->site_id,
+                SiteOperationLock::OPERATION_BACKUP,
+                self::class.':'.$session->id,
+            );
 
         if ($token === null) {
             $holder = SiteOperationLock::current((int) $session->site_id);
@@ -218,7 +234,11 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
                 readS3: $s3->readClient(),
             ))->run();
         } finally {
-            SiteOperationLock::release((int) $session->site_id, $token);
+            // Give back only what we took. A borrowed lock belongs to the
+            // operation that is still running around us.
+            if (! $borrowedLock) {
+                SiteOperationLock::release((int) $session->site_id, $token);
+            }
         }
 
         // The archive a person can actually use is built straight away, so it is waiting rather

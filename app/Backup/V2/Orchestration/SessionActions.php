@@ -44,7 +44,7 @@ class SessionActions
     /**
      * Start (queue) a new backup. $type ∈ full|incremental|database|files.
      *
-     * @param  array{scope?:array<string,mixed>,exclusions?:array<int,mixed>,resource_profile?:string,trigger?:string,delay_seconds?:int,full_base_id?:int|null,chain_position?:int|null,estimated_bytes?:int}  $opts
+     * @param  array{scope?:array<string,mixed>,exclusions?:array<int,mixed>,resource_profile?:string,trigger?:string,delay_seconds?:int,full_base_id?:int|null,chain_position?:int|null,estimated_bytes?:int,sync?:bool,held_lock_token?:string|null}  $opts
      */
     public function startBackup(Site $site, string $type, array $opts = []): BackupSession
     {
@@ -103,7 +103,20 @@ class SessionActions
             throw $e;
         }
 
-        $pending = RunBackupSessionJob::dispatch($session->id);
+        $heldLockToken = isset($opts['held_lock_token']) ? (string) $opts['held_lock_token'] : null;
+
+        // A safe update cannot queue this: it holds the site's operation lock for
+        // the whole update and refuses to change the site unless the rollback
+        // point completed. Queueing would hand the work to a worker that then
+        // waits for the lock the caller is holding — the caller waiting on
+        // itself. So it runs inline, borrowing that lock.
+        if ((bool) ($opts['sync'] ?? false)) {
+            RunBackupSessionJob::dispatchSync($session->id, $heldLockToken);
+
+            return $session;
+        }
+
+        $pending = RunBackupSessionJob::dispatch($session->id, $heldLockToken);
 
         // The scheduler spreads a night's backups so twenty sites are not pulled
         // at once. The row already exists and reads `pending`, so the delay is
