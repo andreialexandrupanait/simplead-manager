@@ -137,18 +137,67 @@ class BackupDispatcher
     protected function scheduleNextRun(BackupConfig $config): void
     {
         $tz = $config->timezone ?: 'UTC';
+        $now = now($tz);
+
+        [$hour, $minute] = $config->time
+            ? array_map('intval', explode(':', $config->time))
+            : [0, 0];
+
+        // The day the person chose, not seven days from whenever the last run
+        // happened to land.
+        //
+        // This did `addWeek()` and `addMonth()` from now, so a schedule set to
+        // Monday drifted to whatever weekday the previous run fell on, and a
+        // monthly one to whatever date. The form has offered both fields the
+        // whole time; nothing downstream read them. A setting that does not
+        // change the behaviour it names is worse than one that is missing, because
+        // the screen goes on reporting it back to you.
         $next = match ($config->frequency) {
-            'daily' => now($tz)->addDay(),
-            'weekly' => now($tz)->addWeek(),
-            'monthly' => now($tz)->addMonth(),
-            default => now($tz)->addDay(),
+            'weekly' => $this->nextWeekday($now, (int) ($config->day_of_week ?? $now->dayOfWeek), $hour, $minute),
+            'monthly' => $this->nextMonthDay($now, (int) ($config->day_of_month ?? $now->day), $hour, $minute),
+            default => $now->copy()->addDay()->setTime($hour, $minute),
         };
 
-        if ($config->time) {
-            [$hour, $minute] = explode(':', $config->time);
-            $next->setTime((int) $hour, (int) $minute);
+        $config->update(['next_backup_at' => BackupConfig::asStoredRunTime($next)]);
+    }
+
+    /** The next occurrence of this weekday at this hour, always in the future. */
+    private function nextWeekday(\Illuminate\Support\Carbon $now, int $dayOfWeek, int $hour, int $minute): \Illuminate\Support\Carbon
+    {
+        $next = $now->copy()->setTime($hour, $minute);
+
+        // A run that has just finished must not schedule itself for today, or the
+        // dispatcher picks it straight back up.
+        while ($next->dayOfWeek !== $dayOfWeek || $next->lessThanOrEqualTo($now)) {
+            $next->addDay();
         }
 
-        $config->update(['next_backup_at' => BackupConfig::asStoredRunTime($next)]);
+        return $next;
+    }
+
+    /**
+     * The next occurrence of this day-of-month at this hour.
+     *
+     * Clamped to the length of the target month, so the 31st in a 30-day month is
+     * the 30th rather than silently rolling into the next one — which is how a
+     * monthly backup set for the 31st would have run in January, March, May and
+     * skipped everything else.
+     */
+    private function nextMonthDay(\Illuminate\Support\Carbon $now, int $dayOfMonth, int $hour, int $minute): \Illuminate\Support\Carbon
+    {
+        $candidate = $now->copy()->startOfMonth();
+
+        for ($i = 0; $i < 2; $i++) {
+            $day = min($dayOfMonth, $candidate->daysInMonth);
+            $next = $candidate->copy()->setDay($day)->setTime($hour, $minute);
+
+            if ($next->greaterThan($now)) {
+                return $next;
+            }
+
+            $candidate->addMonthNoOverflow();
+        }
+
+        return $candidate->setDay(min($dayOfMonth, $candidate->daysInMonth))->setTime($hour, $minute);
     }
 }

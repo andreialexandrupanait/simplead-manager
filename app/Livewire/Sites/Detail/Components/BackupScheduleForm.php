@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Livewire\Sites\Detail\Components;
 
+use App\Enums\BackupStatus;
+use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\BackupBrowserService;
+use App\Support\HumanError;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -30,8 +34,6 @@ class BackupScheduleForm extends Component
 
     public ?int $storage_destination_id = null;
 
-    public bool $use_streaming = false;
-
     public string $retention_type = 'count';
 
     public int $retention_value = 10;
@@ -48,6 +50,16 @@ class BackupScheduleForm extends Component
     public string $exclude_paths = '';
 
     public string $exclude_tables = '';
+
+    /** The folder picker: closed until asked for, because it reads a manifest out of storage. */
+    public bool $pickerOpen = false;
+
+    public bool $pickerLoading = false;
+
+    public ?string $pickerError = null;
+
+    /** @var list<array{path: string, name: string, depth: int, bytes: int, files: int}> */
+    public array $pickerFolders = [];
 
     public bool $enable_incremental = false;
 
@@ -67,6 +79,122 @@ class BackupScheduleForm extends Component
         return array_values(array_filter(array_map('trim', preg_split('/\R/', $text) ?: [])));
     }
 
+    /**
+     * Let a person pick the folder instead of typing a path from memory.
+     *
+     * The list comes from the newest backup's manifest, so this costs one small
+     * read from storage and never touches the client's site. It is also the
+     * honest source: what the last backup actually contained is exactly the set
+     * you might want the next one to skip.
+     *
+     * Folders, not files. Exclusions are almost always a folder — a cache
+     * directory, an uploads subtree, somebody's local dump — and a flat list of
+     * forty thousand files is not a thing anyone can choose from. Each folder
+     * carries what it is costing, which turns this from a path picker into the
+     * answer to "what is making my backup so big".
+     */
+    public function openPicker(): void
+    {
+        $this->pickerOpen = true;
+
+        if ($this->pickerFolders !== [] || $this->pickerLoading) {
+            return;
+        }
+
+        $this->pickerLoading = true;
+        $this->pickerError = null;
+
+        try {
+            /** @var Backup|null $latest */
+            $latest = Backup::where('site_id', $this->site->id)
+                ->where('status', BackupStatus::Completed)
+                ->latest('created_at')
+                ->first();
+
+            if (! $latest instanceof Backup) {
+                $this->pickerError = __('There is no completed backup to read a file list from yet.');
+
+                return;
+            }
+
+            $this->pickerFolders = $this->foldersFrom(app(BackupBrowserService::class)->listContents($latest)['files']);
+        } catch (\Throwable $e) {
+            $this->pickerError = HumanError::from($e);
+        } finally {
+            $this->pickerLoading = false;
+        }
+    }
+
+    public function closePicker(): void
+    {
+        $this->pickerOpen = false;
+    }
+
+    /**
+     * Add a folder to the skip list, without duplicating it.
+     */
+    public function excludeFolder(string $path): void
+    {
+        $current = $this->linesOf($this->exclude_paths);
+
+        if (! in_array($path, $current, true)) {
+            $current[] = $path;
+        }
+
+        $this->exclude_paths = implode("\n", $current);
+    }
+
+    /**
+     * Roll a flat file list up into folders worth showing.
+     *
+     * Capped at three levels: deeper than that is a file browser, and the point
+     * here is to choose something to skip, not to explore. Folders smaller than a
+     * megabyte are dropped for the same reason — excluding them saves nothing and
+     * they would bury the ones that matter.
+     *
+     * @param  array<int, array{path: string, size: int}>  $files
+     * @return list<array{path: string, name: string, depth: int, bytes: int, files: int}>
+     */
+    private function foldersFrom(array $files): array
+    {
+        $folders = [];
+
+        foreach ($files as $file) {
+            $parts = explode('/', (string) $file['path']);
+            array_pop($parts); // the file itself
+
+            $prefix = [];
+            foreach (array_slice($parts, 0, 3) as $segment) {
+                $prefix[] = $segment;
+                $path = implode('/', $prefix);
+
+                $folders[$path] ??= ['bytes' => 0, 'files' => 0];
+                $folders[$path]['bytes'] += (int) $file['size'];
+                $folders[$path]['files']++;
+            }
+        }
+
+        $rows = [];
+        foreach ($folders as $path => $totals) {
+            if ($totals['bytes'] < 1048576) {
+                continue;
+            }
+
+            $segments = explode('/', $path);
+            $rows[] = [
+                'path' => $path,
+                'name' => end($segments),
+                'depth' => count($segments) - 1,
+                'bytes' => $totals['bytes'],
+                'files' => $totals['files'],
+            ];
+        }
+
+        usort($rows, fn (array $a, array $b) => strcmp($a['path'], $b['path']));
+
+        return $rows;
+    }
+
     #[On('open-schedule-form')]
     public function openModal(): void
     {
@@ -82,7 +210,6 @@ class BackupScheduleForm extends Component
             $this->day_of_month = $config->day_of_month ?? 1;
             $this->timezone = $config->timezone;
             $this->storage_destination_id = $config->storage_destination_id;
-            $this->use_streaming = (bool) $config->use_streaming;
             $this->retention_type = $config->retention_type;
             $this->retention_value = $config->retention_value;
             $this->backup_before_updates = $config->backup_before_updates;
@@ -119,7 +246,6 @@ class BackupScheduleForm extends Component
                 'day_of_month' => $this->frequency === 'monthly' ? $this->day_of_month : null,
                 'timezone' => $this->timezone,
                 'storage_destination_id' => $this->storage_destination_id,
-                'use_streaming' => $this->use_streaming,
                 'retention_type' => $this->retention_type,
                 'retention_value' => $this->retention_value,
                 'backup_before_updates' => $this->backup_before_updates,

@@ -115,9 +115,53 @@
                     placeholder="wp-content/cache&#10;wp-content/uploads/backups&#10;**/*.log"
                 ></textarea>
                 @error('exclude_paths') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                <p class="mt-1 text-xs text-gray-500">
-                    {{ __('A folder skips everything under it. Wildcards work: * within one segment, ** across folders.') }}
-                </p>
+                <div class="mt-2 flex items-center gap-3">
+                    <p class="text-xs text-gray-500">
+                        {{ __('A folder skips everything under it. Wildcards work: * within one segment, ** across folders.') }}
+                    </p>
+                    @unless($pickerOpen)
+                        <button type="button" wire:click="openPicker" wire:loading.attr="disabled" wire:target="openPicker"
+                            class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-700 underline">
+                            <span wire:loading.remove wire:target="openPicker">{{ __('Browse folders') }}</span>
+                            <span wire:loading wire:target="openPicker">{{ __('Reading…') }}</span>
+                        </button>
+                    @endunless
+                </div>
+
+                {{-- The folders in the last backup, biggest cost first. This is a
+                     picker and an answer at once: the thing you most want to skip
+                     is usually the thing you did not know was in there. --}}
+                @if($pickerOpen)
+                    <div class="mt-2 rounded-lg border border-gray-200 bg-gray-50">
+                        <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2">
+                            <span class="text-xs font-medium text-gray-700">{{ __('Folders in the last backup') }}</span>
+                            <button type="button" wire:click="closePicker" class="text-xs text-gray-500 hover:text-gray-700">{{ __('Close') }}</button>
+                        </div>
+
+                        @if($pickerError)
+                            <p class="px-3 py-3 text-xs text-gray-600">{{ $pickerError }}</p>
+                        @elseif($pickerFolders === [])
+                            <x-ui.empty-state compact :title="__('No folders over 1 MB.')" />
+                        @else
+                            <div class="max-h-56 overflow-y-auto py-1">
+                                @foreach($pickerFolders as $folder)
+                                    <div class="flex items-center gap-2 px-3 py-1 hover:bg-white"
+                                        style="padding-left: {{ 0.75 + $folder['depth'] * 0.9 }}rem">
+                                        <button type="button"
+                                            wire:click="excludeFolder(@js($folder['path']))"
+                                            class="shrink-0 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-600 hover:border-accent-400 hover:text-accent-700">
+                                            {{ __('Skip') }}
+                                        </button>
+                                        <span class="truncate text-xs text-gray-700" title="{{ $folder['path'] }}">{{ $folder['name'] }}</span>
+                                        <span class="ml-auto shrink-0 text-[11px] tabular-nums text-gray-500">
+                                            {{ \App\Helpers\FormatHelper::bytes($folder['bytes']) }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             <div>
@@ -135,17 +179,6 @@
                 <p class="mt-1 text-xs text-gray-500">
                     {{ __('Full table names. A skipped table is absent from the restore, so leave anything the site needs to run.') }}
                 </p>
-            </div>
-
-            {{-- Streaming pipeline (multipart-v3) --}}
-            <div class="rounded-lg border border-gray-200 p-3 bg-gray-50">
-                <label class="flex items-start gap-2 cursor-pointer">
-                    <input type="checkbox" wire:model="use_streaming" class="mt-0.5 rounded border-gray-300 text-accent-600 focus:ring-accent-500">
-                    <div class="text-sm">
-                        <div class="font-medium text-gray-700">{{ __('Use streaming pipeline (recommended for large sites)') }}</div>
-                        <p class="mt-1 text-xs text-gray-500">{{ __('Uploads each chunk individually as it becomes available, instead of building one large archive on disk first. Keeps disk usage constant regardless of site size and survives network interruptions per-chunk.') }}</p>
-                    </div>
-                </label>
             </div>
 
             {{-- Retention --}}
