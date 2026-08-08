@@ -38,9 +38,34 @@ class BackupScheduleForm extends Component
 
     public bool $backup_before_updates = false;
 
+    /**
+     * Exclusions, one per line, as the person typed them.
+     *
+     * Kept as text rather than an array because that is what the field is: a
+     * textarea. The array lives in the database; converting at the boundary keeps
+     * the "empty line the user left behind" problem in one place.
+     */
+    public string $exclude_paths = '';
+
+    public string $exclude_tables = '';
+
     public bool $enable_incremental = false;
 
     public ?int $full_backup_day_of_week = 0;
+
+    /**
+     * A textarea into the list the database keeps.
+     *
+     * Blank lines and stray whitespace are what people actually type; the plugin
+     * would treat an empty pattern as a rule matching nothing useful, so they are
+     * dropped here rather than stored and shipped to thirty sites.
+     *
+     * @return list<string>
+     */
+    private function linesOf(string $text): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/\R/', $text) ?: [])));
+    }
 
     #[On('open-schedule-form')]
     public function openModal(): void
@@ -63,6 +88,8 @@ class BackupScheduleForm extends Component
             $this->backup_before_updates = $config->backup_before_updates;
             $this->enable_incremental = ! empty($config->incremental_frequency);
             $this->full_backup_day_of_week = $config->full_backup_day_of_week ?? 0;
+            $this->exclude_paths = implode("\n", (array) ($config->exclude_paths ?? []));
+            $this->exclude_tables = implode("\n", (array) ($config->exclude_tables ?? []));
         }
 
         $this->dispatch('open-modal-schedule-form');
@@ -96,6 +123,8 @@ class BackupScheduleForm extends Component
                 'retention_type' => $this->retention_type,
                 'retention_value' => $this->retention_value,
                 'backup_before_updates' => $this->backup_before_updates,
+                'exclude_paths' => $this->linesOf($this->exclude_paths),
+                'exclude_tables' => $this->linesOf($this->exclude_tables),
                 'incremental_frequency' => ($this->enable_incremental && $this->type === 'full') ? 'daily' : null,
                 'full_backup_day_of_week' => ($this->enable_incremental && $this->type === 'full') ? $this->full_backup_day_of_week : null,
                 // Computed in the site's timezone above, stored in the application's — the column is

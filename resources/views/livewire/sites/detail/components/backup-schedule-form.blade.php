@@ -100,6 +100,43 @@
                 </x-ui.select>
             </div>
 
+            {{-- What never gets backed up. The engine has always had a full
+                 exclusion system — folders, globs, extensions, size and age
+                 bounds — and nothing had ever sent it a rule. --}}
+            <div>
+                <label class="block text-sm font-medium text-gray-700">
+                    {{ __('Skip these files and folders') }}
+                    <span class="text-xs text-gray-500">({{ __('optional, one per line') }})</span>
+                </label>
+                <textarea
+                    wire:model="exclude_paths"
+                    rows="3"
+                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500"
+                    placeholder="wp-content/cache&#10;wp-content/uploads/backups&#10;**/*.log"
+                ></textarea>
+                @error('exclude_paths') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                <p class="mt-1 text-xs text-gray-500">
+                    {{ __('A folder skips everything under it. Wildcards work: * within one segment, ** across folders.') }}
+                </p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700">
+                    {{ __('Skip these database tables') }}
+                    <span class="text-xs text-gray-500">({{ __('optional, one per line') }})</span>
+                </label>
+                <textarea
+                    wire:model="exclude_tables"
+                    rows="2"
+                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500"
+                    placeholder="wp_actionscheduler_logs&#10;wp_wfhits"
+                ></textarea>
+                @error('exclude_tables') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                <p class="mt-1 text-xs text-gray-500">
+                    {{ __('Full table names. A skipped table is absent from the restore, so leave anything the site needs to run.') }}
+                </p>
+            </div>
+
             {{-- Streaming pipeline (multipart-v3) --}}
             <div class="rounded-lg border border-gray-200 p-3 bg-gray-50">
                 <label class="flex items-start gap-2 cursor-pointer">

@@ -58,6 +58,30 @@ class SessionActions
 
         $scope = $opts['scope'] ?? $this->defaultScope($type);
 
+        // What this site has said it never wants backed up.
+        //
+        // The columns existed and nothing read them: exclude_paths and
+        // exclude_tables were on backup_configs, absent from the model's fillable
+        // and casts, and used by no row on the fleet. The plugin has had a full
+        // exclusion engine the whole time — folders, globs, extensions, size and
+        // age bounds, include-or-exclude with deterministic precedence — reached
+        // through `scope['rules']`. Nothing ever put anything there.
+        //
+        // Per-run exclusions still win: a caller that passes its own scope has
+        // already decided.
+        $config = $site->backupConfig;
+        if (! isset($opts['scope']) && $config !== null) {
+            $paths = array_values(array_filter((array) ($config->exclude_paths ?? [])));
+            $tables = array_values(array_filter((array) ($config->exclude_tables ?? [])));
+
+            if ($paths !== []) {
+                $scope['rules'] = $paths;
+            }
+            if ($tables !== []) {
+                $scope['exclude_tables'] = $tables;
+            }
+        }
+
         // The `backups` row is opened BEFORE the session, so a session can never
         // exist without one. Opening it lazily on first success would mean a
         // session that dies in capability_check leaves no row at all: the site
