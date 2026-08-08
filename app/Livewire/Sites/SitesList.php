@@ -6,7 +6,6 @@ namespace App\Livewire\Sites;
 
 use App\Enums\HealthLevel;
 use App\Jobs\CheckUptime;
-use App\Jobs\CreateBackup;
 use App\Livewire\Traits\WithBulkSiteActions;
 use App\Livewire\Traits\WithRateLimiting;
 use App\Livewire\Traits\WithSiteRowActions;
@@ -144,7 +143,15 @@ class SitesList extends Component
         /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
-        CreateBackup::dispatch($site, 'full', 'manual');
+
+        try {
+            app(\App\Services\Backup\BackupLauncher::class)->launch($site, 'full', 'manual');
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: "{$site->name}: {$e->getMessage()}");
+
+            return;
+        }
+
         $this->dispatch('notify', type: 'success', message: "Backup queued for {$site->name}.");
     }
 

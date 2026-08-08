@@ -98,7 +98,7 @@ class BackupDispatcher
         // identical for the sites still on the old engine, which is what makes
         // "nothing changed for them" something you can read rather than trust.
         if (BackupV2Gate::engineFor($site, $config) === BackupEngine::V2) {
-            $this->dispatchV2Backup($site, $delaySeconds);
+            $this->dispatchV2Backup($site, $config, $delaySeconds);
             $this->scheduleNextRun($config);
 
             return;
@@ -135,10 +135,21 @@ class BackupDispatcher
      * because the chain is a property of the sessions, not of the config: it has
      * to know which completed full to build on and what position this link takes.
      * The user-facing schedule is the same two fields either way.
+     *
+     * Except for one, which this used to drop. A database-only schedule is not a
+     * chain decision at all — it is a scope decision, and ChainPlanner only ever
+     * answers full or incremental. So a config saved as `type = 'database'` was
+     * honoured by determineBackupType() on the old engine and silently ignored
+     * here, and the site got a full every night while its schedule screen said
+     * otherwise. Scope is settled first, and only then is the chain consulted.
      */
-    protected function dispatchV2Backup(\App\Models\Site $site, int $delaySeconds): void
+    protected function dispatchV2Backup(\App\Models\Site $site, BackupConfig $config, int $delaySeconds): void
     {
-        $plan = (new ChainPlanner)->planFor($site);
+        if ($config->type === 'database') {
+            $plan = ['type' => 'database', 'full_base_id' => null, 'chain_position' => null];
+        } else {
+            $plan = (new ChainPlanner)->planFor($site);
+        }
 
         try {
             app(SessionActions::class)->startBackup($site, $plan['type'], [

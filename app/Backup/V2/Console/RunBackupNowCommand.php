@@ -4,12 +4,8 @@ declare(strict_types=1);
 
 namespace App\Backup\V2\Console;
 
-use App\Backup\V2\Chain\ChainPlanner;
-use App\Backup\V2\Orchestration\SessionActions;
-use App\Backup\V2\Support\BackupV2Gate;
-use App\Enums\BackupEngine;
-use App\Jobs\CreateBackup;
 use App\Models\Site;
+use App\Services\Backup\BackupLauncher;
 use Illuminate\Console\Command;
 
 /**
@@ -20,9 +16,9 @@ use Illuminate\Console\Command;
  * night or asking someone to click. That is a poor position to be in when the
  * thing you want to check is whether tonight's backup will work.
  *
- * Routes to whichever engine the site is actually on, for the same reason the
- * buttons do — a tool that could start the other engine would be a way to get
- * two of them working on one site.
+ * Routing lives in BackupLauncher, with every other way of starting a backup.
+ * This command used to carry its own copy, and the copy had drifted: its legacy
+ * fallback passed a hard-coded 'full' and dropped --type on the floor.
  */
 class RunBackupNowCommand extends Command
 {
@@ -41,32 +37,19 @@ class RunBackupNowCommand extends Command
 
         $requested = (string) $this->option('type');
 
-        if (BackupV2Gate::engineFor($site) !== BackupEngine::V2) {
-            $this->warn("{$site->domain} runs the legacy engine — dispatching that instead.");
-            CreateBackup::dispatch($site, 'full', 'manual', $site->backupConfig?->storage_destination_id);
+        try {
+            $backup = app(BackupLauncher::class)->launch($site, $requested, 'manual');
+        } catch (\Throwable $e) {
+            $this->error($e->getMessage());
 
-            return self::SUCCESS;
+            return self::FAILURE;
         }
 
-        $plan = (new ChainPlanner)->planFor($site);
-        $useChain = $requested === 'incremental' && $plan['type'] === 'incremental';
-
-        $session = app(SessionActions::class)->startBackup(
-            $site,
-            $useChain ? 'incremental' : 'full',
-            [
-                'trigger' => 'manual',
-                'full_base_id' => $useChain ? $plan['full_base_id'] : null,
-                'chain_position' => $useChain ? $plan['chain_position'] : null,
-            ],
-        );
-
         $this->info(sprintf(
-            'Queued %s backup for %s — session #%d, backup #%d.',
-            $session->type,
+            'Queued %s backup for %s — backup #%d.',
+            $backup->type,
             $site->domain,
-            $session->id,
-            (int) $session->backup_id,
+            $backup->id,
         ));
 
         return self::SUCCESS;

@@ -9,168 +9,50 @@ use App\Enums\BackupStatus;
 use App\Jobs\CreateBackup;
 use App\Jobs\CreateIncrementalBackup;
 use App\Models\Backup;
-use App\Models\StorageDestination;
+use App\Services\Backup\BackupLauncher;
 use App\Services\Backup\Storage\StorageFactory;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 
 trait WithBackupActions
 {
-    /**
-     * Route a manual backup to the engine this site actually runs.
-     *
-     * Without this the scheduler and the buttons disagreed: a site moved to the
-     * new engine would still get the old one from "Backup now" — and since the
-     * two do not share a lock namespace by accident but by design, that is how
-     * you end up with both engines working on one site at once.
-     *
-     * Returns true when the new engine took it.
-     */
-    protected function startOnNewEngineIfConfigured(string $type): bool
-    {
-        if (\App\Backup\V2\Support\BackupV2Gate::engineFor($this->site) !== BackupEngine::V2) {
-            return false;
-        }
-
-        // The chain planner decides full-vs-incremental for a scheduled run; a
-        // person clicking "Full backup" has already decided, so their choice
-        // stands and only the chain base is looked up.
-        $plan = (new \App\Backup\V2\Chain\ChainPlanner)->planFor($this->site);
-        $useChain = $type === 'incremental' && $plan['type'] === 'incremental';
-
-        try {
-            $session = app(\App\Backup\V2\Orchestration\SessionActions::class)->startBackup(
-                $this->site,
-                $useChain ? 'incremental' : 'full',
-                [
-                    'trigger' => 'manual',
-                    'full_base_id' => $useChain ? $plan['full_base_id'] : null,
-                    'chain_position' => $useChain ? $plan['chain_position'] : null,
-                ],
-            );
-        } catch (\Throwable $e) {
-            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
-
-            return true;
-        }
-
-        $this->trackingBackupId = $session->backup_id;
-        unset($this->activeBackup);
-
-        return true;
-    }
-
     public function backupDatabase(): void
     {
-        $this->authorizeSiteModification($this->site);
-        // A database-only backup is not a thing the new engine makes: every restore point it writes holds files and the database together, because a point you can restore to is one where the two agree.
-        if ($this->startOnNewEngineIfConfigured('full')) {
-            return;
-        }
-
-        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
-        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
-            session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
-
-            return;
-        }
-
-        $destination = $this->resolveDestination();
-        if (! $destination) {
-            session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
-
-            return;
-        }
-
-        $backup = Backup::create([
-            'site_id' => $this->site->id,
-            'storage_destination_id' => $destination->id,
-            'type' => 'database',
-            'trigger' => 'manual',
-            'status' => 'pending',
-            'stage' => 'queued',
-            'progress_percent' => 0,
-            'progress_message' => 'Backup queued, waiting to start...',
-            'includes_database' => true,
-            'includes_files' => false,
-            'wp_version' => $this->site->wp_version,
-            'php_version' => $this->site->php_version,
-            'plugins_count' => $this->site->sitePlugins()->count(),
-            'themes_count' => $this->site->siteThemes()->count(),
-            'db_size_mb' => $this->site->db_size_mb,
-            'started_at' => now(),
-        ]);
-
-        try {
-            CreateBackup::dispatch($this->site, 'database', 'manual', $destination->id, $backup->id);
-        } catch (\Throwable $e) {
-            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: '.$e->getMessage(), 'completed_at' => now()]);
-            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
-
-            return;
-        }
-        $this->trackingBackupId = $backup->id;
-        unset($this->activeBackup);
+        $this->startManualBackup('database');
     }
 
     public function backupFull(): void
     {
-        $this->authorizeSiteModification($this->site);
-        if ($this->startOnNewEngineIfConfigured('full')) {
-            return;
-        }
-
-        $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
-        if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
-            session()->flash('backup-error', 'Too many backup requests. Please wait before trying again.');
-
-            return;
-        }
-
-        $destination = $this->resolveDestination();
-        if (! $destination) {
-            session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
-
-            return;
-        }
-
-        $backup = Backup::create([
-            'site_id' => $this->site->id,
-            'storage_destination_id' => $destination->id,
-            'type' => 'full',
-            'trigger' => 'manual',
-            'status' => 'pending',
-            'stage' => 'queued',
-            'progress_percent' => 0,
-            'progress_message' => 'Backup queued, waiting to start...',
-            'includes_database' => true,
-            'includes_files' => true,
-            'wp_version' => $this->site->wp_version,
-            'php_version' => $this->site->php_version,
-            'plugins_count' => $this->site->sitePlugins()->count(),
-            'themes_count' => $this->site->siteThemes()->count(),
-            'db_size_mb' => $this->site->db_size_mb,
-            'started_at' => now(),
-        ]);
-
-        try {
-            CreateBackup::dispatch($this->site, 'full', 'manual', $destination->id, $backup->id);
-        } catch (\Throwable $e) {
-            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: '.$e->getMessage(), 'completed_at' => now()]);
-            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
-
-            return;
-        }
-        $this->trackingBackupId = $backup->id;
-        unset($this->activeBackup);
+        $this->startManualBackup('full');
     }
 
     public function backupIncremental(): void
     {
+        $this->startManualBackup('incremental');
+    }
+
+    /**
+     * The one path behind all three buttons.
+     *
+     * They used to be three near-identical copies, each with its own engine check
+     * and its own row-creation block, and the copies had drifted apart in ways a
+     * person could feel:
+     *
+     * - "Backup Database" called startOnNewEngineIfConfigured('full'), so on the
+     *   new engine it silently made a FULL backup while the button still said
+     *   Database. The engine could always scope a dump on its own
+     *   (SessionActions::defaultScope) — nothing ever asked it to.
+     * - The rate limit, the "no storage destination" message and the "run a full
+     *   backup first" guard all sat AFTER the early return, so none of them
+     *   applied to a site on the new engine. A person could hold the button down.
+     *
+     * Which engine runs it, and what each engine needs before it can, now live in
+     * BackupLauncher. What is left here is what this layer is actually for: who is
+     * allowed, how often, and what the screen says afterwards.
+     */
+    private function startManualBackup(string $type): void
+    {
         $this->authorizeSiteModification($this->site);
-        if ($this->startOnNewEngineIfConfigured('incremental')) {
-            return;
-        }
 
         $rateLimitKey = "backup:{$this->site->id}:".auth()->id();
         if (! RateLimiter::attempt($rateLimitKey, 5, fn () => true, 3600)) {
@@ -179,51 +61,14 @@ trait WithBackupActions
             return;
         }
 
-        $destination = $this->resolveDestination();
-        if (! $destination) {
-            session()->flash('backup-error', 'No storage destination configured. Please configure a storage destination in Settings first.');
-
-            return;
-        }
-
-        $hasManifest = Backup::where('site_id', $this->site->id)
-            ->where('status', 'completed')
-            ->whereNotNull('manifest_path')
-            ->exists();
-
-        if (! $hasManifest) {
-            session()->flash('backup-error', 'No full backup with manifest found. Please create a full backup first.');
-
-            return;
-        }
-
-        $backup = Backup::create([
-            'site_id' => $this->site->id,
-            'storage_destination_id' => $destination->id,
-            'type' => 'incremental',
-            'trigger' => 'manual',
-            'status' => 'pending',
-            'stage' => 'queued',
-            'progress_percent' => 0,
-            'progress_message' => 'Incremental backup queued, waiting to start...',
-            'includes_database' => true,
-            'includes_files' => true,
-            'wp_version' => $this->site->wp_version,
-            'php_version' => $this->site->php_version,
-            'plugins_count' => $this->site->sitePlugins()->count(),
-            'themes_count' => $this->site->siteThemes()->count(),
-            'db_size_mb' => $this->site->db_size_mb,
-            'started_at' => now(),
-        ]);
-
         try {
-            CreateIncrementalBackup::dispatch($this->site, 'manual', $destination->id, $backup->id);
+            $backup = app(BackupLauncher::class)->launch($this->site, $type, 'manual');
         } catch (\Throwable $e) {
-            $backup->update(['status' => 'failed', 'stage' => 'failed', 'error_message' => 'Failed to dispatch job: '.$e->getMessage(), 'completed_at' => now()]);
-            session()->flash('backup-error', 'Failed to start backup: '.$e->getMessage());
+            session()->flash('backup-error', $e->getMessage());
 
             return;
         }
+
         $this->trackingBackupId = $backup->id;
         unset($this->activeBackup);
     }
@@ -431,10 +276,5 @@ trait WithBackupActions
 
         $this->trackingBackupId = null;
         unset($this->activeBackup);
-    }
-
-    protected function resolveDestination(): ?StorageDestination
-    {
-        return StorageDestination::resolveForSite($this->site);
     }
 }

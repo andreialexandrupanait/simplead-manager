@@ -282,7 +282,17 @@ class SyncWordPressSite implements ShouldBeUnique, ShouldQueue
                 RunSecurityScan::dispatch($this->site);
                 $backupConfig = $this->site->backupConfig;
                 if ($backupConfig && $backupConfig->storage_destination_id) {
-                    CreateBackup::dispatch($this->site, 'full', 'onboarding', $backupConfig->storage_destination_id);
+                    try {
+                        app(\App\Services\Backup\BackupLauncher::class)
+                            ->launch($this->site, 'full', 'onboarding');
+                    } catch (\Throwable $e) {
+                        // Onboarding continues without its first backup rather than
+                        // failing the whole sync — the schedule will take the next one.
+                        Log::warning('onboarding backup could not be started', [
+                            'site_id' => $this->site->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
                 }
 
                 $this->site->update(['standard_preset_applied_at' => now()]);

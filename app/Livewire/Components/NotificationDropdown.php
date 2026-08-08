@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Livewire\Components;
 
-use App\Jobs\CreateBackup;
 use App\Models\Backup;
 use App\Models\InAppNotification;
 use App\Models\Site;
@@ -126,7 +125,13 @@ class NotificationDropdown extends Component
         abort_if((bool) $user?->isViewer(), 403, 'Viewers cannot trigger backups.');
         abort_unless((bool) $user?->canAccessSite($site), 403, 'You do not have access to this site.');
 
-        CreateBackup::dispatch($site, 'full', 'manual');
+        try {
+            app(\App\Services\Backup\BackupLauncher::class)->launch($site, 'full', 'manual');
+        } catch (\Throwable $e) {
+            session()->flash('message', "{$site->name}: {$e->getMessage()}");
+
+            return;
+        }
 
         Cache::forget($this->alertsCacheKey());
         unset($this->alerts);
@@ -150,15 +155,24 @@ class NotificationDropdown extends Component
         // other tenants' sites (P1-04).
         $sites = Site::whereIn('id', $failedSiteIds)->visibleTo($user)->get();
 
+        // One site with nowhere to write must not stop the retry for the rest —
+        // this is the bulk action, and the count says what actually happened.
+        $launcher = app(\App\Services\Backup\BackupLauncher::class);
+        $queued = 0;
         foreach ($sites as $site) {
-            CreateBackup::dispatch($site, 'full', 'manual');
+            try {
+                $launcher->launch($site, 'full', 'manual');
+                $queued++;
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         Cache::forget($this->alertsCacheKey());
         unset($this->alerts);
         unset($this->count);
 
-        session()->flash('message', "Retry dispatched for {$sites->count()} site(s).");
+        session()->flash('message', "Retry dispatched for {$queued} site(s).");
     }
 
     public function render()

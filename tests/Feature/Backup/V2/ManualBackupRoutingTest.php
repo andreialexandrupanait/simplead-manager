@@ -73,19 +73,28 @@ class ManualBackupRoutingTest extends TestCase
     }
 
     /**
-     * The new engine writes no database-only backups: every restore point holds
-     * files and the database together, because a point you can restore to is one
-     * where the two agree. The button still works; it just produces something
-     * whole.
+     * A button labelled "Backup Database" makes a database backup.
+     *
+     * It did not. The new engine was asked for a `full` and the label was left
+     * alone, on the reasoning that a restore point should hold files and the
+     * database together — sound as a default, but it was applied by overriding
+     * what the person had clicked, silently, with nothing on screen to say so.
+     *
+     * The engine could always scope a run: SessionActions::startBackup accepts
+     * `database` and defaultScope() turns off files for it. Nothing ever asked.
      */
-    public function test_a_database_only_request_produces_a_complete_restore_point(): void
+    public function test_a_database_only_request_makes_a_database_only_backup(): void
     {
         $site = $this->siteOnNewEngine();
 
         Livewire::test(SiteBackups::class, ['site' => $site])->call('backupDatabase');
 
-        $this->assertDatabaseHas('backup_sessions', ['site_id' => $site->id, 'type' => 'full']);
+        $this->assertDatabaseHas('backup_sessions', ['site_id' => $site->id, 'type' => 'database']);
         Queue::assertNotPushed(CreateBackup::class);
+
+        $session = \App\Backup\V2\Models\BackupSession::where('site_id', $site->id)->firstOrFail();
+        $this->assertTrue($session->scope['database'], 'the dump is in scope');
+        $this->assertFalse($session->scope['files'], 'the files are not');
     }
 
     public function test_a_site_on_the_old_engine_still_uses_it(): void

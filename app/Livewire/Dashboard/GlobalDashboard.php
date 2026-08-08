@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Livewire\Dashboard;
 
 use App\Jobs\CheckUptime;
-use App\Jobs\CreateBackup;
 use App\Jobs\GenerateReport;
 use App\Jobs\SyncWordPressSite;
 use App\Livewire\Traits\WithBulkSiteActions;
@@ -176,7 +175,15 @@ class GlobalDashboard extends Component
         /** @var Site $site */
         $site = Site::findOrFail($siteId);
         $this->authorize('update', $site);
-        CreateBackup::dispatch($site, 'full', 'manual');
+
+        try {
+            app(\App\Services\Backup\BackupLauncher::class)->launch($site, 'full', 'manual');
+        } catch (\Throwable $e) {
+            $this->dispatch('notify', type: 'error', message: "{$site->name}: {$e->getMessage()}");
+
+            return;
+        }
+
         $this->dispatch('notify', type: 'success', message: "Backup queued for {$site->name}.");
     }
 

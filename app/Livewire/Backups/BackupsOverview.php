@@ -13,7 +13,7 @@ use App\Livewire\Traits\WithVisibleSites;
 use App\Models\Backup;
 use App\Models\BackupConfig;
 use App\Models\Site;
-use App\Models\StorageDestination;
+use App\Services\Backup\BackupLauncher;
 use App\Services\Backup\FleetLedger;
 use App\Services\CircuitBreakerService;
 use Illuminate\Support\Collection;
@@ -222,32 +222,14 @@ class BackupsOverview extends Component
             return;
         }
 
-        $destination = $config->storageDestination
-            ?? StorageDestination::where('is_default', true)->where('is_active', true)->first();
-        if (! $destination) {
-            session()->flash('backup-error', "{$site->name}: no storage destination configured.");
+        try {
+            app(BackupLauncher::class)->launch($site, $config->type ?? 'full', 'manual_stale');
+        } catch (\Throwable $e) {
+            session()->flash('backup-error', "{$site->name}: {$e->getMessage()}");
 
             return;
         }
 
-        $type = $config->type ?? 'full';
-        $backup = Backup::create([
-            'site_id' => $site->id,
-            'storage_destination_id' => $destination->id,
-            'type' => $type,
-            'trigger' => 'manual_stale',
-            'status' => 'pending',
-            'stage' => 'queued',
-            'progress_percent' => 0,
-            'progress_message' => 'Backup queued, waiting to start...',
-            'includes_database' => true,
-            'includes_files' => $type === 'full',
-            'wp_version' => $site->wp_version,
-            'php_version' => $site->php_version,
-            'started_at' => now(),
-        ]);
-
-        CreateBackup::dispatch($site, $type, 'manual_stale', $destination->id, $backup->id);
         unset($this->ledger, $this->fleetSummary);
         session()->flash('backup-success', "Backup queued for {$site->name}.");
     }
@@ -272,8 +254,10 @@ class BackupsOverview extends Component
             ->with(['site', 'storageDestination'])
             ->get();
 
+        $launcher = app(BackupLauncher::class);
+        $stagger = (int) config('backups.stagger_interval_seconds', 180);
+
         $queued = 0;
-        $defaultDestination = null;
         foreach ($configs as $config) {
             /** @var Site|null $site */
             $site = $config->site;
@@ -281,36 +265,17 @@ class BackupsOverview extends Component
                 continue;
             }
 
-            $destination = $config->storageDestination;
-            if (! $destination) {
-                $destination = $defaultDestination ??= StorageDestination::where('is_default', true)
-                    ->where('is_active', true)
-                    ->first();
+            try {
+                // Spread them, for the same reason the scheduler does: thirty sites
+                // pulled at once is thirty client servers under load at once.
+                $launcher->launch($site, $config->type ?? 'full', 'manual_bulk', $queued * $stagger);
+                $queued++;
+            } catch (\Throwable $e) {
+                // A site with no destination, or over quota, is skipped exactly as
+                // it was before — but now it is reported rather than passed over
+                // in silence.
+                report($e);
             }
-
-            if (! $destination) {
-                continue;
-            }
-
-            $backup = Backup::create([
-                'site_id' => $site->id,
-                'storage_destination_id' => $destination->id,
-                'type' => $config->type ?? 'full',
-                'trigger' => 'manual_bulk',
-                'status' => 'pending',
-                'stage' => 'queued',
-                'progress_percent' => 0,
-                'progress_message' => 'Backup queued, waiting to start...',
-                'includes_database' => true,
-                'includes_files' => ($config->type ?? 'full') === 'full',
-                'wp_version' => $site->wp_version,
-                'php_version' => $site->php_version,
-                'started_at' => now(),
-            ]);
-
-            CreateBackup::dispatch($site, $config->type ?? 'full', 'manual_bulk', $destination->id, $backup->id)
-                ->delay(now()->addSeconds($queued * (int) config('backups.stagger_interval_seconds', 180)));
-            $queued++;
         }
 
         $this->dispatch('notify', type: 'success', message: "Queued backups for {$queued} site(s).");

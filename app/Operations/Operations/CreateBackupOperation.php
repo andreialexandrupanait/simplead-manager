@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Operations\Operations;
 
-use App\Jobs\CreateBackup;
 use App\Models\BackupConfig;
 use App\Operations\Contracts\Operation;
 use App\Operations\OperationContext;
@@ -60,7 +59,11 @@ class CreateBackupOperation implements Operation
     {
         $type = (string) ($context->params['type'] ?? 'full');
 
-        CreateBackup::dispatch($context->site, $type, 'manual');
+        try {
+            app(\App\Services\Backup\BackupLauncher::class)->launch($context->site, $type, 'manual');
+        } catch (\Throwable $e) {
+            return OperationResult::failure($context->site->id, $e->getMessage());
+        }
 
         return OperationResult::success($context->site->id, "Backup ({$type}) queued.");
     }
