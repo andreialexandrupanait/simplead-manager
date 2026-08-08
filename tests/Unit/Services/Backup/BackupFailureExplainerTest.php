@@ -34,6 +34,21 @@ class BackupFailureExplainerTest extends TestCase
         $this->assertNotNull($result['action']);
     }
 
+    public function test_the_dump_budget_failure_names_the_table_when_the_engine_did(): void
+    {
+        // The budget is the symptom; the table is the cause. When the engine says which one it
+        // stopped in, the operator should not have to go and find that out again.
+        $result = $this->explainer->explain(
+            'The database did not finish dumping in 90 seconds, the most one request may hold the '
+            .'snapshot open (stopped in table `wp_options` at row 4200 of that table; 36 tables and '
+            .'219113 rows completed before it). Exclude that table, or raise this site\'s '
+            .'db_time_budget_seconds if it is not behind a proxy that would cut the request off first.'
+        );
+
+        $this->assertStringContainsString('wp_options', $result['message']);
+        $this->assertStringContainsString('wp_options', (string) $result['action']);
+    }
+
     public function test_an_http_failure_names_the_code(): void
     {
         $result = $this->explainer->explain('simplead-backup database/dump returned HTTP 500');

@@ -32,7 +32,20 @@ final class BackupFailureExplainer
         // The dump ran past the window a single request may hold a consistent snapshot open for.
         // On this fleet it always means the database has grown past what the host can stream in
         // time — the budget is the symptom, the bloat is the cause.
+        //
+        // When the engine names the table it stopped in, say it. "The dump did not finish" sends
+        // the reader to the budget; the table name sends them to the row that actually has to go.
         if (preg_match('/did not finish dumping in (\d+) seconds/i', $raw, $m) === 1) {
+            if (preg_match('/stopped in table `([^`]+)`/i', $raw, $t) === 1) {
+                return [
+                    'message' => __('The database dump did not finish within :seconds seconds — it stopped in table :table.', [
+                        'seconds' => $m[1],
+                        'table' => $t[1],
+                    ]),
+                    'action' => __('Clean up or exclude :table, or raise this site\'s database time budget.', ['table' => $t[1]]),
+                ];
+            }
+
             return [
                 'message' => __('The database dump did not finish within :seconds seconds.', ['seconds' => $m[1]]),
                 'action' => __('Raise this site\'s database time budget, or clean up the tables that have outgrown it.'),

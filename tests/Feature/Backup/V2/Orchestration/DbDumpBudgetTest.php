@@ -98,10 +98,15 @@ class DbDumpBudgetTest extends TestCase
         $this->assertSame([240], $client->budgetsTried, 'the explicit budget, not the ceiling');
     }
 
-    public function test_a_database_that_will_not_finish_says_so_in_numbers(): void
+    public function test_a_database_that_will_not_finish_names_the_table_it_died_in(): void
     {
         // Never finishes, at any budget. The message has to name what happened — the old one said
         // "done=false, consistent=false", which reads like the data is broken.
+        //
+        // And it has to name the TABLE. Four sites failed this way every night for a week while the
+        // message reported only how far it got, so the diagnosis kept going after the budget; the
+        // one thing that would have ended it — which table will not fit — was in the response the
+        // whole time, in `cursor`, and was thrown away.
         [$session, $client] = $this->sessionWithDumpsFinishingAt(PHP_INT_MAX);
 
         $this->runner($session, $client)->run();
@@ -110,8 +115,27 @@ class DbDumpBudgetTest extends TestCase
         $message = (string) $session->error_message;
 
         $this->assertStringContainsString('did not finish dumping', $message);
-        $this->assertStringContainsString('4 of 12 tables', $message, 'how far it got');
+        $this->assertStringContainsString('`wp_postmeta`', $message, 'which table');
+        $this->assertStringContainsString('row 4200', $message, 'and how far into it');
+        $this->assertStringContainsString('4 tables and 4200 rows completed', $message, 'how far it got overall');
         $this->assertStringContainsString('db_time_budget_seconds', $message, 'and what to do about it');
+    }
+
+    public function test_a_dump_that_runs_out_between_tables_still_explains_itself(): void
+    {
+        // No cursor: the budget was spent before a new table was started. The message must not
+        // print an empty table name and must still say what to do.
+        [$session, $client] = $this->sessionWithDumpsFinishingAt(PHP_INT_MAX);
+        $client->omitCursor = true;
+
+        $this->runner($session, $client)->run();
+
+        $session->refresh();
+        $message = (string) $session->error_message;
+
+        $this->assertStringContainsString('ran out between tables', $message);
+        $this->assertStringNotContainsString('``', $message, 'no empty table name');
+        $this->assertStringContainsString('db_time_budget_seconds', $message);
     }
 
     /**
@@ -169,6 +193,9 @@ final class BudgetRecordingClient implements PluginClient
     /** @var list<int> */
     public array $budgetsTried = [];
 
+    /** A dumper that spent its budget between tables reports no cursor at all. */
+    public bool $omitCursor = false;
+
     public function __construct(private readonly int $secondsNeeded) {}
 
     public function capabilities(): array
@@ -195,19 +222,29 @@ final class BudgetRecordingClient implements PluginClient
 
         $done = $budget >= $this->secondsNeeded;
 
+        // Shaped like the real manifest, which is not what this fake used to claim. The dumper sets
+        // `table_count` to `count($table_reports)` — the tables it FINISHED — so on a partial dump
+        // it equals `count($tables)` and never reveals how many the database has. Asserting against
+        // a fake that supplied a true total was what let "reached 24 of 24 tables" ship: a number
+        // compared with itself, printed nightly, that read like a dump which had completed.
+        //
+        // `cursor` is the part that carries real information: the table the budget ran out in.
+        $tables = $done
+            ? array_fill(0, 12, ['name' => 't', 'rows' => 1])
+            : array_fill(0, 4, ['name' => 't', 'rows' => 1]);
+
         return [
             'ok' => true,
             'done' => $done,
-            'consistent' => true,
+            'consistent' => $done,
             'database' => 'wp',
             'server_version' => 'fake',
             'engine' => 'mysql',
-            'table_count' => 12,
+            'table_count' => count($tables),
             'total_rows' => $done ? 100000 : 4200,
-            'tables' => $done
-                ? array_fill(0, 12, ['name' => 't', 'rows' => 1])
-                : array_fill(0, 4, ['name' => 't', 'rows' => 1]),
-            'segments' => $done ? [] : [],
+            'tables' => $tables,
+            'cursor' => ($done || $this->omitCursor) ? null : ['table_index' => 4, 'table' => 'wp_postmeta', 'offset' => 4200],
+            'segments' => [],
         ];
     }
 

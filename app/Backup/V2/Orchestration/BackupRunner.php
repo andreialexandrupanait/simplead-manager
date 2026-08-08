@@ -1202,11 +1202,16 @@ final class BackupRunner
                 return $dump;
             }
 
+            $cursor = (array) ($dump['cursor'] ?? []);
+            $stuckTable = trim((string) ($cursor['table'] ?? ''));
+
             $last = $i === count($ladder) - 1;
             $this->logger->warning($last ? 'db dump out of time at the ceiling' : 'db dump out of time, retrying with more', [
                 'budget_seconds' => $budget,
                 'tables_dumped' => count((array) ($dump['tables'] ?? [])),
                 'rows_dumped' => (int) ($dump['total_rows'] ?? 0),
+                'stopped_in_table' => $stuckTable !== '' ? $stuckTable : null,
+                'stopped_at_offset' => $stuckTable !== '' ? (int) ($cursor['offset'] ?? 0) : null,
             ]);
 
             if ($last) {
@@ -1214,14 +1219,25 @@ final class BackupRunner
                 // request can hold. Terminal rather than parked, because tomorrow night will reach
                 // the same answer at the same cost to the site — someone has to decide what to
                 // exclude, or give this site a longer budget.
+                //
+                // Say WHICH table it died in. The dumper reports its cursor for exactly this — table
+                // name and row offset — and we used to drop it, then print "reached %d of %d tables"
+                // from `count($dump['tables'])` and `$dump['table_count']`. Those two are the same
+                // number by construction: the plugin sets `table_count` to `count($table_reports)`,
+                // the tables it FINISHED, not the tables the database has. So every one of these
+                // failures read "reached 24 of 24 tables" and looked like a dump that completed and
+                // was rejected anyway — which sent the diagnosis after the budget instead of after
+                // the one table that will not fit inside it.
                 throw new PreflightFailed(BackupErrorCode::HostTimeout, sprintf(
                     'The database did not finish dumping in %d seconds, the most one request may hold '
-                    .'the snapshot open (reached %d of %d tables, %d rows). Exclude a large table, or '
-                    .'raise this site\'s db_time_budget_seconds if it is not behind a proxy that would '
-                    .'cut the request off first.',
+                    .'the snapshot open (%s; %d tables and %d rows completed before it). Exclude that '
+                    .'table, or raise this site\'s db_time_budget_seconds if it is not behind a proxy '
+                    .'that would cut the request off first.',
                     $budget,
+                    $stuckTable !== ''
+                        ? sprintf('stopped in table `%s` at row %d of that table', $stuckTable, (int) ($cursor['offset'] ?? 0))
+                        : 'it ran out between tables',
                     count((array) ($dump['tables'] ?? [])),
-                    (int) ($dump['table_count'] ?? 0),
                     (int) ($dump['total_rows'] ?? 0),
                 ));
             }
