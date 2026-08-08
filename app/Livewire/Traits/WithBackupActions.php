@@ -78,10 +78,22 @@ trait WithBackupActions
         $this->authorizeSiteModification($this->site);
         /** @var Backup $backup */
         $backup = $this->site->backups()->findOrFail($backupId);
+        $locked = ! $backup->is_locked;
+
         $backup->update([
-            'is_locked' => ! $backup->is_locked,
-            'lock_reason' => ! $backup->is_locked ? 'manual' : null,
+            'is_locked' => $locked,
+            'lock_reason' => $locked ? 'manual' : null,
         ]);
+
+        // Keep the session in step. These were two flags on two tables that did
+        // not know about each other: this padlock stopped retention and nothing
+        // else, so a backup a person had deliberately pinned could still be
+        // deleted through the session. See SessionActions::setProtected().
+        $session = BackupSession::where('backup_id', $backup->id)->first();
+        if ($session instanceof BackupSession) {
+            $session->protected = $locked;
+            $session->save();
+        }
     }
 
     public function deleteBackup(int $backupId): void

@@ -171,12 +171,32 @@ class SessionActions
     }
 
     /**
-     * Pin / unpin a restore point so chain-safe retention never reclaims it.
+     * Pin / unpin a restore point so nothing reclaims it.
+     *
+     * "Protected" and "locked" were two flags on two tables, and neither knew
+     * about the other. Retention reads `backups.is_locked` and nothing else, so a
+     * restore point protected here was still swept up by the nightly pass —
+     * somebody pinned a backup and the system deleted it anyway. In the other
+     * direction, a backup locked from the site's Backups page was reported as
+     * unprotected by the console, and SessionActions::delete() would remove it.
+     *
+     * One concept, one flag, and it is the row's: `is_locked` is what retention
+     * has always consulted, and what the person clicking the padlock is looking
+     * at. The session column is kept in step so anything still reading it sees
+     * the truth rather than a stale second opinion.
      */
     public function setProtected(BackupSession $session, bool $protected): void
     {
         $session->protected = $protected;
         $session->save();
+
+        $backup = $session->backup;
+        if ($backup instanceof Backup) {
+            $backup->update([
+                'is_locked' => $protected,
+                'lock_reason' => $protected ? 'manual' : null,
+            ]);
+        }
     }
 
     /**
@@ -209,7 +229,13 @@ class SessionActions
      */
     public function delete(BackupSession $session): void
     {
-        if ($session->protected) {
+        // The row's flag as well as the session's — see setProtected(). A backup
+        // locked from the site's Backups page used to be invisible to this check,
+        // so the padlock protected it from retention and from nothing else.
+        $row = $session->backup;
+        $locked = $row instanceof Backup && $row->is_locked;
+
+        if ($session->protected || $locked) {
             throw new RuntimeException('Cannot delete a protected backup. Unprotect it first.');
         }
 

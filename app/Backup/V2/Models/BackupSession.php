@@ -12,6 +12,7 @@ use App\Backup\V2\StateMachine\BackupStateMachine;
 use App\Backup\V2\Support\BackupLogger;
 use App\Models\Backup;
 use App\Models\Site;
+use App\Services\JobTracker;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -193,6 +194,24 @@ class BackupSession extends Model
         // to record its own failures.
         if ($from !== $to && in_array($to, [BackupSessionState::Failed, BackupSessionState::Corrupt], true)) {
             NotifyBackupV2Failed::dispatch($this->id);
+        }
+
+        // The activity log on the site's Backups page, from the same funnel.
+        //
+        // That panel — the terminal-looking one under the progress bar — renders
+        // for every backup and was empty for every V2 backup, because the log it
+        // reads is JobTracker's and nothing in this engine wrote to it. An empty
+        // log is worse than no log: it is a panel that says a backup did nothing.
+        //
+        // Keyed on the site, not the session, because that is what the page polls
+        // and because a person watching a backup is watching a site.
+        if ($from !== $to) {
+            JobTracker::appendLog(
+                'backup-'.$this->site_id,
+                $to->isTerminal() && $to !== BackupSessionState::Completed
+                    ? sprintf('%s — %s', $to->value, $this->error_message ?: 'no reason recorded')
+                    : $to->value,
+            );
         }
 
         return $this;
