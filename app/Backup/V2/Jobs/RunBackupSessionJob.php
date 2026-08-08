@@ -18,6 +18,7 @@ use App\Backup\V2\Support\BackupLogger;
 use App\Backup\V2\Support\BackupV2Gate;
 use App\Models\Site;
 use App\Models\StorageDestination;
+use App\Services\Backup\RetentionService;
 use App\Services\Backup\SiteOperationLock;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -229,6 +230,42 @@ final class RunBackupSessionJob implements ShouldBeUnique, ShouldQueue
         // site's operation lock through it would block the next backup for no reason.
         if ($session->refresh()->state === BackupSessionState::Completed) {
             BuildPortablePackageJob::dispatch((int) $session->id);
+            $this->applyRetention($site, $destination, $logger);
+        }
+    }
+
+    /**
+     * Retire what this site no longer needs to keep.
+     *
+     * V1 called this at the end of every successful backup — CreateBackup and CreateIncrementalBackup
+     * both do — and V2 called it nowhere. So on the night the fleet moved to the new engine the
+     * per-site policy stopped being applied at all: `SessionActions::delete()` routes a MANUAL delete
+     * through RetentionService::purge(), which covers the console button and nothing else. Nothing
+     * has aged out of storage since. It does not announce itself — a backup module whose retention
+     * quietly does nothing looks exactly like one whose retention is working, right up until the bill
+     * or the bucket says otherwise.
+     *
+     * RetentionService already understands this engine: deleteBackup() branches on
+     * `engine === V2` and removes the whole object prefix, precisely so a prefix is never
+     * handed to DeleteObject as if it were a key. Only the call was missing.
+     *
+     * Deliberately after the site lock is released and after the portable package is queued: this
+     * reads storage and the database, never the client's site, and holding the site's lock through
+     * it would delay the next backup for no reason.
+     *
+     * Failures here are logged, never thrown. A backup that succeeded must not be reported as failed
+     * because the cleanup that follows it could not reach a bucket — the restore point is already
+     * written and verified, and retention retries by its nature on the next run.
+     */
+    private function applyRetention(Site $site, StorageDestination $destination, BackupLogger $logger): void
+    {
+        try {
+            app(RetentionService::class)->apply($site, $destination);
+        } catch (Throwable $e) {
+            $logger->warning('retention pass failed after a successful backup', [
+                'site_id' => $site->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
