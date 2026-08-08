@@ -112,6 +112,24 @@ class ExclusionsReachTheEngineTest extends TestCase
         );
     }
 
+    /**
+     * The pickers open without falling over.
+     *
+     * Worth its own test because the render test does not press anything: a
+     * property renamed during the rewrite left `openPicker()` reading
+     * `$pickerFolders`, which no longer existed, and the whole suite stayed green
+     * because nothing ever called it. The screen only failed in a browser.
+     */
+    public function test_the_pickers_open(): void
+    {
+        $component = Livewire::actingAs(User::factory()->create(['role' => UserRole::Admin]))
+            ->test(BackupScheduleForm::class, ['site' => $this->site])
+            ->call('openModal');
+
+        $component->call('openPicker')->assertSet('pickerOpen', true);
+        $component->call('openTablePicker')->assertSet('tablePickerOpen', true);
+    }
+
     /** A site that excludes nothing sends no rules at all, rather than an empty list. */
     public function test_a_site_with_no_exclusions_sends_none(): void
     {

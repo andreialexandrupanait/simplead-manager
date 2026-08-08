@@ -91,7 +91,7 @@ class BackupScheduleForm extends Component
     {
         $this->pickerOpen = true;
 
-        if ($this->pickerFolders !== [] || $this->pickerLoading) {
+        if ($this->pickerTree !== [] || $this->pickerLoading) {
             return;
         }
 
