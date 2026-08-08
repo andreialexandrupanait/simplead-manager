@@ -62,102 +62,81 @@
         </div>
     @endif
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        {{-- Quick Actions --}}
-        <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Quick Actions') }}</h3>
-            <div class="space-y-3">
-                <x-ui.button wire:click="backupDatabase" wire:loading.attr="disabled" class="w-full">
-                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" /></svg>
-                    <span wire:loading.remove wire:target="backupDatabase">{{ __('Backup Database') }}</span>
-                    <span wire:loading wire:target="backupDatabase">{{ __('Queuing...') }}</span>
+    {{-- The three cards a person actually reads before deciding anything: what
+         they can do now, what is already arranged, and what it is costing. Built
+         from module-card/info-row rather than hand-rolled `flex justify-between`
+         rows so this page reads as the same product as the site overview, which
+         is one click away and was the only backup screen following the system. --}}
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
+        <x-ui.module-card :title="__('Back up now')" icon="hard-drive" tone="accent">
+            <div class="space-y-2">
+                <x-ui.button wire:click="backupFull" wire:loading.attr="disabled" wire:target="backupFull" class="w-full">
+                    <span wire:loading.remove wire:target="backupFull">{{ __('Full backup') }}</span>
+                    <span wire:loading wire:target="backupFull">{{ __('Queuing…') }}</span>
                 </x-ui.button>
-                <x-ui.button wire:click="backupFull" wire:loading.attr="disabled" variant="secondary" class="w-full">
-                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8" /></svg>
-                    <span wire:loading.remove wire:target="backupFull">{{ __('Full Backup') }}</span>
-                    <span wire:loading wire:target="backupFull">{{ __('Queuing...') }}</span>
+
+                <x-ui.button wire:click="backupDatabase" wire:loading.attr="disabled" wire:target="backupDatabase" variant="secondary" class="w-full">
+                    <span wire:loading.remove wire:target="backupDatabase">{{ __('Database only') }}</span>
+                    <span wire:loading wire:target="backupDatabase">{{ __('Queuing…') }}</span>
                 </x-ui.button>
+
                 @if($this->hasFullBackupWithManifest)
-                    <x-ui.button wire:click="backupIncremental" wire:loading.attr="disabled" variant="secondary" class="w-full">
-                        <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-                        <span wire:loading.remove wire:target="backupIncremental">{{ __('Incremental Backup') }}</span>
-                        <span wire:loading wire:target="backupIncremental">{{ __('Queuing...') }}</span>
+                    <x-ui.button wire:click="backupIncremental" wire:loading.attr="disabled" wire:target="backupIncremental" variant="secondary" class="w-full">
+                        <span wire:loading.remove wire:target="backupIncremental">{{ __('Incremental') }}</span>
+                        <span wire:loading wire:target="backupIncremental">{{ __('Queuing…') }}</span>
                     </x-ui.button>
-                @else
-                    <p class="text-xs text-gray-400 italic">{{ __('Run a full backup first to enable incremental backups.') }}</p>
                 @endif
             </div>
-            <p class="mt-3 text-xs text-gray-400">{{ __('Estimated full backup size') }}: ~{{ $this->estimatedBackupSize }}</p>
-        </x-ui.card>
 
-        {{-- Schedule --}}
-        <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Schedule') }}</h3>
+            <p class="mt-3 text-xs text-gray-500">
+                {{ __('A full backup is about :size.', ['size' => $this->estimatedBackupSize]) }}
+                @unless($this->hasFullBackupWithManifest)
+                    {{ __('Incremental backups become available after the first full one.') }}
+                @endunless
+            </p>
+        </x-ui.module-card>
+
+        <x-ui.module-card :title="__('Schedule')" icon="calendar" :tone="$this->backupConfig?->is_enabled ? 'ok' : 'warn'">
             @if($this->backupConfig?->is_enabled)
-                <div class="space-y-2 text-sm">
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">{{ __('Status') }}</span>
-                        <x-ui.badge variant="green">{{ __('Active') }}</x-ui.badge>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">{{ __('Frequency') }}</span>
-                        <span class="text-gray-900 font-medium">{{ ucfirst($this->backupConfig->frequency) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">{{ __('Type') }}</span>
-                        <span class="text-gray-900 font-medium">{{ ucfirst($this->backupConfig->type) }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">{{ __('Next Backup') }}</span>
-                        <span class="text-gray-900 font-medium">{{ $this->backupConfig->next_backup_at?->diffForHumans() ?? '—' }}</span>
-                    </div>
-                    @if($this->backupConfig->incremental_frequency)
-                        <div class="flex justify-between">
-                            <span class="text-gray-500">{{ __('Incremental') }}</span>
-                            <x-ui.badge variant="blue">{{ __('Enabled') }}</x-ui.badge>
-                        </div>
-                    @endif
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">{{ __('Retention') }}</span>
-                        <span class="text-gray-900 font-medium">{{ $this->backupConfig->retention_value }} {{ $this->backupConfig->retention_type === 'count' ? __('chains') : __('days') }}</span>
-                    </div>
-                </div>
+                <x-ui.info-row :label="__('Runs')">
+                    {{ ucfirst($this->backupConfig->frequency) }}{{ $this->backupConfig->time ? ' · '.$this->backupConfig->time : '' }}
+                </x-ui.info-row>
+                <x-ui.info-row :label="__('Next')">
+                    {{ $this->backupConfig->next_backup_at?->diffForHumans() ?? '—' }}
+                </x-ui.info-row>
+                <x-ui.info-row :label="__('Contents')">
+                    {{ $this->backupConfig->type === 'database' ? __('Database only') : __('Files and database') }}
+                </x-ui.info-row>
+                <x-ui.info-row :label="__('Keeps')">
+                    {{ $this->backupConfig->retention_type === 'count'
+                        ? trans_choice('{1}:count restore point|[2,*]:count restore points', $this->backupConfig->retention_value, ['count' => $this->backupConfig->retention_value])
+                        : trans_choice('{1}:count day|[2,*]:count days', $this->backupConfig->retention_value, ['count' => $this->backupConfig->retention_value]) }}
+                </x-ui.info-row>
             @else
-                <p class="text-sm text-gray-500">{{ __('No backup schedule configured.') }}</p>
+                <x-ui.empty-state
+                    compact
+                    :title="__('Nothing is scheduled')"
+                    :description="__('This site is only backed up when somebody presses a button.')" />
             @endif
-            <div class="mt-4">
-                <x-ui.button variant="secondary" size="sm" x-on:click="$dispatch('open-schedule-form')">
-                    {{ __('Configure Schedule') }}
-                </x-ui.button>
-            </div>
-        </x-ui.card>
 
-        {{-- Storage Usage --}}
-        <x-ui.card>
-            <h3 class="text-base font-semibold text-gray-900 mb-4">{{ __('Storage Usage') }}</h3>
-            <div class="space-y-2 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-gray-500">{{ __('Total Size') }}</span>
-                    <span class="text-gray-900 font-medium">{{ $this->storageUsage }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500">{{ __('Backup Count') }}</span>
-                    <span class="text-gray-900 font-medium">{{ $site->backups()->where('status', 'completed')->count() }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-gray-500">{{ __('Last Backup') }}</span>
-                    <span class="text-gray-900 font-medium">{{ $site->last_backup_at?->diffForHumans() ?? __('Never') }}</span>
-                </div>
-                @if($this->backupConfig?->last_backup_status)
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">{{ __('Last Status') }}</span>
-                        <x-ui.badge :variant="$this->backupConfig->last_backup_status === 'completed' ? 'green' : 'red'">
-                            {{ ucfirst($this->backupConfig->last_backup_status) }}
-                        </x-ui.badge>
-                    </div>
+            <button type="button" class="mact" x-on:click="$dispatch('open-schedule-form')">
+                {{ $this->backupConfig?->is_enabled ? __('Change the schedule') : __('Set up a schedule') }}
+            </button>
+        </x-ui.module-card>
+
+        <x-ui.module-card :title="__('Storage')" icon="database" tone="dark">
+            <x-ui.info-row :label="__('Restore points')">{{ $this->completedBackupCount }}</x-ui.info-row>
+            <x-ui.info-row :label="__('Taking up')">{{ $this->storageUsage }}</x-ui.info-row>
+            <x-ui.info-row :label="__('Last backup')">
+                @if($site->last_backup_at)
+                    <span class="{{ ($this->backupConfig?->last_backup_status ?? 'completed') === 'completed' ? 'mval-ok' : 'mval-bad' }}">
+                        {{ $site->last_backup_at->diffForHumans() }}
+                    </span>
+                @else
+                    <span class="mval-warn">{{ __('Never') }}</span>
                 @endif
-            </div>
-        </x-ui.card>
+            </x-ui.info-row>
+        </x-ui.module-card>
     </div>
 
     {{-- Backup Progress --}}
@@ -520,40 +499,35 @@
                                 </div>
                             @endif
 
-                            {{-- Action buttons --}}
-                            <div class="mt-2.5 flex items-center gap-1">
+                            {{-- Action buttons. Labelled here, icon-only in the
+                                 desktop table: a touch target needs its name next
+                                 to it, a dense row cannot afford five of them. --}}
+                            <div class="mt-2.5 flex flex-wrap items-center gap-1">
                                 @if($backup->status === \App\Enums\BackupStatus::Completed)
-                                    <button wire:click="downloadBackup({{ $backup->id }})"
-                                        class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:text-accent-600 hover:border-accent-300 transition"
-                                        title="{{ __('Download') }}">
-                                        <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                                    <x-ui.button size="xs" variant="secondary" wire:click="downloadBackup({{ $backup->id }})">
+                                        <x-icons.download class="h-3.5 w-3.5" aria-hidden="true" />
                                         {{ __('Download') }}
-                                    </button>
-                                    <button wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })"
-                                        class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:text-accent-600 hover:border-accent-300 transition"
-                                        title="{{ __('Restore') }}">
-                                        <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    </x-ui.button>
+                                    <x-ui.button size="xs" variant="secondary" wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })">
+                                        <x-icons.refresh-cw class="h-3.5 w-3.5" aria-hidden="true" />
                                         {{ __('Restore') }}
-                                    </button>
-                                    <button wire:click="toggleLock({{ $backup->id }})"
-                                        class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600 hover:text-accent-600 hover:border-accent-300 transition"
-                                        title="{{ $backup->is_locked ? __('Unlock') : __('Lock') }}">
+                                    </x-ui.button>
+                                    <x-ui.button size="xs" variant="secondary" wire:click="toggleLock({{ $backup->id }})">
                                         @if($backup->is_locked)
-                                            <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                            <x-icons.lock class="h-3.5 w-3.5" aria-hidden="true" />
                                             {{ __('Unlock') }}
                                         @else
-                                            <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                                            <x-icons.unlock class="h-3.5 w-3.5" aria-hidden="true" />
                                             {{ __('Lock') }}
                                         @endif
-                                    </button>
+                                    </x-ui.button>
                                 @endif
-                                <button wire:click="deleteBackup({{ $backup->id }})"
-                                    wire:confirm="{{ __('Are you sure you want to delete this backup? This cannot be undone.') }}"
-                                    class="inline-flex items-center gap-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-red-500 hover:text-red-700 hover:border-red-300 transition"
-                                    title="{{ __('Delete') }}">
-                                    <svg aria-hidden="true" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                <x-ui.button size="xs" variant="danger"
+                                    wire:click="deleteBackup({{ $backup->id }})"
+                                    wire:confirm="{{ __('Are you sure you want to delete this backup? This cannot be undone.') }}">
+                                    <x-icons.trash class="h-3.5 w-3.5" aria-hidden="true" />
                                     {{ __('Delete') }}
-                                </button>
+                                </x-ui.button>
                             </div>
 
                             {{-- Inline notes --}}
@@ -681,32 +655,11 @@
                                 <td class="px-3 py-3 text-right">
                                     <div class="flex items-center justify-end gap-1">
                                         @if($backup->status === \App\Enums\BackupStatus::Completed)
-                                            <button wire:click="downloadBackup({{ $backup->id }})"
-                                                class="rounded p-1 text-gray-400 hover:text-accent-600 hover:bg-accent-50"
-                                                title="{{ __('Download') }}">
-                                                <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                                            </button>
-                                            <button wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })"
-                                                class="rounded p-1 text-gray-400 hover:text-accent-600 hover:bg-accent-50"
-                                                title="{{ __('Restore') }}">
-                                                <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                                            </button>
-                                            <button wire:click="toggleLock({{ $backup->id }})"
-                                                class="rounded p-1 text-gray-400 hover:text-accent-600 hover:bg-accent-50"
-                                                title="{{ $backup->is_locked ? __('Unlock') : __('Lock') }}">
-                                                @if($backup->is_locked)
-                                                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                                @else
-                                                    <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
-                                                @endif
-                                            </button>
+                                            <x-ui.icon-button icon="download" :label="__('Download')" wire:click="downloadBackup({{ $backup->id }})" />
+                                            <x-ui.icon-button icon="refresh-cw" :label="__('Restore')" wire:click="$dispatch('open-restore-confirmation', { backupId: {{ $backup->id }} })" />
+                                            <x-ui.icon-button :icon="$backup->is_locked ? 'lock' : 'unlock'" :label="$backup->is_locked ? __('Unlock') : __('Lock')" wire:click="toggleLock({{ $backup->id }})" />
                                         @endif
-                                        <button wire:click="deleteBackup({{ $backup->id }})"
-                                            wire:confirm="{{ __('Are you sure you want to delete this backup? This cannot be undone.') }}"
-                                            class="rounded p-1 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                                            title="{{ __('Delete') }}">
-                                            <svg aria-hidden="true" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
+                                        <x-ui.icon-button icon="trash" tone="danger" :label="__('Delete')" wire:click="deleteBackup({{ $backup->id }})" wire:confirm="{{ __('Are you sure you want to delete this backup? This cannot be undone.') }}" />
                                     </div>
                                 </td>
                             </tr>

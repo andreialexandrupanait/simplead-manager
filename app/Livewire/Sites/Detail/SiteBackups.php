@@ -89,6 +89,22 @@ class SiteBackups extends Component
         return $this->formatBytes($totalSize);
     }
 
+    /**
+     * How many restore points this site actually has.
+     *
+     * A computed property rather than a query in the view: the storage card used
+     * to run `$site->backups()->where(...)->count()` inline, which is a database
+     * round trip on every Livewire poll — and this page polls every three seconds
+     * while a backup is running.
+     */
+    #[Computed]
+    public function completedBackupCount(): int
+    {
+        return Backup::where('site_id', $this->site->id)
+            ->where('status', 'completed')
+            ->count();
+    }
+
     #[Computed]
     public function estimatedBackupSize(): string
     {
