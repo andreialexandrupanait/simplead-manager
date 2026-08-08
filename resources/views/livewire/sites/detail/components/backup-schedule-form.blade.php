@@ -13,6 +13,9 @@
             </div>
         @endif
 
+        {{-- Two columns, because the alternative is a column of eleven controls
+             that scrolls past its own Save button. Left is when and where the
+             backup runs; right is what goes into it and how long it is kept. --}}
         {{-- Three columns: the schedule on the left, then what is left out of
              the files, then what is left out of the database. The two exclusion
              pickers are the tall things on this form and they sit side by side
@@ -103,6 +106,8 @@
                         <option value="{{ $dest->id }}">{{ $dest->name }} ({{ ucfirst($dest->type) }})</option>
                     @endforeach
                 </x-ui.select>
+            </div>
+
             </div>
 
             {{-- Retention --}}
@@ -297,7 +302,6 @@
                         @endif
                     </div>
                 @endif
-            </div>
             </div>
         </div>
 
