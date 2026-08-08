@@ -130,6 +130,39 @@ class ExclusionsReachTheEngineTest extends TestCase
         $component->call('openTablePicker')->assertSet('tablePickerOpen', true);
     }
 
+    /**
+     * Opening a folder must not carry the whole tree with it.
+     *
+     * The first version held the complete listing in a public Livewire property.
+     * That is component state: three and a half megabytes serialised into every
+     * subsequent request — expanding a folder, ticking a box — which is past
+     * Livewire's one-megabyte payload limit, so the second click on anything
+     * returned a 500. The screen worked exactly once.
+     *
+     * The component now holds only the levels that are open. This asserts the
+     * shape rather than a byte count: what is kept is what was asked for.
+     */
+    public function test_opening_a_folder_keeps_only_that_level(): void
+    {
+        $component = Livewire::actingAs(User::factory()->create(['role' => UserRole::Admin]))
+            ->test(BackupScheduleForm::class, ['site' => $this->site])
+            ->call('openModal')
+            ->call('openPicker');
+
+        $component->call('toggleFolder', 'wp-content');
+        $this->assertContains('wp-content', $component->get('pickerOpenPaths'));
+
+        // The invariant: state holds the root and the folders actually opened,
+        // and nothing else. Never the whole listing.
+        $this->assertEmpty(
+            array_diff(array_keys($component->get('pickerLevels')), ['', ...$component->get('pickerOpenPaths')]),
+            'no level is kept that was not asked for',
+        );
+
+        $component->call('toggleFolder', 'wp-content');
+        $this->assertNotContains('wp-content', $component->get('pickerOpenPaths'), 'and it closes again');
+    }
+
     /** A site that excludes nothing sends no rules at all, rather than an empty list. */
     public function test_a_site_with_no_exclusions_sends_none(): void
     {

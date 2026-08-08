@@ -1,4 +1,4 @@
-<x-ui.modal name="schedule-form" maxWidth="lg">
+<x-ui.modal name="schedule-form" maxWidth="3xl">
     <form wire:submit="save">
         <h2 class="text-lg font-semibold text-gray-900">{{ __('Backup Schedule') }}</h2>
         <p class="mt-1 text-sm text-gray-500">{{ __('Configure automated backups for this site.') }}</p>
@@ -13,7 +13,11 @@
             </div>
         @endif
 
-        <div class="mt-6 space-y-4">
+        {{-- Two columns, because the alternative is a column of eleven controls
+             that scrolls past its own Save button. Left is when and where the
+             backup runs; right is what goes into it and how long it is kept. --}}
+        <div class="mt-6 grid grid-cols-1 gap-x-8 gap-y-4 lg:grid-cols-2">
+            <div class="space-y-4">
             {{-- Enable toggle --}}
             <label class="flex items-center gap-2">
                 <input type="checkbox" wire:model.live="is_enabled" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
@@ -100,6 +104,9 @@
                 </x-ui.select>
             </div>
 
+            </div>
+
+            <div class="space-y-4">
             {{-- What never gets backed up.
                  Chips rather than a textarea: an exclusion list is a set of
                  things, and a set is easier to read, and to take one item out of,
@@ -137,33 +144,45 @@
                         @if($pickerError)
                             <p class="px-3 py-3 text-xs text-gray-600">{{ $pickerError }}</p>
                         @else
-                            {{-- The whole tree is handed over once; only open branches are
-                                 rendered, so a site with forty thousand files costs one
-                                 payload instead of forty thousand rows of DOM. --}}
-                            <div x-data="exclusionTree(@js($pickerTree), @js($this->excludedPaths()))" class="max-h-72 overflow-y-auto py-1">
-                                <template x-for="row in visible()" :key="row.path">
+                            {{-- Server-rendered, one open level at a time. The first
+                                 version kept the whole tree in a Livewire property —
+                                 three and a half megabytes of component state on every
+                                 request, which is over the payload limit, so the second
+                                 click returned a 500. --}}
+                            <div class="max-h-80 overflow-y-auto py-1">
+                                @foreach($this->pickerRows() as $row)
                                     <div class="flex items-center gap-2 px-2 py-1 hover:bg-gray-50"
-                                         :style="`padding-left: ${0.5 + row.depth * 1.1}rem`">
-                                        <button type="button" class="w-3.5 shrink-0 text-gray-400"
-                                                x-show="row.type === 'dir'"
-                                                @click="toggle(row.path)"
-                                                :aria-label="open[row.path] ? '{{ __('Collapse') }}' : '{{ __('Expand') }}'">
-                                            <svg class="h-3.5 w-3.5 transition-transform" :class="open[row.path] && 'rotate-90'"
-                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                                            </svg>
-                                        </button>
-                                        <span class="w-3.5 shrink-0" x-show="row.type !== 'dir'"></span>
+                                         style="padding-left: {{ 0.5 + $row['depth'] * 1.25 }}rem"
+                                         wire:key="pick-{{ $row['path'] }}">
+                                        @if($row['type'] === 'dir')
+                                            <button type="button" wire:click="toggleFolder(@js($row['path']))"
+                                                class="shrink-0 text-gray-400 hover:text-gray-600"
+                                                aria-label="{{ $row['open'] ? __('Collapse') : __('Expand') }}">
+                                                <svg class="h-3.5 w-3.5 transition-transform {{ $row['open'] ? 'rotate-90' : '' }}"
+                                                     fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                                </svg>
+                                            </button>
+                                        @else
+                                            <span class="w-3.5 shrink-0"></span>
+                                        @endif
 
-                                        <input type="checkbox" class="h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-accent-600 focus:ring-accent-500"
-                                               :checked="picked.includes(row.path)"
-                                               @change="$wire.togglePath(row.path); pick(row.path)">
+                                        <input type="checkbox"
+                                               class="h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-accent-600 focus:ring-accent-500"
+                                               wire:click="togglePath(@js($row['path']))"
+                                               @checked(in_array($row['path'], $this->excludedPaths(), true))>
 
-                                        <span class="truncate text-xs" :class="row.type === 'dir' ? 'font-medium text-gray-800' : 'text-gray-600'"
-                                              x-text="row.name" :title="row.path"></span>
-                                        <span class="ml-auto shrink-0 text-[11px] tabular-nums text-gray-500" x-text="row.size"></span>
+                                        @if($row['type'] === 'dir')
+                                            <x-icons.layers class="h-3.5 w-3.5 shrink-0 text-accent-500" aria-hidden="true" />
+                                        @else
+                                            <x-icons.file-text class="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" />
+                                        @endif
+
+                                        <span class="truncate text-xs {{ $row['type'] === 'dir' ? 'font-medium text-gray-800' : 'text-gray-600' }}"
+                                              title="{{ $row['path'] }}">{{ $row['name'] }}</span>
+                                        <span class="ml-auto shrink-0 text-[11px] tabular-nums text-gray-500">{{ $row['size'] }}</span>
                                     </div>
-                                </template>
+                                @endforeach
                             </div>
                         @endif
                     </div>
@@ -276,6 +295,7 @@
                 <input type="checkbox" wire:model="backup_before_updates" class="rounded border-gray-300 text-accent-600 focus:ring-accent-500">
                 <span class="text-sm text-gray-700">{{ __('Create backup before applying updates') }}</span>
             </label>
+            </div>
         </div>
 
         <div class="mt-6 flex items-center justify-end gap-3">

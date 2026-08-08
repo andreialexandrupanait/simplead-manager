@@ -62,8 +62,23 @@ class BackupScheduleForm extends Component
 
     public ?string $pickerError = null;
 
-    /** The whole tree, nested. Alpine renders only the branches that are open. */
-    public array $pickerTree = [];
+    /**
+     * Only the folders that are open, and only their direct children.
+     *
+     * The first version of this held the entire tree in a public property, which
+     * is Livewire state: three and a half megabytes serialised into every request
+     * the component made afterwards, checkbox included. Livewire's payload limit
+     * is one megabyte, so the second click on anything returned a 500.
+     *
+     * Keyed by folder path — '' is the root. It grows with what a person opens
+     * and stops there.
+     *
+     * @var array<string, list<array<string, mixed>>>
+     */
+    public array $pickerLevels = [];
+
+    /** @var list<string> */
+    public array $pickerOpenPaths = [];
 
     /** The table picker, from the site's last database health check. */
     public bool $tablePickerOpen = false;
@@ -91,7 +106,7 @@ class BackupScheduleForm extends Component
     {
         $this->pickerOpen = true;
 
-        if ($this->pickerTree !== [] || $this->pickerLoading) {
+        if ($this->pickerLevels !== [] || $this->pickerLoading) {
             return;
         }
 
@@ -111,7 +126,7 @@ class BackupScheduleForm extends Component
                 return;
             }
 
-            $this->pickerTree = $this->treeFrom(app(BackupBrowserService::class)->listContents($latest)['files']);
+            $this->pickerLevels[''] = $this->childrenOf('');
         } catch (\Throwable $e) {
             $this->pickerError = HumanError::from($e);
         } finally {
@@ -257,87 +272,118 @@ class BackupScheduleForm extends Component
         return $this->linesOf($this->exclude_tables);
     }
 
-    /**
-     * Turn the flat manifest into the tree a person can actually navigate.
-     *
-     * Folders first, then files, each level sorted by name — the order a file
-     * manager uses, because that is the thing this is pretending to be. Folders
-     * carry the total size of everything beneath them, which is what makes the
-     * tree answer "what is making my backup big" on the way to answering "what do
-     * I want to skip".
-     *
-     * The whole tree is built here and handed over once. Only the open branches
-     * are ever rendered, so a site with forty thousand files costs one JSON
-     * payload rather than forty thousand rows of DOM.
-     *
-     * @param  array<int, array{path: string, size: int}>  $files
-     * @return list<array<string, mixed>>
-     */
-    private function treeFrom(array $files): array
+    /** Open or close a folder, fetching its children the first time. */
+    public function toggleFolder(string $path): void
     {
-        $root = [];
+        if (in_array($path, $this->pickerOpenPaths, true)) {
+            $this->pickerOpenPaths = array_values(array_diff($this->pickerOpenPaths, [$path]));
 
-        foreach ($files as $file) {
-            $parts = explode('/', trim((string) $file['path'], '/'));
-            $leaf = array_pop($parts);
-            $node = &$root;
-            $prefix = [];
-
-            foreach ($parts as $segment) {
-                $prefix[] = $segment;
-                $node[$segment] ??= [
-                    'type' => 'dir',
-                    'name' => $segment,
-                    'path' => implode('/', $prefix),
-                    'bytes' => 0,
-                    'children' => [],
-                ];
-                $node[$segment]['bytes'] += (int) $file['size'];
-                $node = &$node[$segment]['children'];
-            }
-
-            $prefix[] = $leaf;
-            $node[$leaf] = [
-                'type' => 'file',
-                'name' => $leaf,
-                'path' => implode('/', $prefix),
-                'bytes' => (int) $file['size'],
-            ];
-            unset($node);
+            return;
         }
 
-        return $this->sortLevel($root);
+        $this->pickerOpenPaths[] = $path;
+
+        if (! array_key_exists($path, $this->pickerLevels)) {
+            $this->pickerLevels[$path] = $this->childrenOf($path);
+        }
     }
 
     /**
-     * Directories before files, each alphabetical — and the size formatted here
-     * rather than in the view, because the view is a template and this is a
-     * decision about what a number means.
+     * What sits directly inside this folder.
      *
-     * @param  array<string, mixed>  $level
+     * One level at a time, on demand. The whole tree is thirty thousand nodes on
+     * a real site and holding it in component state cost three and a half
+     * megabytes on every subsequent request — over Livewire's limit, so the
+     * second click returned a 500.
+     *
+     * The manifest read underneath is cached by BackupBrowserService for thirty
+     * days (a backup's contents never change), so expanding a folder is a cache
+     * hit and a filter, not a trip to storage.
+     *
+     * Directories before files, alphabetical within each — the order a file
+     * manager uses, because that is the thing this is pretending to be. Folders
+     * carry the total size of everything beneath them, which is what turns a
+     * picker into an answer to "what is making my backup this big".
+     *
      * @return list<array<string, mixed>>
      */
-    private function sortLevel(array $level): array
+    private function childrenOf(string $prefix): array
     {
+        /** @var Backup|null $latest */
+        $latest = Backup::where('site_id', $this->site->id)
+            ->where('status', BackupStatus::Completed)
+            ->latest('created_at')
+            ->first();
+
+        if (! $latest instanceof Backup) {
+            return [];
+        }
+
+        $depth = $prefix === '' ? 0 : substr_count($prefix, '/') + 1;
+        $needle = $prefix === '' ? '' : $prefix.'/';
+
         $dirs = [];
         $files = [];
 
-        foreach ($level as $node) {
-            if ($node['type'] === 'dir') {
-                $node['children'] = $this->sortLevel($node['children']);
-                $dirs[] = $node;
-            } else {
-                $files[] = $node;
+        foreach (app(BackupBrowserService::class)->listContents($latest)['files'] as $file) {
+            $path = trim((string) $file['path'], '/');
+
+            if ($needle !== '' && ! str_starts_with($path, $needle)) {
+                continue;
             }
+
+            $parts = explode('/', $path);
+            if (count($parts) <= $depth) {
+                continue;
+            }
+
+            $name = $parts[$depth];
+            $childPath = $needle.$name;
+
+            // A file sits at exactly this depth; anything deeper means a folder.
+            if (count($parts) === $depth + 1) {
+                $files[$name] = ['type' => 'file', 'name' => $name, 'path' => $childPath, 'bytes' => (int) $file['size']];
+
+                continue;
+            }
+
+            $dirs[$name] ??= ['type' => 'dir', 'name' => $name, 'path' => $childPath, 'bytes' => 0];
+            $dirs[$name]['bytes'] += (int) $file['size'];
         }
 
-        usort($dirs, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
-        usort($files, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
+        uksort($dirs, 'strcasecmp');
+        uksort($files, 'strcasecmp');
 
         return array_map(
             fn (array $n) => $n + ['size' => \App\Helpers\FormatHelper::bytes((int) $n['bytes'])],
-            array_merge($dirs, $files),
+            array_merge(array_values($dirs), array_values($files)),
         );
+    }
+
+    /**
+     * The rows on screen: every open folder's children, flattened in order.
+     *
+     * Computed rather than stored, so it is never part of the payload.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function pickerRows(): array
+    {
+        $rows = [];
+
+        $walk = function (string $prefix, int $depth) use (&$walk, &$rows): void {
+            foreach ($this->pickerLevels[$prefix] ?? [] as $node) {
+                $rows[] = $node + ['depth' => $depth, 'open' => in_array($node['path'], $this->pickerOpenPaths, true)];
+
+                if ($node['type'] === 'dir' && in_array($node['path'], $this->pickerOpenPaths, true)) {
+                    $walk($node['path'], $depth + 1);
+                }
+            }
+        };
+
+        $walk('', 0);
+
+        return $rows;
     }
 
     #[On('open-schedule-form')]
