@@ -419,6 +419,61 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
+    /**
+     * The exclusion tree: a whole file listing, rendered one open branch at a time.
+     *
+     * The tree arrives complete and nested, because building it server-side is one
+     * pass over a manifest we already have. What must NOT arrive complete is the
+     * DOM: a WordPress install is tens of thousands of files, and rendering them
+     * all so a person can open two folders is how a modal takes four seconds to
+     * appear and then scrolls badly for the rest of its life.
+     *
+     * So `visible()` walks the tree and emits only what is actually on screen —
+     * every root node, plus the children of folders that are open. One x-for, one
+     * flat list, and the cost is proportional to what you have opened rather than
+     * to what exists.
+     */
+    Alpine.data('exclusionTree', (tree, selected) => ({
+        tree,
+        picked: selected,
+        open: {},
+
+        toggle(path) {
+            this.open[path] = !this.open[path];
+        },
+
+        // Mirrors what the server just did, so the checkbox does not wait for the
+        // round trip to look ticked.
+        pick(path) {
+            const at = this.picked.indexOf(path);
+            at === -1 ? this.picked.push(path) : this.picked.splice(at, 1);
+        },
+
+        visible() {
+            const rows = [];
+
+            const walk = (nodes, depth) => {
+                for (const node of nodes) {
+                    rows.push({
+                        path: node.path,
+                        name: node.name,
+                        type: node.type,
+                        size: node.size,
+                        depth,
+                    });
+
+                    if (node.type === 'dir' && this.open[node.path]) {
+                        walk(node.children || [], depth + 1);
+                    }
+                }
+            };
+
+            walk(this.tree, 0);
+
+            return rows;
+        },
+    }));
+
     Alpine.data('hovercard', (opts = {}) => ({
         open: false,
         panelEl: null,

@@ -51,33 +51,27 @@ class BackupScheduleForm extends Component
 
     public string $exclude_tables = '';
 
-    /** The folder picker: closed until asked for, because it reads a manifest out of storage. */
+    public bool $enable_incremental = false;
+
+    public ?int $full_backup_day_of_week = 0;
+
+    /** The file picker: closed until asked for, because it reads a manifest out of storage. */
     public bool $pickerOpen = false;
 
     public bool $pickerLoading = false;
 
     public ?string $pickerError = null;
 
-    /** @var list<array{path: string, name: string, depth: int, bytes: int, files: int}> */
-    public array $pickerFolders = [];
+    /** The whole tree, nested. Alpine renders only the branches that are open. */
+    public array $pickerTree = [];
 
-    public bool $enable_incremental = false;
+    /** The table picker, from the site's last database health check. */
+    public bool $tablePickerOpen = false;
 
-    public ?int $full_backup_day_of_week = 0;
+    public ?string $tablePickerError = null;
 
-    /**
-     * A textarea into the list the database keeps.
-     *
-     * Blank lines and stray whitespace are what people actually type; the plugin
-     * would treat an empty pattern as a rule matching nothing useful, so they are
-     * dropped here rather than stored and shipped to thirty sites.
-     *
-     * @return list<string>
-     */
-    private function linesOf(string $text): array
-    {
-        return array_values(array_filter(array_map('trim', preg_split('/\R/', $text) ?: [])));
-    }
+    /** @var list<array{name: string, bytes: int, rows: int, core: bool}> */
+    public array $pickerTables = [];
 
     /**
      * Let a person pick the folder instead of typing a path from memory.
@@ -117,7 +111,7 @@ class BackupScheduleForm extends Component
                 return;
             }
 
-            $this->pickerFolders = $this->foldersFrom(app(BackupBrowserService::class)->listContents($latest)['files']);
+            $this->pickerTree = $this->treeFrom(app(BackupBrowserService::class)->listContents($latest)['files']);
         } catch (\Throwable $e) {
             $this->pickerError = HumanError::from($e);
         } finally {
@@ -125,74 +119,225 @@ class BackupScheduleForm extends Component
         }
     }
 
+    /**
+     * The site's tables, so a person can tick one instead of spelling it.
+     *
+     * Read from the last database health check rather than asked for live: that
+     * check already runs on a schedule, already carries every table with its size
+     * and row count, and asking again would be a request to a client's site for
+     * something we were told an hour ago.
+     *
+     * Core tables are marked, not hidden. Excluding wp_posts is almost always a
+     * mistake, and the honest way to prevent it is to say which ones the site
+     * needs to run — not to remove them from the list and leave someone wondering
+     * where they went.
+     */
+    public function openTablePicker(): void
+    {
+        $this->tablePickerOpen = true;
+
+        if ($this->pickerTables !== []) {
+            return;
+        }
+
+        $check = \App\Models\DatabaseHealthCheck::where('site_id', $this->site->id)
+            ->latest('checked_at')
+            ->first();
+
+        if ($check === null) {
+            $this->tablePickerError = __('No database check has run for this site yet, so there is no table list to choose from.');
+
+            return;
+        }
+
+        $core = [
+            'commentmeta', 'comments', 'links', 'options', 'postmeta', 'posts',
+            'termmeta', 'terms', 'term_relationships', 'term_taxonomy',
+            'usermeta', 'users',
+        ];
+
+        $rows = [];
+        foreach ((array) ($check->tables_data ?? []) as $table) {
+            $name = (string) ($table['name'] ?? '');
+            if ($name === '') {
+                continue;
+            }
+
+            // The prefix is the site's, so match on the tail rather than assuming wp_.
+            $isCore = false;
+            foreach ($core as $suffix) {
+                if (str_ends_with($name, '_'.$suffix) || $name === 'wp_'.$suffix) {
+                    $isCore = true;
+                    break;
+                }
+            }
+
+            $rows[] = [
+                'name' => $name,
+                'bytes' => (int) (($table['data_size'] ?? 0) + ($table['index_size'] ?? 0)),
+                'rows' => (int) ($table['rows'] ?? 0),
+                'core' => $isCore,
+            ];
+        }
+
+        usort($rows, fn (array $a, array $b) => $b['bytes'] <=> $a['bytes']);
+
+        $this->pickerTables = array_map(
+            fn (array $r) => $r + ['size' => \App\Helpers\FormatHelper::bytes($r['bytes'])],
+            $rows,
+        );
+    }
+
+    public function closeTablePicker(): void
+    {
+        $this->tablePickerOpen = false;
+    }
+
+    /** Add or remove a table from the skip list. */
+    public function toggleTable(string $name): void
+    {
+        $current = $this->linesOf($this->exclude_tables);
+        $current = in_array($name, $current, true)
+            ? array_values(array_diff($current, [$name]))
+            : [...$current, $name];
+
+        $this->exclude_tables = implode("\n", $current);
+    }
+
     public function closePicker(): void
     {
         $this->pickerOpen = false;
     }
 
-    /**
-     * Add a folder to the skip list, without duplicating it.
-     */
-    public function excludeFolder(string $path): void
+    /** Tick or untick a path in the skip list. */
+    public function togglePath(string $path): void
     {
         $current = $this->linesOf($this->exclude_paths);
-
-        if (! in_array($path, $current, true)) {
-            $current[] = $path;
-        }
+        $current = in_array($path, $current, true)
+            ? array_values(array_diff($current, [$path]))
+            : [...$current, $path];
 
         $this->exclude_paths = implode("\n", $current);
     }
 
+    /** Remove one entry, for the × on a chip. */
+    public function removePath(string $path): void
+    {
+        $this->exclude_paths = implode("\n", array_values(array_diff($this->linesOf($this->exclude_paths), [$path])));
+    }
+
+    public function removeTable(string $name): void
+    {
+        $this->exclude_tables = implode("\n", array_values(array_diff($this->linesOf($this->exclude_tables), [$name])));
+    }
+
     /**
-     * Roll a flat file list up into folders worth showing.
+     * A textarea, or a chip list, into the list the database keeps.
      *
-     * Capped at three levels: deeper than that is a file browser, and the point
-     * here is to choose something to skip, not to explore. Folders smaller than a
-     * megabyte are dropped for the same reason — excluding them saves nothing and
-     * they would bury the ones that matter.
+     * Blank lines and stray whitespace are what people actually type; an empty
+     * pattern is not a rule, and shipping one to thirty sites is worse than
+     * dropping it here.
+     *
+     * @return list<string>
+     */
+    private function linesOf(string $text): array
+    {
+        return array_values(array_filter(array_map('trim', preg_split('/\R/', $text) ?: [])));
+    }
+
+    /** @return list<string> */
+    public function excludedPaths(): array
+    {
+        return $this->linesOf($this->exclude_paths);
+    }
+
+    /** @return list<string> */
+    public function excludedTables(): array
+    {
+        return $this->linesOf($this->exclude_tables);
+    }
+
+    /**
+     * Turn the flat manifest into the tree a person can actually navigate.
+     *
+     * Folders first, then files, each level sorted by name — the order a file
+     * manager uses, because that is the thing this is pretending to be. Folders
+     * carry the total size of everything beneath them, which is what makes the
+     * tree answer "what is making my backup big" on the way to answering "what do
+     * I want to skip".
+     *
+     * The whole tree is built here and handed over once. Only the open branches
+     * are ever rendered, so a site with forty thousand files costs one JSON
+     * payload rather than forty thousand rows of DOM.
      *
      * @param  array<int, array{path: string, size: int}>  $files
-     * @return list<array{path: string, name: string, depth: int, bytes: int, files: int}>
+     * @return list<array<string, mixed>>
      */
-    private function foldersFrom(array $files): array
+    private function treeFrom(array $files): array
     {
-        $folders = [];
+        $root = [];
 
         foreach ($files as $file) {
-            $parts = explode('/', (string) $file['path']);
-            array_pop($parts); // the file itself
-
+            $parts = explode('/', trim((string) $file['path'], '/'));
+            $leaf = array_pop($parts);
+            $node = &$root;
             $prefix = [];
-            foreach (array_slice($parts, 0, 3) as $segment) {
+
+            foreach ($parts as $segment) {
                 $prefix[] = $segment;
-                $path = implode('/', $prefix);
-
-                $folders[$path] ??= ['bytes' => 0, 'files' => 0];
-                $folders[$path]['bytes'] += (int) $file['size'];
-                $folders[$path]['files']++;
-            }
-        }
-
-        $rows = [];
-        foreach ($folders as $path => $totals) {
-            if ($totals['bytes'] < 1048576) {
-                continue;
+                $node[$segment] ??= [
+                    'type' => 'dir',
+                    'name' => $segment,
+                    'path' => implode('/', $prefix),
+                    'bytes' => 0,
+                    'children' => [],
+                ];
+                $node[$segment]['bytes'] += (int) $file['size'];
+                $node = &$node[$segment]['children'];
             }
 
-            $segments = explode('/', $path);
-            $rows[] = [
-                'path' => $path,
-                'name' => end($segments),
-                'depth' => count($segments) - 1,
-                'bytes' => $totals['bytes'],
-                'files' => $totals['files'],
+            $prefix[] = $leaf;
+            $node[$leaf] = [
+                'type' => 'file',
+                'name' => $leaf,
+                'path' => implode('/', $prefix),
+                'bytes' => (int) $file['size'],
             ];
+            unset($node);
         }
 
-        usort($rows, fn (array $a, array $b) => strcmp($a['path'], $b['path']));
+        return $this->sortLevel($root);
+    }
 
-        return $rows;
+    /**
+     * Directories before files, each alphabetical — and the size formatted here
+     * rather than in the view, because the view is a template and this is a
+     * decision about what a number means.
+     *
+     * @param  array<string, mixed>  $level
+     * @return list<array<string, mixed>>
+     */
+    private function sortLevel(array $level): array
+    {
+        $dirs = [];
+        $files = [];
+
+        foreach ($level as $node) {
+            if ($node['type'] === 'dir') {
+                $node['children'] = $this->sortLevel($node['children']);
+                $dirs[] = $node;
+            } else {
+                $files[] = $node;
+            }
+        }
+
+        usort($dirs, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
+        usort($files, fn (array $a, array $b) => strcasecmp($a['name'], $b['name']));
+
+        return array_map(
+            fn (array $n) => $n + ['size' => \App\Helpers\FormatHelper::bytes((int) $n['bytes'])],
+            array_merge($dirs, $files),
+        );
     }
 
     #[On('open-schedule-form')]

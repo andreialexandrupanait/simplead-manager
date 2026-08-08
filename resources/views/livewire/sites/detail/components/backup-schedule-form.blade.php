@@ -100,85 +100,133 @@
                 </x-ui.select>
             </div>
 
-            {{-- What never gets backed up. The engine has always had a full
-                 exclusion system — folders, globs, extensions, size and age
-                 bounds — and nothing had ever sent it a rule. --}}
+            {{-- What never gets backed up.
+                 Chips rather than a textarea: an exclusion list is a set of
+                 things, and a set is easier to read, and to take one item out of,
+                 than a block of text you have to find the right line in. --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700">
-                    {{ __('Skip these files and folders') }}
-                    <span class="text-xs text-gray-500">({{ __('optional, one per line') }})</span>
-                </label>
-                <textarea
-                    wire:model="exclude_paths"
-                    rows="3"
-                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500"
-                    placeholder="wp-content/cache&#10;wp-content/uploads/backups&#10;**/*.log"
-                ></textarea>
-                @error('exclude_paths') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                <div class="mt-2 flex items-center gap-3">
-                    <p class="text-xs text-gray-500">
-                        {{ __('A folder skips everything under it. Wildcards work: * within one segment, ** across folders.') }}
-                    </p>
-                    @unless($pickerOpen)
-                        <button type="button" wire:click="openPicker" wire:loading.attr="disabled" wire:target="openPicker"
-                            class="shrink-0 text-xs font-medium text-accent-600 hover:text-accent-700 underline">
-                            <span wire:loading.remove wire:target="openPicker">{{ __('Browse folders') }}</span>
-                            <span wire:loading wire:target="openPicker">{{ __('Reading…') }}</span>
-                        </button>
-                    @endunless
+                <label class="block text-sm font-medium text-gray-700">{{ __('Skip these files and folders') }}</label>
+
+                <div class="mt-1 min-h-[2.5rem] rounded-lg border border-gray-300 bg-white p-2">
+                    @forelse($this->excludedPaths() as $path)
+                        <span class="mr-1 mb-1 inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                            <x-icons.file-text class="h-3 w-3 text-gray-400" aria-hidden="true" />
+                            {{ $path }}
+                            <button type="button" wire:click="removePath(@js($path))" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove :path', ['path' => $path]) }}">×</button>
+                        </span>
+                    @empty
+                        <span class="text-xs text-gray-500">{{ __('Everything is backed up.') }}</span>
+                    @endforelse
                 </div>
 
-                {{-- The folders in the last backup, biggest cost first. This is a
-                     picker and an answer at once: the thing you most want to skip
-                     is usually the thing you did not know was in there. --}}
+                <div class="mt-2 flex items-center gap-3">
+                    <x-ui.button type="button" size="xs" variant="secondary" wire:click="openPicker" wire:loading.attr="disabled" wire:target="openPicker">
+                        <span wire:loading.remove wire:target="openPicker">{{ __('Choose files and folders') }}</span>
+                        <span wire:loading wire:target="openPicker">{{ __('Reading…') }}</span>
+                    </x-ui.button>
+                    <p class="text-xs text-gray-500">{{ __('A folder skips everything under it.') }}</p>
+                </div>
+
                 @if($pickerOpen)
-                    <div class="mt-2 rounded-lg border border-gray-200 bg-gray-50">
-                        <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2">
-                            <span class="text-xs font-medium text-gray-700">{{ __('Folders in the last backup') }}</span>
+                    <div class="mt-2 rounded-lg border border-gray-200">
+                        <div class="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-3 py-2">
+                            <span class="text-xs font-medium text-gray-700">{{ __('Files in the last backup') }}</span>
                             <button type="button" wire:click="closePicker" class="text-xs text-gray-500 hover:text-gray-700">{{ __('Close') }}</button>
                         </div>
 
                         @if($pickerError)
                             <p class="px-3 py-3 text-xs text-gray-600">{{ $pickerError }}</p>
-                        @elseif($pickerFolders === [])
-                            <x-ui.empty-state compact :title="__('No folders over 1 MB.')" />
                         @else
-                            <div class="max-h-56 overflow-y-auto py-1">
-                                @foreach($pickerFolders as $folder)
-                                    <div class="flex items-center gap-2 px-3 py-1 hover:bg-white"
-                                        style="padding-left: {{ 0.75 + $folder['depth'] * 0.9 }}rem">
-                                        <button type="button"
-                                            wire:click="excludeFolder(@js($folder['path']))"
-                                            class="shrink-0 rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-600 hover:border-accent-400 hover:text-accent-700">
-                                            {{ __('Skip') }}
+                            {{-- The whole tree is handed over once; only open branches are
+                                 rendered, so a site with forty thousand files costs one
+                                 payload instead of forty thousand rows of DOM. --}}
+                            <div x-data="exclusionTree(@js($pickerTree), @js($this->excludedPaths()))" class="max-h-72 overflow-y-auto py-1">
+                                <template x-for="row in visible()" :key="row.path">
+                                    <div class="flex items-center gap-2 px-2 py-1 hover:bg-gray-50"
+                                         :style="`padding-left: ${0.5 + row.depth * 1.1}rem`">
+                                        <button type="button" class="w-3.5 shrink-0 text-gray-400"
+                                                x-show="row.type === 'dir'"
+                                                @click="toggle(row.path)"
+                                                :aria-label="open[row.path] ? '{{ __('Collapse') }}' : '{{ __('Expand') }}'">
+                                            <svg class="h-3.5 w-3.5 transition-transform" :class="open[row.path] && 'rotate-90'"
+                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                            </svg>
                                         </button>
-                                        <span class="truncate text-xs text-gray-700" title="{{ $folder['path'] }}">{{ $folder['name'] }}</span>
-                                        <span class="ml-auto shrink-0 text-[11px] tabular-nums text-gray-500">
-                                            {{ \App\Helpers\FormatHelper::bytes($folder['bytes']) }}
-                                        </span>
+                                        <span class="w-3.5 shrink-0" x-show="row.type !== 'dir'"></span>
+
+                                        <input type="checkbox" class="h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-accent-600 focus:ring-accent-500"
+                                               :checked="picked.includes(row.path)"
+                                               @change="$wire.togglePath(row.path); pick(row.path)">
+
+                                        <span class="truncate text-xs" :class="row.type === 'dir' ? 'font-medium text-gray-800' : 'text-gray-600'"
+                                              x-text="row.name" :title="row.path"></span>
+                                        <span class="ml-auto shrink-0 text-[11px] tabular-nums text-gray-500" x-text="row.size"></span>
                                     </div>
-                                @endforeach
+                                </template>
                             </div>
                         @endif
                     </div>
                 @endif
             </div>
 
+            {{-- Database tables --}}
             <div>
-                <label class="block text-sm font-medium text-gray-700">
-                    {{ __('Skip these database tables') }}
-                    <span class="text-xs text-gray-500">({{ __('optional, one per line') }})</span>
-                </label>
-                <textarea
-                    wire:model="exclude_tables"
-                    rows="2"
-                    class="mt-1 block w-full rounded-lg border-gray-300 text-sm focus:border-accent-500 focus:ring-accent-500"
-                    placeholder="wp_actionscheduler_logs&#10;wp_wfhits"
-                ></textarea>
-                @error('exclude_tables') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                <p class="mt-1 text-xs text-gray-500">
-                    {{ __('Full table names. A skipped table is absent from the restore, so leave anything the site needs to run.') }}
-                </p>
+                <label class="block text-sm font-medium text-gray-700">{{ __('Skip these database tables') }}</label>
+
+                <div class="mt-1 min-h-[2.5rem] rounded-lg border border-gray-300 bg-white p-2">
+                    @forelse($this->excludedTables() as $table)
+                        <span class="mr-1 mb-1 inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-700">
+                            <x-icons.database class="h-3 w-3 text-gray-400" aria-hidden="true" />
+                            {{ $table }}
+                            <button type="button" wire:click="removeTable(@js($table))" class="text-gray-400 hover:text-red-600" aria-label="{{ __('Remove :table', ['table' => $table]) }}">×</button>
+                        </span>
+                    @empty
+                        <span class="text-xs text-gray-500">{{ __('The whole database is backed up.') }}</span>
+                    @endforelse
+                </div>
+
+                <div class="mt-2 flex items-center gap-3">
+                    <x-ui.button type="button" size="xs" variant="secondary" wire:click="openTablePicker">
+                        {{ __('Choose tables') }}
+                    </x-ui.button>
+                    <p class="text-xs text-gray-500">{{ __('A skipped table is absent from the restore.') }}</p>
+                </div>
+
+                @if($tablePickerOpen)
+                    <div class="mt-2 rounded-lg border border-gray-200">
+                        <div class="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-3 py-2">
+                            <span class="text-xs font-medium text-gray-700">{{ __('Tables on this site') }}</span>
+                            <button type="button" wire:click="closeTablePicker" class="text-xs text-gray-500 hover:text-gray-700">{{ __('Close') }}</button>
+                        </div>
+
+                        @if($tablePickerError)
+                            <p class="px-3 py-3 text-xs text-gray-600">{{ $tablePickerError }}</p>
+                        @else
+                            <div x-data="{ q: '' }">
+                                <div class="border-b border-gray-100 px-3 py-2">
+                                    <input type="search" x-model="q" placeholder="{{ __('Search by table name') }}"
+                                           class="w-full rounded border-gray-300 text-xs focus:border-accent-500 focus:ring-accent-500">
+                                </div>
+                                <div class="max-h-64 overflow-y-auto py-1">
+                                    @foreach($pickerTables as $table)
+                                        <label class="flex items-center gap-2 px-3 py-1 hover:bg-gray-50"
+                                               x-show="q === '' || '{{ $table['name'] }}'.toLowerCase().includes(q.toLowerCase())">
+                                            <input type="checkbox" class="h-3.5 w-3.5 shrink-0 rounded border-gray-300 text-accent-600 focus:ring-accent-500"
+                                                   wire:click="toggleTable(@js($table['name']))"
+                                                   @checked(in_array($table['name'], $this->excludedTables(), true))>
+                                            <span class="truncate text-xs text-gray-700">{{ $table['name'] }}</span>
+                                            @if($table['core'])
+                                                <x-ui.badge variant="gray">{{ __('core') }}</x-ui.badge>
+                                            @endif
+                                            <span class="ml-auto shrink-0 text-[11px] tabular-nums text-gray-500">{{ $table['size'] }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             {{-- Retention --}}
