@@ -112,7 +112,6 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
             ]);
 
             $this->recordOnBackup($session, $key, $result['bytes']);
-            $this->pruneOlderPackages($s3, $session);
         } catch (Throwable $e) {
             $this->recordFailure($session, $e->getMessage());
 
@@ -143,48 +142,6 @@ class BuildPortablePackageJob implements ShouldBeUnique, ShouldQueue
             'error' => $outcome['ok'] ? null : $outcome['message'],
             'verified_at' => $outcome['ok'] ? now() : null,
         ]);
-    }
-
-    /**
-     * Drop the site's older packages, newest first, down to the configured count.
-     *
-     * Packages do not deduplicate against each other the way the engine's own objects do — each one
-     * is a whole separate copy of the site. Keeping one per site is the difference between a fixed
-     * cost and a second bucket that grows as fast as the first.
-     */
-    private function pruneOlderPackages(S3ClientFactory $s3, BackupSession $session): void
-    {
-        $keep = max(1, (int) config('backup_v2.portable.keep_per_site', 1));
-
-        /** @var list<BackupSession> $withPackages */
-        $withPackages = BackupSession::query()
-            ->where('site_id', $session->site_id)
-            ->whereNotNull('checkpoint')
-            ->orderByDesc('id')
-            ->get()
-            ->filter(fn (BackupSession $s): bool => ! empty($s->checkpoint['portable_key'] ?? null))
-            ->values()
-            ->all();
-
-        foreach (array_slice($withPackages, $keep) as $stale) {
-            $staleKey = (string) $stale->checkpoint['portable_key'];
-
-            try {
-                $s3->client()->deleteObject(['Bucket' => $s3->bucket(), 'Key' => $staleKey]);
-            } catch (Throwable $e) {
-                // Leaving a package behind costs storage; failing the build over it would cost the
-                // fresh package that is already verified and uploaded.
-                Log::warning("BuildPortablePackageJob: could not remove the old package {$staleKey}: {$e->getMessage()}");
-
-                continue;
-            }
-
-            $checkpoint = $stale->checkpoint ?? [];
-            unset($checkpoint['portable_key'], $checkpoint['portable_bytes'], $checkpoint['portable_built_at']);
-            $stale->newQuery()->whereKey($stale->getKey())->toBase()->update([
-                'checkpoint' => json_encode($checkpoint),
-            ]);
-        }
     }
 
     private function recordOnBackup(BackupSession $session, string $key, int $bytes): void

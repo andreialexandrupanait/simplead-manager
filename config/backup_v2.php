@@ -112,13 +112,17 @@ return [
     | completes — it reads only from storage, so it never touches the client's site.
     |
     | Packages do NOT deduplicate against each other the way the engine's own
-    | objects do: each is a whole separate copy of the site. Keeping one per site
-    | is the difference between a fixed cost and a second bucket that grows as
-    | fast as the first. Older restore points can still be packaged on demand.
+    | objects do: each is a whole separate copy of the site. That is a real cost,
+    | and it buys a real thing — every restore point in the history downloads
+    | immediately instead of the newest one downloading and the rest queueing a
+    | multi-minute rebuild behind a message.
+    |
+    | There is no separate pruning knob, because there is no separate lifetime.
+    | The package is written under its own session's object prefix, so when
+    | retention removes that restore point it removes the package with it. One
+    | package per restore point, kept exactly as long as the restore point is.
     */
-    'portable' => [
-        'keep_per_site' => (int) env('BACKUP_ENGINE_V2_PORTABLE_KEEP', 1),
-    ],
+    'portable' => [],
 
     // Where work that does not fit in memory gets staged.
     //

@@ -38,7 +38,6 @@ class BackupHealthService
      *   reasons: array<int, string>,
      *   last_backup_at: \Illuminate\Support\Carbon|null,
      *   last_status: string|null,
-     *   replica_count: int,
      * }
      */
     public function scoreForSite(Site $site): array
@@ -115,15 +114,11 @@ class BackupHealthService
             $reasons[] = 'most recent backup attempt failed';
         }
 
-        // Single-replica penalty (only if site has any backup at all and no secondary configured)
-        if ($latestCompleted) {
-            $replicaCount = is_array($latestCompleted->replicas) ? count($latestCompleted->replicas) : 0;
-            $secondaryConfigured = (bool) $config?->secondary_storage_destination_id;
-            if ($replicaCount < 2 && ! $secondaryConfigured) {
-                $score = (int) max(0, $score - 10);
-                $reasons[] = 'single destination only (no off-site replica)';
-            }
-        }
+        // A single-replica penalty used to sit here, docking every site ten points
+        // for having one copy. Replicas were the retired engine's feature: it
+        // dispatched a job to copy each archive to a second destination. Nothing
+        // writes them now, so the penalty applied to every site on the fleet,
+        // permanently, for a condition none of them could leave.
 
         $score = (int) max(0, min(100, $score));
 
@@ -133,9 +128,6 @@ class BackupHealthService
             'reasons' => $reasons,
             'last_backup_at' => $latestCompleted?->completed_at,
             'last_status' => $latestAttempt?->status->value,
-            'replica_count' => $latestCompleted
-                ? (is_array($latestCompleted->replicas) ? count($latestCompleted->replicas) : 0)
-                : 0,
         ];
     }
 
@@ -207,7 +199,7 @@ class BackupHealthService
     }
 
     /**
-     * @return array{score: null, status: string, reasons: array<int, string>, last_backup_at: null, last_status: null, replica_count: int}
+     * @return array{score: null, status: string, reasons: array<int, string>, last_backup_at: null, last_status: null}
      */
     private function unconfigured(): array
     {
@@ -217,7 +209,6 @@ class BackupHealthService
             'reasons' => ['no backup config and no backup history'],
             'last_backup_at' => null,
             'last_status' => null,
-            'replica_count' => 0,
         ];
     }
 }

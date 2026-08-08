@@ -114,33 +114,38 @@ class PortablePackageJobTest extends TestCase
         $this->assertGreaterThan(0, (int) ($verification->checks['database']['table_count'] ?? 0));
     }
 
-    public function test_only_the_newest_packages_are_kept(): void
+    /**
+     * Every restore point keeps its own downloadable package.
+     *
+     * One per site was kept, so building a new package deleted the previous one —
+     * and left `notes` on that older backup still saying "Portable package ready".
+     * Every row in the history advertised a download that no longer existed, and
+     * pressing it quietly queued a rebuild while the screen said nothing had
+     * happened.
+     *
+     * There is no separate lifetime to manage: the package is written under its
+     * own session's object prefix, so retention removes it with the restore point
+     * it belongs to.
+     */
+    public function test_an_older_package_survives_a_newer_build(): void
     {
-        config(['backup_v2.portable.keep_per_site' => 1]);
-
         $older = $this->sessionWithBackup();
-        $this->writeBackup($older, ['index.php' => 'old'], $this->realisticDump("CREATE TABLE `wp_a` (id int);\nINSERT INTO `wp_a` VALUES (1);\n"));
+        $this->writeBackup($older, ['index.php' => '<?php'], $this->realisticDump("CREATE TABLE `wp_a` (id int);\n"));
         (new BuildPortablePackageJob((int) $older->id))->handle();
-        $olderKey = (string) $older->fresh()->checkpoint['portable_key'];
-        $this->assertTrue($this->objectExists($olderKey));
+
+        $olderKey = $older->fresh()->checkpoint['portable_key'] ?? null;
+        $this->assertNotNull($olderKey, 'the first package was built');
 
         $newer = $this->sessionWithBackup();
-        $this->writeBackup($newer, ['index.php' => 'new'], $this->realisticDump("CREATE TABLE `wp_a` (id int);\nINSERT INTO `wp_a` VALUES (1);\n"));
+        $this->writeBackup($newer, ['index.php' => '<?php'], $this->realisticDump("CREATE TABLE `wp_a` (id int);\n"));
         (new BuildPortablePackageJob((int) $newer->id))->handle();
 
-        $this->assertTrue(
-            $this->objectExists((string) $newer->fresh()->checkpoint['portable_key']),
-            'the newest restore point keeps its package',
+        $this->assertSame(
+            $olderKey,
+            $older->fresh()->checkpoint['portable_key'] ?? null,
+            'the older package is still downloadable',
         );
-        $this->assertFalse(
-            $this->objectExists($olderKey),
-            'the previous package is reclaimed — each one is a whole extra copy of the site',
-        );
-        $this->assertArrayNotHasKey(
-            'portable_key',
-            (array) $older->fresh()->checkpoint,
-            'and the session stops advertising a package that is gone',
-        );
+        $this->assertTrue($this->objectExists($olderKey), 'and still in storage');
     }
 
     // ── fixture ──────────────────────────────────────────────────────────

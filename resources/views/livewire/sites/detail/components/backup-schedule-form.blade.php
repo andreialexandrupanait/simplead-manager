@@ -100,19 +100,6 @@
                 </x-ui.select>
             </div>
 
-            {{-- Secondary destination (3-2-1 redundancy) --}}
-            <div>
-                <label class="block text-sm font-medium text-gray-700">{{ __('Secondary Storage') }} <span class="text-xs text-gray-400">({{ __('optional, off-site replica') }})</span></label>
-                <x-ui.select wire:model="secondary_storage_destination_id" class="mt-1">
-                    <option value="">{{ __('None — single copy only') }}</option>
-                    @foreach($this->storageDestinations as $dest)
-                        <option value="{{ $dest->id }}">{{ $dest->name }} ({{ ucfirst($dest->type) }})</option>
-                    @endforeach
-                </x-ui.select>
-                @error('secondary_storage_destination_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                <p class="mt-1 text-xs text-gray-400">{{ __('Each backup is also copied here after the primary upload completes. Choose a different provider for true off-site safety.') }}</p>
-            </div>
-
             {{-- Streaming pipeline (multipart-v3) --}}
             <div class="rounded-lg border border-gray-200 p-3 bg-gray-50">
                 <label class="flex items-start gap-2 cursor-pointer">
