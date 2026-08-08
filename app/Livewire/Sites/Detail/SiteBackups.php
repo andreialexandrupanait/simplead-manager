@@ -105,18 +105,35 @@ class SiteBackups extends Component
             ->count();
     }
 
+    /**
+     * How big the next backup will be.
+     *
+     * This guessed: database size plus uploads size, times a 0.6 compression
+     * factor. Both of those come from the connector's inventory and are null on
+     * plenty of sites, so a site with two dozen real backups averaging 450 MB was
+     * told "A full backup is about < 1 MB" — an estimate contradicted by the
+     * table directly beneath it.
+     *
+     * The last completed backup is not an estimate at all. It is the measurement,
+     * of this site, on this storage, through this engine. The guess survives only
+     * for a site that has never backed up, which is the one case where there is
+     * nothing better.
+     */
     #[Computed]
     public function estimatedBackupSize(): string
     {
-        $dbMb = (float) ($this->site->db_size_mb ?? 0);
-        $uploadsMb = (float) ($this->site->uploads_size_mb ?? 0);
-        $totalMb = ($dbMb + $uploadsMb) * 0.6; // ~60% compression factor
+        $lastBytes = (int) Backup::where('site_id', $this->site->id)
+            ->where('status', 'completed')
+            ->orderByDesc('created_at')
+            ->value('file_size');
 
-        if ($totalMb < 1) {
-            return '< 1 MB';
+        if ($lastBytes > 0) {
+            return $this->formatBytes($lastBytes);
         }
 
-        return round($totalMb, 1).' MB';
+        $totalMb = ((float) ($this->site->db_size_mb ?? 0) + (float) ($this->site->uploads_size_mb ?? 0)) * 0.6;
+
+        return $totalMb < 1 ? '< 1 MB' : round($totalMb, 1).' MB';
     }
 
     #[Computed]
@@ -250,13 +267,25 @@ class SiteBackups extends Component
         return $latest;
     }
 
+    /**
+     * Can an incremental actually be built right now?
+     *
+     * This asked whether any completed backup had a `manifest_path`. That column
+     * belongs to the retired engine, which wrote its manifest into the database;
+     * this one writes it into storage and leaves the column null. So on every
+     * site running the current engine the answer was permanently no, the
+     * Incremental button never appeared, and the screen explained that
+     * incrementals "become available after the first full one" underneath a table
+     * of two dozen completed full backups.
+     *
+     * ChainPlanner is the thing that actually decides, and it is what the button
+     * ends up calling — so asking it is both correct and the same answer the
+     * click will get.
+     */
     #[Computed]
     public function hasFullBackupWithManifest(): bool
     {
-        return Backup::where('site_id', $this->site->id)
-            ->where('status', 'completed')
-            ->whereNotNull('manifest_path')
-            ->exists();
+        return (new \App\Backup\V2\Chain\ChainPlanner)->planFor($this->site)['type'] === 'incremental';
     }
 
     public function getBackupHistoryProperty()
