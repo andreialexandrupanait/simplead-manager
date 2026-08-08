@@ -4,7 +4,15 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Backup\V2\Models\BackupSession;
+use App\Backup\V2\Models\BackupVerification;
+use App\Backup\V2\Storage\S3ClientFactory;
+use App\Backup\V2\Storage\SessionLayoutResolver;
+use App\Backup\V2\Verification\DeepVerifyService;
+use App\Enums\BackupEngine;
 use App\Models\Backup;
+use App\Models\Site;
+use App\Models\StorageDestination;
 use App\Services\Backup\BackupVerifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -39,6 +47,80 @@ class RunBackupVerification implements ShouldBeUnique, ShouldQueue
 
     public function handle(BackupVerifier $verifier): void
     {
+        if ($this->backup->engine === BackupEngine::V2) {
+            $this->deepVerifyV2();
+
+            return;
+        }
+
         $verifier->verify($this->backup);
+    }
+
+    /**
+     * Actually test the backup.
+     *
+     * Pressing "Test restore" on a backup made by the new engine used to return a
+     * pass without testing anything: the legacy verifier recognised the row as
+     * not its own and answered "Verified by the backup engine at creation — not
+     * re-checked by the legacy verifier." True, and the wrong answer to give. The
+     * create-time verification is HEAD-only — it checks that every object exists
+     * and is the declared size — so a green tick here told an operator their
+     * backup had been restore-tested when nothing had been opened.
+     *
+     * DeepVerifyService is the check that earns the word: it pulls the bytes,
+     * re-hashes them in full, opens the file chunks as zips and parses the DB
+     * segments as SQL. It is what backup:v2-deep-verify runs, on demand for one
+     * backup instead of a nightly sample.
+     */
+    private function deepVerifyV2(): void
+    {
+        $session = BackupSession::where('backup_id', $this->backup->id)->first();
+        $site = $this->backup->site;
+
+        if (! $session instanceof BackupSession || ! $site instanceof Site) {
+            $this->backup->update([
+                'verification_status' => 'failed',
+                'verification_message' => 'This backup has no session to verify against.',
+                'verified_at' => now(),
+            ]);
+
+            return;
+        }
+
+        $destination = StorageDestination::resolveForSite($site);
+        if ($destination === null) {
+            $this->backup->update([
+                'verification_status' => 'failed',
+                'verification_message' => 'No storage destination is configured for this site.',
+                'verified_at' => now(),
+            ]);
+
+            return;
+        }
+
+        $s3 = S3ClientFactory::forDestination($destination);
+
+        // Resolved exactly as the runner resolved it when writing. Looking for the
+        // objects anywhere else is how deep-verify once reported a healthy backup
+        // as failed.
+        $verification = (new DeepVerifyService)->deepVerify(
+            $session,
+            $s3->readClient(),
+            $s3->bucket(),
+            SessionLayoutResolver::for($session, $site),
+            // On demand means one backup and a person waiting, so the sample is
+            // wider than the nightly sweep's.
+            sampleSize: 8,
+        );
+
+        $passed = $verification->status === BackupVerification::STATUS_PASSED;
+
+        $this->backup->update([
+            'verification_status' => $passed ? 'passed' : 'failed',
+            'verification_message' => $passed
+                ? 'Objects re-downloaded, re-hashed, archives opened and the dump parsed.'
+                : ($verification->error ?: 'Deep verification failed.'),
+            'verified_at' => now(),
+        ]);
     }
 }

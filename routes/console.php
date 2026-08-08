@@ -186,6 +186,9 @@ Schedule::command('app:backup-cleanup')
 // Weekly Level B backup verification — sample N recent backups, full integrity
 // re-check. Sample size is config-driven (backups.level_b_sample_size) inside the
 // command so it can scale with the fleet (P2-33).
+//
+// V1 only: the command's candidate query filters `engine = v1`. It is left in
+// place for as long as there are V1 archives, and dies with them.
 Schedule::command('backup:verify-restore')
     ->weeklyOn(0, '03:00')
     ->name('backup-verify-restore-weekly')
@@ -193,15 +196,47 @@ Schedule::command('backup:verify-restore')
     ->onOneServer()
     ->onFailure($criticalFailureAlert('backup-verify-restore-weekly'));
 
+// The same sweep for the engine that now writes every backup on the fleet.
+//
+// It existed and was registered as a command, and was scheduled nowhere — so
+// while the whole fleet moved to V2, the only verification any of those backups
+// received was the HEAD-only check at creation. Nothing had opened an archive or
+// parsed a dump on a schedule since the migration.
+//
+// 05:30: after the nightly window (03:00–~07:30 is the dispatch spread, but the
+// last site starts around 04:10 and a full runs under half an hour), and clear of
+// the two V1 sweeps above.
+Schedule::command('backup:v2-deep-verify')
+    ->weeklyOn(0, '05:30')
+    ->name('backup-v2-deep-verify-weekly')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('backup-v2-deep-verify-weekly'));
+
 // C-08: proven restore — actually restore a pilot site's latest backup into the
 // isolated sandbox WP and health-check it (stronger than the offline integrity
 // verify above). Staggered after it so the two heavy jobs don't collide.
+//
+// V1: RunProvenRestore takes the site's latest backup regardless of engine and
+// hands it to SandboxRestoreService, which downloads `file_path` as a key — on a
+// V2 row that is a prefix. It is the V2 command below that covers this fleet.
 Schedule::job(new \App\Jobs\RunProvenRestore)
     ->weeklyOn(0, '04:30')
     ->name('proven-restore-weekly')
     ->withoutOverlapping()
     ->onOneServer()
     ->onFailure($criticalFailureAlert('proven-restore-weekly'));
+
+// The strongest check there is: restore an actual backup into a throwaway
+// WordPress and ask the site whether it came back. Opt-in per site, so this is a
+// no-op until a sandbox site is registered — which is why scheduling it now costs
+// nothing and means it starts working the moment one is.
+Schedule::command('backup:v2-proven-restore')
+    ->weeklyOn(0, '06:30')
+    ->name('proven-restore-v2-weekly')
+    ->withoutOverlapping()
+    ->onOneServer()
+    ->onFailure($criticalFailureAlert('proven-restore-v2-weekly'));
 
 // Horizon health check
 Schedule::command('horizon:health-check')

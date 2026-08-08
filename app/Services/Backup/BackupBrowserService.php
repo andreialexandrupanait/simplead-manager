@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Backup;
 
+use App\Backup\V2\Chain\ChainResolver;
+use App\Backup\V2\Chain\S3ManifestReader;
+use App\Backup\V2\Models\BackupSession;
+use App\Backup\V2\Storage\S3ClientFactory;
+use App\Backup\V2\Storage\SessionLayoutResolver;
+use App\Enums\BackupEngine;
 use App\Models\Backup;
 use App\Models\StorageDestination;
 use App\Services\Backup\Storage\StorageDriver;
@@ -40,11 +46,20 @@ class BackupBrowserService
             return $cached;
         }
 
-        $result = match ($backup->format) {
-            'v3-zip' => $this->listV3ZipContents($backup),
-            BackupManifestV3::FORMAT => $this->listMultipartV3Contents($backup),
-            default => $this->listLegacyContents($backup),
-        };
+        // Engine FIRST, and on `engine` rather than on `format`. The new engine
+        // never sets `format` (BackupEnvelope::open does not write it) and its
+        // `file_path` is an object prefix, not a key — so a V2 row fell to the
+        // legacy branch, which downloads file_path and opens it as a zip. It
+        // could not work, and the way it failed was the worst available: the
+        // Selective Restore tab simply reported that it could not read the
+        // backup, on a backup that is perfectly good.
+        $result = $backup->engine === BackupEngine::V2
+            ? $this->listV2Contents($backup)
+            : match ($backup->format) {
+                'v3-zip' => $this->listV3ZipContents($backup),
+                BackupManifestV3::FORMAT => $this->listMultipartV3Contents($backup),
+                default => $this->listLegacyContents($backup),
+            };
 
         Cache::put($cacheKey, $result, self::CACHE_TTL);
 
@@ -92,6 +107,60 @@ class BackupBrowserService
      *
      * @return array{has_database: bool, has_files: bool, file_count: int, files: array, truncated: bool}
      */
+    /**
+     * What a restore point on the new engine actually holds.
+     *
+     * Nothing is downloaded. The manifest already names every file present at
+     * this point — path, size, and the object that carries it, whether this
+     * backup uploaded it or an earlier link in the chain did — so the listing is
+     * a read of one small JSON object rather than a pull of the whole site.
+     *
+     * ChainResolver::stateFor() is the same call the portable-package builder
+     * and the restore planner make, which is the point: the file tree a person
+     * ticks boxes in is built from the identical state the restore will act on,
+     * so it cannot offer a path the restore would not find.
+     *
+     * @return array{has_database: bool, has_files: bool, file_count: int, files: array, truncated: bool}
+     */
+    protected function listV2Contents(Backup $backup): array
+    {
+        $session = BackupSession::where('backup_id', $backup->id)->first();
+        if (! $session instanceof BackupSession) {
+            throw new \RuntimeException('This backup has no session to read a manifest from.');
+        }
+
+        $destination = $backup->storageDestination;
+        if (! $destination instanceof StorageDestination) {
+            throw new \RuntimeException('This backup has no storage destination.');
+        }
+
+        $s3 = S3ClientFactory::forDestination($destination);
+        $reader = new S3ManifestReader(
+            $s3->readClient(),
+            $s3->bucket(),
+            static fn (BackupSession $member) => SessionLayoutResolver::for($member),
+        );
+
+        $state = (new ChainResolver)->stateFor($session, $reader);
+
+        $files = [];
+        foreach ($state as $path => $entry) {
+            $files[] = [
+                'path' => (string) $path,
+                'size' => $entry['s'],
+            ];
+        }
+
+        usort($files, static fn (array $a, array $b) => strcmp($a['path'], $b['path']));
+
+        // The scope is what was asked for; the manifest is what was written. Read
+        // the scope, because a database-only backup has no files and would
+        // otherwise report itself as an empty restore point.
+        $hasDatabase = (bool) ($session->scope['database'] ?? true);
+
+        return $this->envelope($files, $hasDatabase);
+    }
+
     protected function listV3ZipContents(Backup $backup): array
     {
         $tempDir = storage_path('app/temp/browse-'.uniqid());

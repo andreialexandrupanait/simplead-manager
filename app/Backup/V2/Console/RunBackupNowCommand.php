@@ -55,6 +55,12 @@ class RunBackupNowCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * `Site::domain` is an accessor over `url` (getDomainAttribute), not a
+     * column. Querying it threw "column domain does not exist", so this only
+     * ever resolved a numeric id — which is not how anyone reaches for a site.
+     * Reading `$site->domain` is fine and stays; only the WHERE was wrong.
+     */
     private function resolveSite(string $needle): ?Site
     {
         if (ctype_digit($needle)) {
@@ -62,8 +68,8 @@ class RunBackupNowCommand extends Command
         }
 
         return Site::query()
-            ->where('domain', $needle)
-            ->orWhere('url', 'like', '%'.$needle.'%')
+            ->where('url', 'like', '%'.$needle.'%')
+            ->orWhere('name', $needle)
             ->first();
     }
 }

@@ -143,6 +143,16 @@ class RestoreSession extends Model
             ['from' => $from->value, 'to' => $to->value, 'stage' => $this->stage]
         );
 
+        // Hung off the one funnel every state change passes through, exactly as
+        // the backup alert is — so there is no path to a failed restore that can
+        // fail quietly. Until this existed there was none that could not: the
+        // line above wrote a warning to a log nobody reads unless they already
+        // suspect something, and a restore is the moment you least want to be
+        // the one who has to suspect.
+        if ($from !== $to && $to === RestoreSessionState::Failed) {
+            \App\Backup\V2\Jobs\NotifyRestoreV2Failed::dispatch($this->id);
+        }
+
         return $this;
     }
 

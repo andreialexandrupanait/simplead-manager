@@ -79,9 +79,11 @@ class SetBackupEngineCommand extends Command
             return Site::find((int) $needle);
         }
 
+        // `domain` is an accessor over `url`, not a column — querying it threw
+        // "column domain does not exist", so this only ever resolved a numeric id.
         return Site::query()
-            ->where('domain', $needle)
-            ->orWhere('url', 'like', '%'.$needle.'%')
+            ->where('url', 'like', '%'.$needle.'%')
+            ->orWhere('name', $needle)
             ->first();
     }
 }
