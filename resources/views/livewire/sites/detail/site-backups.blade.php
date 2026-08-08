@@ -179,102 +179,16 @@
             x-show="!dismissed"
             x-transition
         >
-            <x-ui.card>
-                <div class="space-y-3">
-                    {{-- Header --}}
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <template x-if="status === 'pending' || status === 'in_progress'">
-                                <x-ui.spinner size="md" class="text-accent-600" />
-                            </template>
-                            <template x-if="status === 'completed'">
-                                <svg aria-hidden="true" class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                            </template>
-                            <template x-if="status === 'failed'">
-                                <svg aria-hidden="true" class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </template>
-                            <h3 class="text-sm font-semibold text-gray-900">
-                                {{ ucfirst($ab->type) }} Backup
-                                <span x-show="status === 'pending'">{{ __('Queued') }}</span>
-                                <span x-show="status === 'in_progress'">{{ __('in Progress') }}</span>
-                                <span x-show="status === 'completed'">{{ __('Complete') }}</span>
-                                <span x-show="status === 'failed'">{{ __('Failed') }}</span>
-                            </h3>
-                        </div>
-                        <div class="flex items-center gap-3 text-xs text-gray-500">
-                            <span x-show="stage && (status === 'pending' || status === 'in_progress')" x-text="stage.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())"></span>
-                            @if($abStarted)
-                                <span>{{ $abStarted->diffForHumans(null, true) }} {{ __('elapsed') }}</span>
-                            @endif
-                            <template x-if="status === 'pending' || status === 'in_progress'">
-                                <button wire:click="cancelBackup" wire:confirm="{{ __('Are you sure you want to cancel this backup?') }}" class="text-red-400 hover:text-red-600 font-medium" title="{{ __('Cancel backup') }}">
-                                    {{ __('Cancel') }}
-                                </button>
-                            </template>
-                            <template x-if="status === 'completed' || status === 'failed'">
-                                <button @click="dismissed = true; $wire.dismissProgress()" class="text-gray-400 hover:text-gray-600" title="Dismiss">
-                                    <svg aria-hidden="true" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                    </svg>
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-
-                    {{-- Progress Bar --}}
-                    <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                        <div
-                            class="h-2 rounded-full"
-                            :class="{
-                                'bg-green-500': status === 'completed',
-                                'bg-red-500': status === 'failed',
-                                'bg-accent-500': status === 'pending' || status === 'in_progress',
-                            }"
-                            :style="'width: ' + Math.max(pct, status === 'pending' ? 15 : 0) + '%; transition: width 0.7s ease-out'"
-                        ></div>
-                    </div>
-
-                    {{-- Footer --}}
-                    <div class="flex items-center justify-between text-xs text-gray-500">
-                        <span x-show="status !== 'failed'" x-text="pct + '%'"></span>
-                        <span x-show="status !== 'failed' && message" x-text="message"></span>
-                        @if($abStatus === 'completed' && $ab->duration_seconds)
-                            <span>{{ __('Completed in :seconds s', ['seconds' => $ab->duration_seconds]) }}</span>
-                        @endif
-                    </div>
-                    {{-- Error detail for failed backups --}}
-                    <div x-show="status === 'failed'" x-cloak class="rounded-md bg-red-50 border border-red-200 p-2.5 text-xs text-red-700" x-text="message"></div>
-
-                    {{-- Activity Log --}}
-                    @if(count($this->progressLog) > 0)
-                        <div x-data="{ logOpen: status === 'pending' || status === 'in_progress' }">
-                            <button @click="logOpen = !logOpen" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
-                                <svg aria-hidden="true" class="h-3 w-3 transition-transform" :class="logOpen && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                                <span x-text="logOpen ? 'Activity Log' : 'Show log ({{ count($this->progressLog) }} entries)'"></span>
-                            </button>
-                            <div x-show="logOpen" x-collapse>
-                                <div
-                                    class="mt-2 max-h-40 overflow-y-auto rounded-lg bg-gray-900 p-3 font-mono text-xs leading-relaxed"
-                                    x-ref="backupLogPanel"
-                                    x-effect="if (logOpen) { $nextTick(() => { $refs.backupLogPanel.scrollTop = $refs.backupLogPanel.scrollHeight }) }"
-                                >
-                                    @foreach($this->progressLog as $entry)
-                                        <div class="{{ str_starts_with($entry['message'] ?? '', 'FAILED:') ? 'text-red-400' : 'text-green-400' }}">
-                                            <span class="text-gray-500">[{{ $entry['time'] }}]</span> {{ $entry['message'] }}
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </x-ui.card>
+            <x-ui.run-progress
+                :title="ucfirst($ab->type).' '.__('Backup')"
+                :elapsed="$abStarted ? $abStarted->diffForHumans(null, true).' '.__('elapsed') : null"
+                cancel="cancelBackup"
+                :cancelConfirm="__('Are you sure you want to cancel this backup?')"
+                dismiss="dismissProgress"
+                :log="$this->progressLog"
+                logRef="backupLogPanel"
+                :note="$abStatus === 'completed' && $ab->duration_seconds ? __('Completed in :seconds s', ['seconds' => $ab->duration_seconds]) : null"
+            />
         </div>
     @endif
 
@@ -314,83 +228,13 @@
             x-show="!dismissed"
             x-transition
         >
-            <x-ui.card>
-                <div class="space-y-3">
-                    {{-- Header --}}
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <template x-if="status === 'pending' || status === 'in_progress'">
-                                <x-ui.spinner size="md" class="text-accent-600" />
-                            </template>
-                            <template x-if="status === 'completed'">
-                                <svg aria-hidden="true" class="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                </svg>
-                            </template>
-                            <template x-if="status === 'failed'">
-                                <svg aria-hidden="true" class="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </template>
-                            <h3 class="text-sm font-semibold text-gray-900">
-                                {{ __('Restore') }}
-                                <span x-show="status === 'pending'">{{ __('Queued') }}</span>
-                                <span x-show="status === 'in_progress'">{{ __('in Progress') }}</span>
-                                <span x-show="status === 'completed'">{{ __('Complete') }}</span>
-                                <span x-show="status === 'failed'">{{ __('Failed') }}</span>
-                            </h3>
-                        </div>
-                        <div class="flex items-center gap-3 text-xs text-gray-500">
-                            <span x-show="stage && (status === 'pending' || status === 'in_progress')" x-text="stage.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())"></span>
-                        </div>
-                    </div>
-
-                    {{-- Progress Bar --}}
-                    <div class="h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                        <div
-                            class="h-2 rounded-full"
-                            :class="{
-                                'bg-green-500': status === 'completed',
-                                'bg-red-500': status === 'failed',
-                                'bg-accent-500': status === 'pending' || status === 'in_progress',
-                            }"
-                            :style="'width: ' + Math.max(pct, status === 'pending' ? 15 : 0) + '%; transition: width 0.7s ease-out'"
-                        ></div>
-                    </div>
-
-                    {{-- Footer --}}
-                    <div class="flex items-center justify-between text-xs text-gray-500">
-                        <span x-text="pct + '%'"></span>
-                        <span x-show="status === 'failed' && message" x-text="message" class="text-red-600"></span>
-                        <span x-show="status !== 'failed' && message" x-text="message"></span>
-                    </div>
-
-                    {{-- Activity Log --}}
-                    @if(count($this->restoreProgressLog) > 0)
-                        <div x-data="{ logOpen: status === 'pending' || status === 'in_progress' }">
-                            <button @click="logOpen = !logOpen" class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
-                                <svg aria-hidden="true" class="h-3 w-3 transition-transform" :class="logOpen && 'rotate-90'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                </svg>
-                                <span x-text="logOpen ? 'Activity Log' : 'Show log ({{ count($this->restoreProgressLog) }} entries)'"></span>
-                            </button>
-                            <div x-show="logOpen" x-collapse>
-                                <div
-                                    class="mt-2 max-h-40 overflow-y-auto rounded-lg bg-gray-900 p-3 font-mono text-xs leading-relaxed"
-                                    x-ref="restoreLogPanel"
-                                    x-effect="if (logOpen) { $nextTick(() => { $refs.restoreLogPanel.scrollTop = $refs.restoreLogPanel.scrollHeight }) }"
-                                >
-                                    @foreach($this->restoreProgressLog as $entry)
-                                        <div class="{{ str_starts_with($entry['message'] ?? '', 'FAILED:') ? 'text-red-400' : 'text-green-400' }}">
-                                            <span class="text-gray-500">[{{ $entry['time'] }}]</span> {{ $entry['message'] }}
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </x-ui.card>
+            {{-- No cancel button, deliberately: a restore stopped half-way leaves the
+                 live site in neither state. Stopping is not the safe option here. --}}
+            <x-ui.run-progress
+                :title="__('Restore')"
+                :log="$this->restoreProgressLog"
+                logRef="restoreLogPanel"
+            />
         </div>
     @endif
 

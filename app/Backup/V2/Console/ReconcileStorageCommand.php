@@ -228,6 +228,28 @@ class ReconcileStorageCommand extends Command
 
         $prefix = trim((string) $backup->file_path, '/');
 
+        // A backup written by the engine occupies a PREFIX, not a file. Asking whether that prefix
+        // exists as an object is a question storage always answers no to, so this report declared
+        // every one of the fleet's backups to be missing its objects — 121 of them, all of them
+        // intact. A drift report that cries wolf on the entire fleet is worse than no report: the
+        // one time something really is gone, it reads exactly the same.
+        //
+        // Asked via the completion marker, which is written last, after every declared object and
+        // the manifest have been verified in storage. Its presence is the strongest single-object
+        // statement that the backup is whole; a stray chunk from an abandoned run would not have one.
+        if ($backup->engine === \App\Enums\BackupEngine::V2) {
+            if ($prefix !== '' && ! $this->pathPresent($storagePaths, $prefix.'/_COMPLETE')) {
+                $missingObjects[] = [
+                    'backup_id' => $backup->id,
+                    'site_id' => $backup->site_id,
+                    'format' => $backup->format,
+                    'expected_object' => $prefix.'/_COMPLETE',
+                ];
+            }
+
+            return;
+        }
+
         if ($backup->format === \App\Services\Backup\BackupManifestV3::FORMAT) {
             $manifestPath = $prefix.'/'.\App\Services\Backup\BackupManifestV3::MANIFEST_FILENAME;
             $manifestPresent = $this->pathPresent($storagePaths, $manifestPath);
