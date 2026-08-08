@@ -180,7 +180,23 @@ services:
   # backup/restore. Asta protejează un mediu nou; producția îl are pe `true`.
   #
   # stop_grace_period 3660s: un RestoreBackup poate rula până la 3600s; un grace
-  # mai scurt ar tăia un restore în doi.
+  # mai scurt ar tăia un restore în doi. Cifra e potrivită cu Horizon: la oprire,
+  # MasterSupervisor::terminate() așteaptă `longestActiveTimeout()`, adică cei
+  # 3600s ai lui supervisor-backups, plus un minut de marjă.
+  #
+  # stop_signal SIGTERM: imaginea de bază e php:8.3-fpm-alpine, care declară
+  # `STOPSIGNAL SIGQUIT` — corect pentru php-fpm, care așa se oprește frumos, și
+  # de aceea manager-app îl păstrează. Pentru Horizon e greșit: masterul ascultă
+  # SIGTERM/SIGUSR1/SIGUSR2/SIGCONT (ListensForSignals) și SIGINT, dar NU SIGQUIT,
+  # iar semnalul ajunge doar la PID 1, adică exact la master. Sub SIGQUIT nu exista
+  # niciun handler, procesul murea pe loc, iar cele 3660 de secunde nu se foloseau
+  # niciodată: Docker nu are ce aștepta de la un proces deja mort.
+  #
+  # Așa au înghețat sesiunile #136 și #140 la deploy — nu pentru că grace period-ul
+  # era prea scurt, ci pentru că era irelevant. Joburile rămâneau în setul `reserved`
+  # din Redis până expira retry_after (7200s), iar sesiunea arăta ca una încă în lucru.
+  # (Worker-ii, ei, tratează SIGQUIT — Illuminate\Queue\Worker îl are în listă — dar
+  # ei sunt copii, iar Docker nu semnalează copiii.)
   # ==========================================================================
   manager-horizon:
     <<: *app-image
@@ -212,6 +228,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    stop_signal: SIGTERM
     stop_grace_period: 3660s
     volumes:
       - app-storage:/var/www/html/storage
@@ -228,6 +245,12 @@ services:
 
   # ==========================================================================
   # manager-scheduler — `schedule:work`. ACTIV în producție (același gate).
+  #
+  # stop_signal SIGTERM: același motiv ca la manager-horizon — imaginea de bază
+  # declară SIGQUIT pentru php-fpm, iar o comandă artisan de lungă durată nu are
+  # handler pentru el. Aici miza e mai mică (`schedule:work` doar declanșează), dar
+  # sub SIGQUIT un `schedule:run` pornit chiar atunci era retezat, nu lăsat să
+  # termine.
   # ==========================================================================
   manager-scheduler:
     <<: *app-image
@@ -258,6 +281,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    stop_signal: SIGTERM
     stop_grace_period: 30s
     volumes:
       - app-storage:/var/www/html/storage
